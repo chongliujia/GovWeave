@@ -1,37 +1,34 @@
-# ADR 0001：先交付企业自部署网关的部署与初始化基础
+# ADR 0001: Start with the self-hosted gateway foundation
 
-- 状态：已采纳，2026-10-15；管理员认证与 Go 基线已由 [ADR 0003](0003-password-login.md) 更新。
-- 依据：项目发起人在本次设计讨论中明确的方向。
+**English** | [简体中文](../zh-CN/adr/0001-gateway-first.md)
 
-## 背景与决定
+- Status: Accepted, 2026-10-15. Administrator authentication and the Go language baseline were later superseded by [ADR 0003](0003-password-login.md).
+- Scope: The original 0.1.0-dev deployment and initialization slice.
 
-当前没有已有 GRC 产品。GovWeave 从开源、企业自部署的 AI 合规控制和调用追踪网关切入。早期 `agent.md` 中“已有 GRC、Eval 首发、Gateway 第二阶段”的前提和优先级不再适用；其安全、隐私、证据真实性和人工审核原则继续适用。
+## Context
 
-企业运维负责网络、DNS、证书和反向代理；GovWeave 提供监听地址与访问地址的配置入口、初始化向导及实际接入地址展示。不同应用未来通过应用密钥区分权限，共用实例入口。管理员令牌与应用密钥是不同身份，不可混用。
+There is no pre-existing GRC product. GovWeave starts as an open-source, enterprise-deployed gateway for AI access controls and request tracing. The original draft's assumptions of an existing GRC platform, Eval-first launch, and gateway as a second phase no longer apply. Its principles of privacy, truthful evidence, and human-reviewed legal interpretation remain relevant.
 
-此 ADR 记录 0.1.0-dev 的部署基础切片。当前模型能力和文件存储演进见 [ADR 0002](0002-model-gateway.md)。
+Enterprise operators own networking, DNS, certificates, and reverse proxies. GovWeave provides listener configuration, an explicit public URL, an initialization console, and application endpoint examples. Management identity and application identity remain separate.
 
-## 当时交付的切片
+## Decision
 
-使用 Go 标准库实现单实例配置 API、私有配置存储、本地管理员认证和嵌入式初始化页面。先贯通部署、配置、重启恢复和接入模板；模型代理、MCP、法规执行不在本次交付中，保留路径返回结构化 501，页面明确标识。
+Implement a single-instance Go service with strict configuration APIs, private local persistence, local administrator authentication, and embedded console assets. The initial slice covers deployment, configuration, restart recovery, and endpoint templates. Model proxying, MCP, and regulatory enforcement were not part of that slice; model functionality was added through [ADR 0002](0002-model-gateway.md).
 
-监听地址只决定服务绑定；`public_url` 是企业声明的根访问地址，不能包含 `/v1`、路径前缀、凭证、查询或片段。不从 `Host` 或代理头自动采信公开地址；用户可以在向导中主动选择当前浏览器地址。
+`listen_addr` controls binding. `public_url` is an operator-declared root origin, without `/v1`, other path prefixes, credentials, queries, or fragments. Do not automatically trust Host or proxy headers as configuration. The operator may explicitly use the current browser URL in the console.
 
-配置优先级：环境变量 > 部署 JSON > 控制台保存值 > 默认值。组织名称和访问地址逐字段标记来源，部署管理的字段在界面只读且后端拒绝覆盖。HTTP 请求和启动文件复用同一个校验模块。部署来源移除后，回退到最近一次通过控制台保存的完整生效值；该行为须在运维文档中明确。
+Configuration precedence is environment, deployment JSON, saved settings, then defaults. Organization name and public URL expose their source and reject console edits when deployment-managed. Startup and HTTP updates reuse validation. Removing an override falls back to the last complete effective settings saved in the console; document this behavior for operators.
 
-## 取舍
+## Tradeoffs at adoption
 
-- 第一版是单进程、单企业实例，以本地私有文件原子替换持久化，进程文件锁阻止多个进程共享数据目录。不是多租户 SaaS 或 HA 数据库。后续应用、策略、审批与审计数据引入 PostgreSQL。
-- 此切片只有一个初始化页面，使用随 Go 二进制内嵌的 HTML/CSS/JavaScript，没有前端依赖或构建步骤。复杂治理工作台发展时再引入 TypeScript/React，后端契约不变。
-- 首版使用受保护文件中的高熵管理员令牌；浏览器仅在内存保存。完整管理员账号、SSO、应用密钥、轮换 API 和操作审计后续实现。不能把此认证描述为已具备完整企业 IAM。
-- Go 模块的语言基线为 1.22，兼容当前开发环境；部署构建使用受支持的 Go 版本，Docker 默认固定 1.26.9。参见 [Go 官方发布记录](https://go.dev/doc/devel/release)。不要将旧工具链的本地测试视为生产安全背书。
-- 本服务及网页没有外部网络依赖。提供本地二进制归档打包，不包含模型权重、法规包、检测器、自动签名或公网证书签发。
+- Use one process and local private files with atomic replacement. A process lock prevents simultaneous directory use. This is not a multi-tenant SaaS deployment or HA database architecture; a database remains a possible later evolution.
+- Embed HTML/CSS/JavaScript in the Go binary, avoiding a frontend build and network dependency. A larger governance workspace may justify a different frontend later.
+- The initial version used a high-entropy administrator token in a protected file. This historical choice is superseded by password login and sessions in ADR 0003.
+- The initial module baseline was Go 1.22; ADR 0003 raises it to 1.24. The repository distribution toolchain pins Go 1.26.9. Toolchain compatibility is not a production security certification.
+- Distribute a local binary archive without model weights, regulatory packages, automatic signing, or public certificate issuance.
 
-## 后续顺序
+## Intended direction
 
-1. 模型连接、应用身份和最小模型访问控制；评估现成适配器，验证 Chat Completions/SSE 的兼容矩阵。
-2. 记录策略版本、决策与执行结果的审计链，默认不保存 Prompt 或响应正文。
-3. MCP 工具执行边界、审批和调用链关联。
-4. EU/US 法规目录、适用性和人工审核后的控制映射。区分法规、行业标准和自愿框架，所有能力按实际覆盖范围描述。
+First add model connections and application identity, then versioned request records, MCP execution controls and approvals, and human-reviewed EU/US regulatory mappings. Laws, standards, and voluntary frameworks must remain distinguishable in any future catalog.
 
-未来策略执行在本地使用已审核的版本化规则；法规检索和重型分析不进入每次请求的同步路径。这里不宣称任何性能数字或法律合规结论。
+Keep future enforcement local and based on reviewed, versioned rules. Regulatory retrieval and heavy analysis do not belong in every synchronous model request. This decision makes no legal compliance or performance claim.

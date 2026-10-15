@@ -1,42 +1,93 @@
 # GovWeave
 
-企业自部署的 AI 治理网关。当前交付 **模型接入预览版（0.2.0-dev）**，贯通模型连接、应用授权、请求凭证检测、普通／流式调用和本地调用记录。
+**English** | [简体中文](README.zh-CN.md)
 
-## 当前可以做什么
+An open-source, self-hosted AI governance gateway for model access, request credential checks, and metadata-only call records.
 
-- 无云端账号注册，首次设置管理员密码即可使用；本地控制台与静态资源随 Go 二进制分发。
-- 控制台默认英文，支持即时切换简体中文并记住语言偏好；所有语言资源随程序离线提供。
-- 企业配置自己的访问地址，自动生成模型 BASE URL 和实际接入示例。
-- 配置 OpenAI 兼容的模型连接、上游凭证、企业模型别名、启用状态和超时。
-- 创建应用、授予模型权限、生成一次性展示的 API Key，并轮换或撤销。
-- 提供 `POST /v1/chat/completions`（普通 JSON / SSE）和 `GET /v1/models`。
-- 运行时策略中心可按应用和模型范围检查请求中的私钥标记及部分 API 密钥样式；默认关闭，支持观察与阻断。
-- 保存应用、模型别名、请求 ID、授权决定、执行结果、耗时和配置版本；不保存提示词、回答或凭证。
-- 上游凭证使用 AES-256-GCM 加密保存；应用密钥只持久化 SHA-256 哈希与识别前缀。
+Deploy GovWeave on your own infrastructure, connect an OpenAI-compatible model endpoint, and give each application its own key and model grants. Applications use your gateway URL and an administrator-defined model alias. No GovWeave cloud account is required.
 
-**通用敏感数据识别、响应内容检测、MCP 执行、审批、EU/US 法规映射、完整企业 IAM 和 HA 尚未实现。** 当前的 allow/deny 仅表示模型访问授权，不代表法律合规结论。未支持的模型和 MCP 接口返回 `501`。
+**Status: 0.2.0-dev preview.** The current implementation is a single-process, single-organization gateway. It is not a complete GRC platform or a legal compliance certification service.
 
-## 启动与第一次调用
+## What works today
 
-源码开发需要 Go 1.24+；分发构建请使用受支持且包含安全更新的 Go 版本（Docker 固定 1.26.9）。服务无第三方 Go 模块和前端构建依赖。
+| Capability | Current behavior |
+| --- | --- |
+| Model connections | Configure an upstream base URL, credential, model ID, and service alias |
+| Application access | Issue, rotate, and revoke application keys; grant access to specific connections |
+| Model API | `POST /v1/chat/completions` with JSON or SSE; `GET /v1/models` |
+| Runtime policies | Local request checks for private key markers and selected API key patterns; disabled, observe, or block |
+| Request records | Request ID, authorization, policy revision and matches, execution outcome, and timing; no prompt or response bodies |
+| Administration | Set an initial administrator password; use a browser session to manage the instance |
+| Languages | English by default, with an offline Simplified Chinese option |
+| Distribution | Go binary, locally built container image, and offline archive |
+
+General PII detection, response content checks, MCP tool execution, approval workflows, EU/US regulatory mappings, SSO, and high availability are **not implemented**. See [supported interfaces and limits](docs/model-gateway.md).
+
+## Quick start
+
+Run these commands from the repository root. Building from source requires Go 1.24 or later; this repository's Docker build pins Go 1.26.9. No database, Node runtime, or frontend build is required to run the gateway.
 
 ```bash
 go run ./cmd/govweave -config examples/deployment.json
 ```
 
-1. 打开 `http://127.0.0.1:8080`，首次设置并确认管理员密码（12–128 个字符），即可进入控制台；以后使用该密码登录。请先完成此步骤，再开放给其他用户访问。
-2. 在“部署与接入”填写组织和实际根访问地址，保存配置。
-3. 在“模型连接”填写上游 BASE URL、真实模型 ID、凭证和企业别名（例如 `internal-assistant`）。本地无鉴权模型可不填凭证；HTTP 上游需要明确勾选允许。
-4. 在“应用与密钥”创建应用，勾选允许使用的模型，保存只展示一次的应用密钥。
-5. 回到“部署与接入”，选择该应用并复制示例。将应用密钥设置为调用程序的 `GOVWEAVE_API_KEY`，再执行示例。
-6. 可选：在“运行时策略 / Runtime policies”配置凭证检测，先观察命中，再按需启用阻断。观察模式仍转发原始请求及其中凭证。
-7. 在“调用记录”刷新查看结果。连接检查仅调用上游 `GET /models`，实际推理须通过应用调用验证。
+Open **http://127.0.0.1:8080**. The example configuration stores data in `./data`.
 
-离线二进制包解压后用 `./govweave -config examples/deployment.json` 启动。网关可离线安装；推理需要可达的企业本地模型或已配置的外部服务。选择外部服务时，请求内容会发送给该上游。
+1. Set and confirm the initial administrator password, using 12–128 characters. There is no default password. Complete setup before opening access to other users.
+2. Under **Deployment & access**, set the organization name and the root URL applications can reach. For this local setup, use `http://127.0.0.1:8080`.
+3. Under **Model connections**, add your provider's base URL, actual model ID, and a service alias such as `internal-assistant`. Supply an upstream key if required. Explicitly allow HTTP only when using an unencrypted provider on a trusted network.
+4. Under **Applications & keys**, create an application, select its allowed models, and save the one-time application key.
+5. Under **Deployment & access**, select that application to obtain an example with your actual base URL and an authorized alias.
+6. Send a request and open **Request logs** to inspect the result. A connection check only reads the upstream model list; it does not test inference.
 
-详见 [部署与配置](docs/deployment.md)、[模型接入与运行边界](docs/model-gateway.md)。
+Alternatively, with Docker and Compose installed:
 
-## 开发验证
+```bash
+docker compose build
+docker compose up -d --no-build
+```
+
+Compose also publishes http://127.0.0.1:8080 by default. Use one startup method at a time. Its data lives in a named Docker volume, separate from the source-run `./data` directory. See [deployment](docs/deployment.md) for remote access, HTTPS, persistent storage, and offline installation.
+
+## Make an application request
+
+Set the following in the application's environment:
+
+| Variable | Value |
+| --- | --- |
+| `GOVWEAVE_BASE_URL` | The gateway root URL plus `/v1`, for example `http://127.0.0.1:8080/v1` |
+| `GOVWEAVE_API_KEY` | The application's key, not the administrator password or upstream credential |
+
+These are **application-side conventions**, not gateway server configuration variables. The alias below must exist and be granted to the application.
+
+```bash
+curl --fail-with-body "${GOVWEAVE_BASE_URL%/}/chat/completions" \
+  -H "Authorization: Bearer $GOVWEAVE_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data '{"model":"internal-assistant","messages":[{"role":"user","content":"Summarize this document."}],"stream":false}'
+```
+
+See [application and agent integration](docs/model-gateway.md#application-and-agent-integration) for a Python SDK example, streaming behavior, and the tool execution boundary.
+
+## Request protection and data handling
+
+In **Runtime policies**, configure the built-in credential egress policy. It starts **disabled**. **Observe** records matching rule IDs and forwards the request, including matched credentials. **Block** rejects matching requests before contacting the model provider. Both application and model scopes must match.
+
+Checks run locally. Audit records exclude prompts, responses, matched secrets, and raw upstream errors. Configuration and records stay in your data directory; allowed requests are sent to the model provider you configure. Self-hosting the gateway does not make a cloud model local.
+
+Upstream credentials are encrypted with a local key; application keys are stored as hashes and identifying prefixes. The current record store is not tamper-evident. A rule match or lack of matches is not a legal compliance determination. Read [runtime policies](docs/runtime-policies.md) before enabling enforcement.
+
+## Documentation
+
+- [Documentation index](docs/README.md)
+- [Deployment, backup, recovery, and troubleshooting](docs/deployment.md)
+- [Model API, application integration, and request records](docs/model-gateway.md)
+- [Runtime policy configuration and detection limits](docs/runtime-policies.md)
+- [Development and verification](docs/development.md)
+- [Architecture decisions](docs/README.md#architecture-decisions)
+- [OpenAPI contract](api/openapi.yaml) and [JSON schemas](schemas/)
+
+## Development
 
 ```bash
 make test
@@ -45,16 +96,10 @@ make build
 make package
 ```
 
-`make test` 使用 race detector，需要 C 编译器和本机临时端口权限；测试仅连接本地模拟服务。`make check` 需要 Node 检查脚本语法；构建和运行无需 Node。浏览器、真实 SDK 和容器验收见 [开发与验收](docs/development.md)。
+`make test` runs Go's race detector and needs a C compiler and permission to listen on local test ports. `make check` also needs Node for JavaScript validation. Browser, SDK, and container tests are documented separately; their dependencies are development-only.
 
-## 设计与接口
+English is the default documentation language. Chinese documentation lives in `README.zh-CN.md` and `docs/zh-CN/`. Keep examples and capability statements consistent with the code and API contracts.
 
-- [ADR 0001：自部署网关入口](docs/adr/0001-gateway-first.md)
-- [ADR 0002：模型访问与调用记录](docs/adr/0002-model-gateway.md)
-- [ADR 0003：管理员密码与浏览器会话](docs/adr/0003-password-login.md)
-- [部署 Schema](schemas/deployment.schema.json)、[实例更新 Schema](schemas/instance.schema.json)、[连接与应用 Schema](schemas/gateway.schema.json)
-- [OpenAPI 契约](api/openapi.yaml)
+## License
 
-`agent.md` 是早期草案，其“Eval 优先、已有 GRC”前提已更新，以 ADR 为准。后续继续建设 MCP 工具执行边界和经过人工审核的 EU/US 法规控制映射。
-
-采用 [Apache-2.0](LICENSE)；分发依赖许可见 [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES)。
+[Apache-2.0](LICENSE). Distribution dependency notices are in [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES).

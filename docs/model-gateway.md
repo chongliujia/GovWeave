@@ -1,97 +1,212 @@
-# 模型接入与运行边界
+# Model gateway and application integration
 
-此版本是单进程、单企业实例的最小模型网关。Go 标准库 HTTP Transport 负责连接池、TLS、超时和取消；只实现一个 OpenAI 兼容的 Chat Completions 适配器，不包含自动选模、计费、模型能力转换或通用 Agent 执行器。
+**English** | [简体中文](zh-CN/model-gateway.md)
 
-## 地址、连接和应用
+The current gateway implements one OpenAI-compatible Chat Completions adapter. It uses Go's standard HTTP transport for connection pooling, TLS, timeouts, and cancellation. It does not provide automatic model selection, billing, protocol conversion, or a general agent runtime.
 
-企业的 `public_url` 是网关根访问地址，应用 BASE URL 为它加上 `/v1`。上游连接的 `base_url` 是另一个地址，填写模型服务实际的 API 根地址，例如内网服务的 `http://model-server:8000/v1`。网关在上游地址后追加 `/chat/completions` 或 `/models`，不会自动猜测版本路径。
+## Connections, aliases, and identities
 
-一个连接绑定一个上游模型 ID 和唯一的企业别名。应用提交别名，网关查验密钥和授权列表，改写为真实模型 ID，再发送给上游。同一个上游的多个模型应分别建连接；别名变化后，应用代码也需要更新。应用权限绑定连接 ID，编辑连接会改变所有获准应用后续调用的目标。
+A **connection** binds an upstream base URL and model ID to a unique service alias. An **application** has its own API key and explicit grants to connection IDs. Model requests authenticate with that application key and specify an allowed alias.
 
-网关只注入已配置的上游 Bearer 凭证、Content-Type、Accept、固定 User-Agent 与网关生成的请求 ID；不会转发应用密钥、Cookie 或调用方的其他头。不会跟随上游重定向，也不自动重放推理 POST。上游 URL 由管理员配置；允许内网与回环地址，拒绝链路本地、组播和未指定地址，DNS 解析后再次检查并拨号到已验证 IP。该检查不是企业网络出口防火墙。
+For example:
 
-HTTPS 使用系统可信证书；容器包含 CA 信任包。私有 CA 可按 Go 的 `SSL_CERT_FILE` / `SSL_CERT_DIR` 配置只读挂载；没有跳过 TLS 校验的选项。此适配器不读取 `HTTP_PROXY` / `HTTPS_PROXY`，需要企业网络直连上游。容器里的 `localhost` 指容器自身，不指宿主机。
+| Setting | Example |
+| --- | --- |
+| Gateway root URL | `https://ai.example.com` |
+| Application base URL | `https://ai.example.com/v1` |
+| Upstream base URL | `http://model-server:8000/v1` |
+| Upstream model ID | The model ID served by your provider |
+| Application-facing alias | `internal-assistant` |
 
-## 支持的调用
+The hostname examples are placeholders. The gateway appends `/chat/completions` or `/models` to the upstream base URL. Keep any provider base path such as `/v1`; do not append the operation path yourself. The gateway does not discover or guess API versions.
 
-| 接口或能力 | 当前行为 |
-|---|---|
-| `GET /v1/models` | 只列出当前应用获准且启用的别名，不访问上游 |
-| `POST /v1/chat/completions` | 校验模型、非空 messages 对象数组和 stream 布尔值；其他 JSON 参数透传 |
-| 普通响应 | 读取有界 JSON 响应，验证 choices 数组后返回；上游响应中的 model 可能是真实模型名 |
-| 流式响应 | 上游须提供 SSE；每个事件有界缓存、校验后按原字节发送并 flush，完成须收到 `[DONE]` |
-| tools / tool_calls | JSON 字段透传；网关不会执行工具，也不代表支持 MCP |
-| 连接检查 | 管理员主动触发 `GET <upstream>/models`；检查列表和模型 ID，不发送推理请求 |
-| Responses、Embeddings、Realtime、原生 Anthropic、Azure 专用鉴权、MCP | 尚未实现，保留路径返回 501 |
+Use separate connections for multiple models from one provider. An alias is configured by your administrator; names such as `internal-assistant` do not invoke an automatic router. Changing an alias requires updating callers. Grants and policy scopes reference the connection ID, so editing that connection's target changes where future authorized calls go.
 
-协议参考 [OpenAI Chat Completions 官方接口](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create)。兼容范围只以本项目已实现和验证的部分为准；当前自动验收使用本地模拟上游和 OpenAI Python SDK 1.53.0，未代表任何真实云厂商或全部 SDK 版本已通过认证。
+Three credentials serve different purposes:
 
-调用程序示例（先设置企业实际地址、应用密钥和已授权别名）：
+| Credential | Used by | Purpose |
+| --- | --- | --- |
+| Administrator password and session | Operators | Configure the instance through the console or management API |
+| Application API key | Application backend or agent model client | Call an authorized model through GovWeave |
+| Upstream provider credential | GovWeave's HTTP transport | Authenticate with the configured provider |
+
+Application keys are displayed once on creation or rotation. Rotation invalidates the old key; revocation disables application access. Grant edits, key changes, and connection disabling affect subsequent admission checks. Already admitted requests continue with their accepted configuration.
+
+## Supported interfaces
+
+| Interface or feature | Implemented behavior |
+| --- | --- |
+| `GET /v1/models` | Lists enabled aliases granted to the calling application; no upstream request |
+| `POST /v1/chat/completions` | Requires a model alias, a non-empty array of message objects, and an optional boolean `stream`; other JSON parameters pass through |
+| Ordinary response | Reads bounded JSON and validates a `choices` array; returns the provider's response |
+| Streaming response | Accepts SSE, validates and forwards bounded complete events, and requires `[DONE]` for successful completion |
+| `tools` / `tool_calls` | JSON passthrough; the gateway does not execute tools |
+| Administrator connection check | Calls upstream `GET /models` and checks for the configured model ID; no inference |
+| Responses, Embeddings, Realtime, native Anthropic, Azure-specific authentication, MCP | Not implemented; reserved model/MCP paths return `501` |
+
+Upstream responses can expose the actual provider model name. The gateway rewrites the request's model alias but does not normalize every provider response field or model-specific option.
+
+Compatibility claims are limited to the implemented behavior and tests. The checked-in SDK smoke test has been run with OpenAI Python SDK 1.53.0 against local mock providers. This is not certification of every SDK version, provider, model, or framework.
+
+## Application and agent integration
+
+Configure the application's existing model client with:
+
+- Your gateway base URL, ending in `/v1`.
+- An application API key issued by GovWeave.
+- A service alias granted to that application.
+
+The following environment names are conventions for your application, not server settings:
+
+```bash
+export GOVWEAVE_BASE_URL='http://127.0.0.1:8080/v1'
+export GOVWEAVE_MODEL='internal-assistant'
+```
+
+Supply `GOVWEAVE_API_KEY` through your application's environment or secret-management system. Use an actual reachable enterprise URL for remote callers. Keep application keys in your backend rather than browser-delivered code.
+
+### Python SDK
+
+Use an installed OpenAI Python SDK that supports the Chat Completions interface. This example follows the same client calls exercised by `tests/sdk-smoke.py`:
 
 ```python
 import os
 from openai import OpenAI
 
-client = OpenAI(
+with OpenAI(
     base_url=os.environ["GOVWEAVE_BASE_URL"],
     api_key=os.environ["GOVWEAVE_API_KEY"],
     max_retries=0,
-    timeout=130.0,  # 对应上游超时 120 秒的连接
-)
-stream = client.chat.completions.create(
-    model="internal-assistant",
-    messages=[{"role": "user", "content": "总结这份资料"}],
-    stream=True,
-)
-for chunk in stream:
-    if chunk.choices:
-        print(chunk.choices[0].delta.content or "", end="", flush=True)
+    timeout=130.0,  # Example for a connection with a 120-second upstream timeout.
+) as client:
+    stream = client.chat.completions.create(
+        model=os.environ.get("GOVWEAVE_MODEL", "internal-assistant"),
+        messages=[{"role": "user", "content": "Summarize this document."}],
+        stream=True,
+    )
+    for chunk in stream:
+        if chunk.choices:
+            print(chunk.choices[0].delta.content or "", end="", flush=True)
 ```
 
-管理员密码和控制台会话不能用于模型调用。应用密钥不能访问管理 API。轮换、撤销、停用连接和编辑授权影响随后受理的调用；已经受理的调用继续执行。SDK 和应用自行重试可能产生重复推理或费用，示例关闭 SDK 自动重试；网关尚无幂等结果缓存。
+For an ordinary response, set `stream=False` and read `response.choices[0].message.content`. The connection's upstream timeout is configurable from 1 to 300 seconds. Coordinate client and proxy timeouts with that setting and allow for local checks and storage latency.
 
-## 流式、超时与错误
+The example disables SDK retries. Client retries can still produce repeated inference or charges; the gateway has no idempotent result cache and does not automatically replay inference POSTs.
 
-转发不等待整段回答生成，但需读到一个完整 SSE 事件才发送；这也防止把上游错误事件中的敏感详情交给应用。每次请求有配置的 1–300 秒上游总时限（UI 默认 120 秒，包含等待上游与读取响应），响应头另有 30 秒上限。读取应用请求体在 HTTP 服务端还有 15 秒限制。客户端取消会取消上游请求。
+### Any HTTP client
 
-在响应开始前，错误返回结构化 JSON。无效／已撤销密钥为 401，无模型权限／连接停用／凭证策略阻断为 403；请求体超限为 413，网关并发满为 429，记录不可用为 503，上游超时为 504，其他上游连接或协议错误通常为 502。上游 400、422、429 保留状态码，正文仍为固定脱敏消息。返回 `X-Request-ID` 供查询记录。
+Go, Rust, TypeScript, and other clients can use the same HTTP endpoints without a GovWeave-specific SDK. List the application's available aliases:
 
-流式头部发送后无法修改 HTTP 状态码。随后出现超时、错误事件、提前 EOF 或超限时，中断 HTTP 流并记录失败；不能因看到 200 就把流判成成功。应用应处理 SDK 的读取异常，并谨慎使用已收到的部分输出。当前没有响应内容合规检测，因此已经输出的内容不会被追回。
+```bash
+curl --fail-with-body "${GOVWEAVE_BASE_URL%/}/models" \
+  -H "Authorization: Bearer $GOVWEAVE_API_KEY"
+```
 
-反向代理需要关闭响应缓存／缓冲，允许流式输出，并把读取超时设置得高于网关连接超时。网关发送 `X-Accel-Buffering: no`，仍须验证实际企业代理配置。没有跨域浏览器调用支持；应让 AI 应用自己的服务端使用应用密钥接入。
+Send a streaming request with curl's output buffering disabled:
 
-## 请求凭证策略
+```bash
+curl --no-buffer --fail-with-body "${GOVWEAVE_BASE_URL%/}/chat/completions" \
+  -H "Authorization: Bearer $GOVWEAVE_API_KEY" \
+  -H "Content-Type: application/json" \
+  --data '{"model":"internal-assistant","messages":[{"role":"user","content":"Summarize this document."}],"stream":true}'
+```
 
-“Runtime policies / 运行时策略”提供一项内置 `credential-egress` 策略，默认 `disabled`，不改变已有实例的访问行为。管理员可启用 `observe`（只记规则命中，原请求含凭证照常转发）或 `block`（命中返回 HTTP 403 / `policy_blocked`，无上游调用）。普通与流式请求都在上游连接前检查，阻断时不开始 SSE。无命中只表示未匹配当前规则，不是安全证明或法律结论。
+### Agents and MCP
 
-范围通过应用 ID 和模型连接 ID 绑定；两组范围必须同时命中。每组空列表表示所有对象，包括将来新增的对象；指定范围每组最多 64 项。连接重命名不改变范围，连接指向修改后仍属于该范围。范围不会授予模型访问权限。UI 要求指定范围至少选择一项，避免空选择意外变成全部。
+An agent can route its **model requests** through GovWeave if its client supports a configurable OpenAI-compatible base URL and the supported Chat Completions interface. Frameworks that require Responses, a native provider protocol, or another authentication format are outside the current adapter.
 
-检测只使用本地预编译规则，没有云端检查服务、LLM 调用或用户正则。规则集 `credentials-v1`：
+Agent tool execution remains in the agent's own runtime. Passing `tools` or `tool_calls` through the model API does not put the later tool action behind GovWeave. A tool that writes a file, queries a database, or sends an HTTP request is not authorized or blocked by this gateway unless a future execution integration explicitly covers that action.
 
-- `private_key`：PEM 私钥开始标记（通用、RSA、EC、DSA、OPENSSH、ENCRYPTED）。不校验私钥正文，示例标记也会命中。
-- `api_key`：部分带前缀的凭证样式，包含 `sk-` 后至少 20 个字母/数字/下划线/连字符、`gw_app_` 后 43 个同类字符、部分 GitHub 令牌样式和 `AKIA` 加 16 位大写字母/数字的访问密钥 ID。并不确认凭证有效性，也不覆盖所有供应商或所有版本。
+The credential policy can inspect tool argument text present in a model request. It does not inspect model response content, intercept the subsequent tool operation, act as an MCP server or proxy, or record a complete agent trace. The generated `/mcp` address is a planned endpoint and currently returns `501`. There is no separate GovWeave Python, Go, Rust, or TypeScript SDK package to install in this release.
 
-检查原始请求 JSON 的所有字符串 token（含字段名、重复字段、消息、工具参数和扩展字段），解码本层 JSON 转义。字符串内部嵌套 JSON 的二次 Unicode 转义不递归解码。不会下载 URL、解析图片/附件、解码 Base64、组合跨字段片段或检查模型回答；混淆文本可能绕过样式匹配。1 MiB 请求限制及 64 个执行槽位仍生效，检查耗时单独记录为微秒；不改动响应流式转发方式。
+## Upstream transport
 
-配置存于私有 `policies.json`，写入采用原子替换和乐观版本检查；保存失败保留原策略，损坏文件拒绝启动。保存后仅新的检查使用新版本；正在执行的请求保留原快照。管理 API 为 `GET/PUT /api/v1/policies/credential-egress`，使用管理员会话和同源写入校验。不要通过删除配置文件停用策略；缺失文件按新实例关闭状态初始化。备份/恢复需包括该文件。
+The gateway supplies only its configured provider Bearer credential, Content-Type, Accept, a fixed User-Agent, and a generated request ID. It does not forward the application's Authorization header, cookies, arbitrary headers, or idempotency header. It does not follow upstream redirects or automatically retry inference POSTs.
 
-调用记录的 `content_policy` 保存策略 ID、独立修订号、规则集版本、模式、结果、最多两个规则标识及 `check_duration_us`；不保存命中内容、位置、字段名或凭证哈希。`decision` 仍表示访问授权，可能出现授权允许但内容策略阻断。旧记录没有 `content_policy`，详情显示未执行检查。当前只保留最新策略配置，不保存历史完整策略快照或管理员变更链。
+Administrator-configured private and loopback provider addresses are allowed. Link-local, multicast, and unspecified addresses are rejected; DNS results are checked again before connecting to the selected IP. These checks are not a replacement for an enterprise network egress policy.
 
-## 调用记录和容量
+HTTPS verifies provider certificates using trusted CAs. Private CA configuration is described in [deployment](deployment.md#container-deployment). The transport does not use proxy environment variables. An unencrypted HTTP provider requires the administrator's explicit HTTP opt-in.
 
-记录保存在数据目录的 `calls.jsonl`，仅含固定元数据：请求 ID、应用 ID、连接 ID、配置的模型别名、配置版本、操作、授权结果、执行结果、状态码、是否尝试上游、流式标记、耗时、上游首字节耗时和固定错误码。未知或未授权的用户输入别名不会写入记录。开始与结束事件共用同一个请求 ID。
+## Streaming, timeouts, and errors
 
-发送上游前先写入并同步开始事件；失败则拒绝发送，并为结束事件预留容量。结束事件若写入失败，已发出的响应无法撤回，系统日志会报告记录缺口，并停止后续上游请求。进程意外退出时，未完成事件在重启后显示“结束状态未知”，不会伪造成功。仅有元数据，不含提示词、回答、调用方头、上游 URL、密钥或原始上游错误。
+A stream is forwarded one complete SSE event at a time, without waiting for the full model answer. Each event is validated before forwarding so malformed or error events do not expose raw upstream error details. Cancellation propagates to the upstream request.
 
-这是可查询的运行记录，**不是防篡改证据库**：没有签名、哈希链、WORM、完整管理员变更审计、历史策略快照或法律控制映射。`policy_revision` 是连接和应用配置的全局版本计数，不代表已执行某版法规。
+The configured 1–300 second timeout covers the upstream call and response reading. It starts after request checks and the initial audit write, so it is not an end-to-end latency guarantee. The transport also has a 30-second response-header timeout. Server request reading is bounded by a 15-second read timeout.
 
-固定边界：
+Before a response starts, errors use a structured JSON envelope with a stable `error.code` and a request ID. The response includes `X-Request-ID` for looking up call records.
 
-- 256 个模型连接、1,024 个应用；总共 64 个策略检查及上游执行槽位（连接检查也占用）。
-- 应用请求体 1 MiB、普通响应 8 MiB、单次 SSE 总量 64 MiB、单个 SSE 事件 1 MiB。
-- 配置 JSON 4 MiB；管理写请求 16 KiB。
-- 记录文件 128 MiB，内存索引保留最近 1,000 次调用；管理接口最多返回其中 100 条，可按应用筛选。
+| HTTP status | Typical `error.code` | Meaning |
+| --- | --- | --- |
+| `400` | `invalid_request` | Invalid alias/messages/stream structure |
+| `401` | `invalid_api_key` | Missing, invalid, or revoked application key |
+| `403` | `model_not_allowed`, `connection_disabled` | Access is not granted or the connection is disabled |
+| `403` | `policy_blocked` | Credential policy matched in block mode; no upstream call |
+| `413` | `request_too_large` | Request exceeds 1 MiB |
+| `415` | `unsupported_media_type` | Use `application/json` |
+| `429` | `gateway_busy` | All execution slots are occupied |
+| `502` | `upstream_unreachable`, `upstream_error`, `invalid_upstream_response`, `response_too_large` | Provider, protocol, or response-size failure |
+| `503` | `audit_unavailable`, `credential_unavailable`, `policy_unavailable` | Required logging, credential access, or request checking is unavailable |
+| `504` | `upstream_timeout` | Upstream request timed out |
 
-记录容量接近上限或磁盘不可写时，停止新的上游请求。运维应监控管理接口的 available、bytes/max_bytes：停止服务后归档 `calls.jsonl`（保留原权限），移走旧文件再重启。旧归档不进入当前 UI 索引。没有自动清理策略，避免未经设定就删除证据；未认证请求也产生有限元数据，公网部署需在边缘控制滥用，避免记录容量被耗尽。
+Upstream `400`, `422`, and `429` responses keep their status but use a fixed `upstream_error` message instead of exposing the provider's raw error body. Refer to [OpenAPI](../api/openapi.yaml) and the returned error code for programmatic handling; the table is not an exhaustive list of every transport outcome.
 
-同步文件写入会增加首字节延迟，具体依赖部署磁盘。当前已验证逐事件转发、超时和取消，尚无生产并发压测结果或延迟 SLA。引入可持久化的批量记录机制前，不通过静默丢弃记录来换取性能数字。
+After streaming headers have been sent, the HTTP status cannot change. A timeout, error event, premature EOF, or limit violation aborts the stream and records failure. **HTTP 200 alone does not mean a stream completed successfully.** Clients must handle read errors and incomplete output. There is no output-content policy and previously delivered content cannot be recalled.
+
+For SSE behind a reverse proxy, disable response buffering and use suitable timeouts. GovWeave sets `X-Accel-Buffering: no`, but the actual proxy configuration still determines delivery behavior.
+
+## Request credential policy
+
+The optional [credential egress policy](runtime-policies.md) runs after model access authorization and before upstream I/O. It is disabled by default and supports scoped observe/block modes. For stream requests, a block returns ordinary JSON with `403 policy_blocked`; no SSE stream starts.
+
+Access authorization and credential checking are independent. A record may show `decision: allow` together with `content_policy.result: block`: the application was authorized for the model, but its request matched a blocking rule.
+
+## Request records and archival
+
+`calls.jsonl` stores fixed metadata: request ID, known application and connection IDs, configured alias, configuration revision, operation, access decision, outcome, status codes, upstream-attempt flag, streaming flag, timing, fixed error code, and an optional credential-policy assessment.
+
+It excludes prompts, responses, matched secrets, arbitrary headers, upstream URLs, and raw provider errors. Unknown or unauthorized caller-supplied aliases are not logged. The start and finish events share a request ID.
+
+Before upstream I/O, the gateway synchronously appends and syncs a start event and reserves capacity for the finish event. A blocking policy result follows the same start/reservation process. If this step fails, the gateway returns `503` without contacting the provider. If a finish write fails after a response has been sent, that response cannot be recalled; the service reports incomplete audit coverage and stops further upstream requests.
+
+After a crash, an unmatched start event is shown as an unknown/incomplete outcome. It is not reported as a successful model call. Historical records without a credential assessment remain readable and show the policy as not evaluated.
+
+### Reading a record
+
+| Field | Meaning |
+| --- | --- |
+| `decision` | Access authorization: `allow`, `deny`, or `not_evaluated` |
+| `policy_revision` | Legacy field name for the connection/application configuration revision |
+| `content_policy.revision` | Independent credential policy revision actually used for this request |
+| `content_policy.ruleset_version` | Version of the compiled detector definitions |
+| `content_policy.result` | Disabled, outside scope, no matches, observed match, block, or error |
+| `content_policy.check_duration_us` | Local policy snapshot and evaluation time, in microseconds |
+| `upstream_attempted` | Whether the gateway attempted the provider request |
+| `duration_ms` | Request handler duration, including local work and upstream processing |
+| `first_byte_ms` | Time from request start to the first upstream body read, including local overhead |
+
+The management API returns up to 100 of the latest 1,000 indexed records and supports application filtering. The console's overview uses the latest 100 records; it is not a full historical or daily analytics system.
+
+This is an operational record store, not a tamper-evident evidence repository. There are no signatures, hash chains, WORM storage, complete administrator change history, historical policy snapshots, or legal-control mappings.
+
+### Capacity and archival
+
+The record file is limited to 128 MiB. Monitor `available`, `bytes`, and `max_bytes` in `GET /api/v1/requests`. Near capacity, or when durable writes fail, new upstream requests stop. Unauthenticated attempts also generate bounded metadata, so account for unwanted traffic in capacity planning.
+
+To archive: stop the service, copy `calls.jsonl` to protected archival storage, verify the copy, then move the active file out of the data directory and restart. Preserve private permissions. The new active file starts empty; archived records are not indexed by the console. There is no automatic deletion or retention scheduler.
+
+## Fixed limits
+
+| Resource | Limit |
+| --- | --- |
+| Model connections | 256 |
+| Applications | 1,024 |
+| Credential policy | One built-in policy; up to 64 selected application IDs and 64 selected connection IDs, or all |
+| Concurrent execution slots | 64, shared by policy checks/upstream model calls and connection checks |
+| Application request body | 1 MiB |
+| Ordinary upstream response | 8 MiB |
+| SSE event / total stream | 1 MiB / 64 MiB |
+| Persisted connection/application configuration | 4 MiB |
+| Management mutation body | 16 KiB |
+| Audit file / in-memory index / response page | 128 MiB / 1,000 records / 100 records |
+
+Synchronous audit writes add storage latency before upstream execution. Streaming, cancellation, timeouts, and limits are covered by local tests; production concurrency, provider compatibility, and latency percentiles require deployment-specific validation. A detector microbenchmark is not an end-to-end SLA.

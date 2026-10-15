@@ -1,141 +1,235 @@
-# 部署与配置
+# Deployment and operations
 
-当前是模型接入预览版：单进程、单企业部署。支持 OpenAI 兼容模型转发与应用授权；没有 MCP 执行或法规检测能力。企业网络访问使用 HTTPS 反向代理。Linux 为主要验收平台，macOS 尚需平台验证。
+**English** | [简体中文](zh-CN/deployment.md)
 
-## 本地启动
+GovWeave 0.2.0-dev runs as one process for one organization. Linux is the primary tested platform. macOS code paths exist but still need platform verification; the current file-lock implementation does not support Windows.
 
-源码开发需要 Go 1.24 或更高版本；部署构建应使用受支持且包含安全更新的 Go 工具链（Docker 固定 1.26.9）。不需要 npm、数据库或联网注册。全部网页资源内嵌在二进制中。
+This guide covers the gateway itself. You provide the model service, network access, DNS, and TLS termination. Model configuration and credential policy behavior are described in [Model gateway](model-gateway.md) and [Runtime policies](runtime-policies.md).
+
+## Run from a source checkout
+
+From the repository root, with Go 1.24 or later installed:
 
 ```bash
 go run ./cmd/govweave -config examples/deployment.json
 ```
 
-默认监听 `127.0.0.1:8080`，数据目录为 `./data`。打开页面，首次设置并确认管理员密码（12–128 个字符，支持空格和中文），随后自动登录。没有默认密码，无需读取令牌文件。全新实例由第一个完成初始化的人设置密码，因此请在受控网络中完成初始化后再对外开放。
+The supplied example listens on `127.0.0.1:8080` and stores data in `./data`. Build a standalone binary with `make build`, then run:
 
-访问其他服务器时使用那台服务器的实际地址。不要给远程客户端填写 `localhost`，也不要把 `0.0.0.0` 当作 BASE URL。
+```bash
+./bin/govweave -config examples/deployment.json
+```
 
-初始化依次填写组织名称、网关根访问地址，保存后查看实际地址和模板。刷新页面保留登录；会话有效期为 8 小时，退出或服务重启后需重新登录。右上角检查仅验证当前控制台服务，不检测另一个配置域名的连通性或模型可用性。
+Open http://127.0.0.1:8080 and set the initial administrator password. Passwords accept 12–128 Unicode characters, including spaces. There is no default password or administrator token to copy. The first person to complete setup claims a fresh instance, so finish setup on a controlled network before opening access.
 
-## 控制台语言
+To use another port, override the listener and use the same port in your browser:
 
-首次访问默认显示英文，不自动跟随浏览器语言。登录页、控制台顶部和编辑面板均可选择 English / 简体中文，切换后立即生效；当前页面、未保存输入、模型授权勾选和一次性展示的应用密钥保持原样。浏览器仅在 `localStorage` 的 `govweave.locale` 中保存语言选择，不保存密码或应用密钥。禁用本地存储时仍可使用，刷新后恢复英文。
+```bash
+GOVWEAVE_LISTEN_ADDR=127.0.0.1:8081 ./bin/govweave -config examples/deployment.json
+```
 
-导航、表单、提示、调用详情、日期格式和示例文案均跟随所选语言；企业填写的组织/应用/模型名称、别名、地址和日志标识符不翻译。API 人类可读消息默认英文，控制台在本地翻译已知提示；程序调用应使用稳定的 `error.code` 判断错误。没有在线翻译、外部字体或语言包下载。
+Changing the listener does not automatically change the saved public URL. Update **Deployment & access** if applications should use the new address.
 
-## 配置文件与环境变量
+## Server configuration
 
-部署配置采用 JSON，契约位于 `schemas/deployment.schema.json`。选择 JSON 是为了在 Go 标准库内完成严格解析，无需额外依赖。示例：
+The server accepts deployment JSON, environment overrides, and console-saved instance settings. The contract is [deployment.schema.json](../schemas/deployment.schema.json).
 
 ```json
 {
   "schema_version": 1,
   "listen_addr": "0.0.0.0:8080",
   "data_dir": "/var/lib/govweave",
-  "organization_name": "企业 AI 平台",
+  "organization_name": "Enterprise AI platform",
   "public_url": "https://ai.example.com"
 }
 ```
 
-上面的域名是文档占位符，必须换成企业实际配置的域名。运行进程须能写入数据目录。首次部署可以省略组织名称和访问地址，随后通过向导填写。
+`ai.example.com` is a placeholder. Replace it with your actual address, and ensure the service user can write to the data directory. Omit the organization and public URL to configure them in the console later.
 
-| 字段 | 环境变量 | 默认值 |
-|---|---|---|
+| JSON field | Environment variable | Default |
+| --- | --- | --- |
 | `listen_addr` | `GOVWEAVE_LISTEN_ADDR` | `127.0.0.1:8080` |
 | `data_dir` | `GOVWEAVE_DATA_DIR` | `./data` |
-| `organization_name` | `GOVWEAVE_ORGANIZATION_NAME` | 向导填写 |
-| `public_url` | `GOVWEAVE_PUBLIC_URL` | 向导填写 |
+| `organization_name` | `GOVWEAVE_ORGANIZATION_NAME` | Set in the console |
+| `public_url` | `GOVWEAVE_PUBLIC_URL` | Set in the console |
 
-优先级是环境变量 > 部署文件 > 控制台保存值 > 默认值。空环境变量被拒绝；需要恢复默认时请取消变量。文件中省略可选字段即可使用下层值。
+For organization and public URL, precedence is **environment > deployment file > saved instance > unset**. Listener and data directory use **environment > deployment file > defaults** and cannot be changed through the console. Empty environment values are rejected; unset a variable to remove its override. Deployment JSON rejects unknown fields, null or empty values, and extra JSON objects. Its size limit is 64 KiB.
 
-组织名称与访问地址由文件/环境变量提供时，页面会标记来源并只读；后端同样拒绝覆盖。修改部署配置后需要重启。取消覆盖后，恢复最近一次通过控制台保存的完整生效配置（包括当时生效的部署覆盖值）；如从未保存，则重新配置。部署文件和环境变量不会被页面改写。
+Organization and public URL fields supplied by deployment configuration are read-only in the console; the API enforces the same restriction. Restart after changing a deployment file or environment variable. Removing an override restores the last complete effective settings saved through the console, including any overrides that were effective at that save. If nothing has been saved, complete setup again.
 
-所有相对路径相对于**进程工作目录**，不是配置文件所在目录。仅校验文件、不创建数据或凭证：
+All relative paths resolve against the **process working directory**, not the deployment file's directory. Validate configuration without binding a port or creating data files:
 
 ```bash
-go run ./cmd/govweave -config examples/deployment.json -check-config
+./bin/govweave -config examples/deployment.json -check-config
+./bin/govweave -version
 ```
 
-界面导出的 JSON 包含当前监听地址、组织和公开地址，不包含密码或密钥。将其作为部署文件启动后，组织和公开地址由部署文件管理。`data_dir` 由运维另行配置。
+**Export deployment config** includes the current listener, organization, and public URL. It excludes passwords, model connections, application keys, policies, and data-directory settings. It is not an instance backup. Using the exported file makes its organization and URL deployment-managed on the next start.
 
-## 访问地址与 HTTPS
+`GOVWEAVE_BASE_URL` and `GOVWEAVE_API_KEY` in client examples are application-side environment variables. They do not configure the server.
 
-`public_url` 仅接受 HTTP(S) 根地址。自动去除尾部 `/`；拒绝路径（包括 `/v1` 和反向代理路径前缀）、凭证、查询参数、片段及通配监听 IP。IPv4、IPv6、localhost、内网域名和公网域名均可使用。
+## URLs, HTTPS, and remote access
 
-实例不会创建 DNS 记录或证书，也不会自动验证 URL 可达。反向代理应提供 HTTPS、保留原始 `Host` 并将根路径转发给服务。如果代理改写 Host，应在启动前通过文件或环境变量设置实际 `public_url`，以便管理写操作校验 Origin。本服务不信任 `X-Forwarded-Host` 推导配置，不开启跨域访问。
+The listener controls where the process binds. `public_url` declares the root address clients should use. These are separate settings.
 
-控制台返回 `endpoints.console`、`endpoints.models` 和 `endpoints.mcp`，每项均有 `url` 与 `status`。console 与 models 是 `available`，mcp 是 `planned`。`configured: true` 仅说明组织和地址已配置；实际调用还需配置模型连接、上游网络和应用授权。
+| Address | Example | Meaning |
+| --- | --- | --- |
+| Listener | `0.0.0.0:8080` | Bind all IPv4 interfaces on this host |
+| Gateway root URL | `https://ai.example.com` | Console and public origin |
+| Application base URL | `https://ai.example.com/v1` | Model SDK/API endpoint |
+| Upstream model base URL | `http://model-server:8000/v1` | Provider endpoint configured by an administrator |
 
-## 凭证、持久化与恢复
+A remote application cannot reach your host by using its own `localhost`. `0.0.0.0` and `::` are binding addresses, not client base URLs.
 
-- 单管理员密码保存在 `admin.password.json`：随机盐、PBKDF2-HMAC-SHA256（600,000 次迭代），权限 `0600`；不保存明文密码，不记录到日志。不是多管理员、SSO 或 MFA。
-- 登录使用服务端可撤销会话，Cookie 为 HttpOnly、SameSite=Strict，仅发送到 `/api/`。通过 HTTPS 登录时带 Secure 标记。有效期 8 小时，退出立即撤销，重启清空所有会话。密码不写入浏览器存储；页面 JavaScript 无法读取会话 Cookie。
-- 所有管理写入（包括设置密码、登录、退出）要求 JSON 和 `X-GovWeave-Request: console`；浏览器请求同时校验 Origin。实例全局每分钟最多 10 次密码验证或设置尝试，同一时间只处理一次，拒绝时返回 429。
-- 模型调用仍使用独立应用密钥，不能把管理员密码设置为 `GOVWEAVE_API_KEY`。在“应用与密钥”创建应用并授予模型权限；密钥只展示一次，遗失后可轮换。
-- 忘记密码时，由部署管理员停止服务，把 `admin.password.json` 移到受保护的备份目录，再在受控网络中启动并重新设置密码。不要删除实例配置、`gateway.key` 或应用数据。没有开放的远程密码重置接口。
-- 配置保存到 `instance.json`，临时文件写入并同步后原子替换，权限 `0600`。使用 revision 拒绝过期页面覆盖新版本。损坏或未知版本的状态文件导致启动失败，避免静默重置。
-- `.instance.lock` 是操作系统持有的进程锁。退出或崩溃自动释放；不要通过删除锁文件绕开正在运行的实例。不要让多个进程、容器或网络文件系统共享这个目录。
-- `gateway.json` 保存连接与应用；上游凭证加密，应用密钥保存哈希，其他配置未加密。`gateway.key` 是解密所需的本地密钥，必须共同备份，丢失后无法恢复上游凭证。密钥与数据同机，不能替代磁盘加密或 KMS。
-- `calls.jsonl` 保存调用元数据，权限 0600；不包含提示词、回答或密钥。达到容量限制或无法持久写入时停止新的上游调用。归档与错误恢复见 [模型接入与运行边界](model-gateway.md)。
-- 备份数据目录和部署参数时按企业秘密管理；备份应在服务停止后进行，确保配置、密钥和记录一致。没有防篡改审计、自动备份或断电恢复保证。
+`public_url` must be an HTTP(S) origin. A trailing slash is normalized away. Paths, including `/v1` and reverse-proxy path prefixes, credentials, queries, fragments, and wildcard listening addresses are rejected. IPv4, IPv6, loopback, and valid internal or public hostnames are supported.
 
-## 从令牌版迁移
+For access across an enterprise network:
 
-模型连接、应用密钥、调用记录和实例配置保持原样。旧 `admin.token` 不再接受为管理凭证，也不会自动删除；密码设置完成后可由运维归档。旧 `admin_token_file` / `GOVWEAVE_ADMIN_TOKEN_FILE` 仅作为迁移识别项兼容，不能再用于登录，新部署不要设置。
+- Provide HTTPS through a reverse proxy; the gateway does not issue certificates or create DNS records.
+- Forward the root path and preserve the original `Host`. If the proxy rewrites it, set the actual `public_url` in deployment configuration before management requests use that origin.
+- Preserve request cancellation and disable response buffering for SSE. Set proxy timeouts longer than the connection's configured request timeout.
+- Apply network access controls for the management interface and initialize the password before exposing it.
 
-存在旧令牌但尚未设置密码时，初始化仅允许部署主机直接通过 `localhost` / 回环 IP 访问，拒绝带代理转发头的请求，避免升级后让远程访客接管旧实例。远程主机可通过 SSH 端口转发后访问 localhost。若旧版使用容器、代理或自定义令牌路径，运维应先隔离管理入口、停止实例，将旧令牌移到受保护的备份位置并移除旧路径配置，再启动并立即设置密码；确认完成后恢复正常网络访问。
+The service does not derive configuration or trusted client identity from forwarded headers. Management writes validate the request origin and require a custom header. CORS is not enabled. The configured URL is not automatically checked for reachability.
 
-## 模型与应用配置
+`GET /healthz` checks process liveness only. The console's service indicator does not prove that a configured domain, model connection, or model inference is working. `configured: true` means the organization and public URL are set, not that the model is ready. The generated MCP URL is marked `planned` and is not an implemented endpoint.
 
-完成实例初始化后，在“模型连接”配置上游地址、凭证和服务别名；再创建应用并授予模型权限。配置与密钥不会包含在“导出部署配置”中，完整迁移应按上文备份数据目录。操作步骤、SDK 示例、超时与流式代理要求见 [模型接入与运行边界](model-gateway.md)。
+## Container deployment
 
-## 容器启动
-
-在可构建的环境先构建镜像；构建基础镜像需要已缓存或能访问镜像仓库：
+From a source checkout with Docker and Compose installed:
 
 ```bash
 docker compose build
 docker compose up -d --no-build
+docker compose logs --tail=50 govweave
 ```
 
-启动后打开控制台设置密码。Compose 默认只发布主机回环端口；需要企业网络访问时设置主机绑定和端口，并配置网络访问控制：
+Building requires a cached or reachable `golang:1.26.9` base image. There is no published-image download requirement in this workflow; you build the tagged `govweave:0.2.0-dev` image locally.
+
+Compose publishes `127.0.0.1:8080` by default. The following variables configure **Compose**, rather than the server directly:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `GOVWEAVE_BIND_IP` | `127.0.0.1` | Host interface for the published port |
+| `GOVWEAVE_PORT` | `8080` | Host port |
+| `GOVWEAVE_CONFIG` | `./examples/deployment.json` | Deployment JSON mounted read-only |
+
+For example, publish only on loopback port 8081:
 
 ```bash
-GOVWEAVE_BIND_IP=0.0.0.0 GOVWEAVE_PORT=8080 docker compose up -d --no-build
+GOVWEAVE_PORT=8081 docker compose up -d --no-build
 ```
 
-默认将 `examples/deployment.json` 只读挂载到容器。用 `GOVWEAVE_CONFIG` 指向自己的部署 JSON；容器内监听地址和数据目录由 Compose 环境固定覆盖。镜像以 UID/GID 65532 运行，根文件系统只读，仅 `/data` 卷可写。使用宿主机绑定目录代替命名卷时，需要提前给该 UID 准备目录权限。
+Binding to an enterprise interface is an operator decision. `GOVWEAVE_BIND_IP=0.0.0.0` exposes the published port on all host IPv4 interfaces; arrange the proxy and network access controls accordingly.
 
-## 离线分发
+Inside the container, Compose overrides the listener to `0.0.0.0:8080` and the data directory to `/data`. Data uses the named `govweave-data` volume, with a Compose project prefix. The image runs as UID/GID 65532 with a read-only root filesystem and a writable data volume. If replacing the named volume with a host bind mount, prepare that directory's ownership and permissions for UID/GID 65532.
 
-二进制打包不需要联网拉取模块：
+Container `localhost` means the container itself. Use a network-reachable provider address for model connections. The image includes a CA trust bundle. Private CAs can be mounted read-only and configured using Go's `SSL_CERT_FILE` or `SSL_CERT_DIR`; there is no option to skip TLS verification. The upstream transport does not use `HTTP_PROXY` or `HTTPS_PROXY`.
+
+Use `docker compose stop` to stop this deployment without deleting its data. `docker compose down -v` deletes the named volume and is not a routine restart or upgrade command.
+
+## Offline distribution
+
+On a build machine with the Go toolchain already installed:
 
 ```bash
 make package
 ```
 
-输出 `dist/govweave-0.2.0-dev-<os>-<arch>.tar.gz` 及 SHA-256 校验文件。将二者通过企业批准的渠道带入目标网络，校验后解压，在包目录启动：
+This creates `dist/govweave-0.2.0-dev-<os>-<arch>.tar.gz` and a `.sha256` file. The build disables Go module fetching. Transfer both files through your trusted distribution channel. For Linux amd64, run in the directory containing the downloaded files:
 
 ```bash
+sha256sum -c govweave-0.2.0-dev-linux-amd64.tar.gz.sha256
+tar -xzf govweave-0.2.0-dev-linux-amd64.tar.gz
+cd govweave-0.2.0-dev-linux-amd64
 ./govweave -config examples/deployment.json
 ```
 
-无需安装 Go 或 Node；目标 OS/CPU 须与构建产物一致。当前打包脚本产生校验和，**没有签名发布机制**；校验和只有通过可信渠道取得才有验证意义。打包范围不包含任何真实实例数据、令牌、模型权重或法规资料。
+The target needs neither Go nor Node, but its OS and CPU must match the artifact. On macOS, use `shasum -a 256 -c` for checksum verification. Checksums are provided; signed releases are not implemented. The archive contains the executable, English and Chinese documentation, examples, API schemas, and licenses. It contains no instance data, credentials, model weights, or regulatory datasets. Source-build commands in these guides require a source checkout, which is not included in the binary archive.
 
-容器离线部署需要先在构建环境保存镜像：
+For an offline container installation, save the locally built image:
 
 ```bash
 docker save -o govweave-image.tar govweave:0.2.0-dev
 ```
 
-在目标环境带入镜像归档、`compose.yaml` 和 `examples/deployment.json`，执行：
+Transfer the image archive plus `compose.yaml` and `examples/deployment.json` from the source checkout. On the target:
 
 ```bash
 docker load -i govweave-image.tar
 docker compose up -d --no-build --pull never
 ```
 
-参考：[Docker 镜像导入](https://docs.docker.com/reference/cli/docker/image/load/)。本版没有法规更新器、模型下载器、云端登录、远程字体、CDN 或遥测。离线安装后可配置企业网络内的模型，无需公网；如果配置云端上游，请求内容会发往该服务。`--network none` 仅证明可无网络启动，不代表能调用隔离容器以外的模型。
+There is no cloud login, telemetry, CDN, model downloader, or regulatory updater in this version. Inference still needs a reachable model service. A container starting with `--network none` proves offline startup, not access to a model outside that container.
 
-## 运行时策略配置
+## Persistent data and backups
 
-凭证外发策略在控制台 Runtime policies 中配置，默认关闭。保存后写入数据目录的 `policies.json`（0600）；与 `gateway.json`、`gateway.key`、`instance.json`、密码文件和调用记录一同备份。它不需要新增环境变量或外部服务。升级前保留数据目录，旧调用记录仍可读；策略文件损坏时拒绝启动，避免静默取消保护。不要删除该文件来修改策略。检测范围、观察模式外发行为和局限见[模型网关文档](model-gateway.md#请求凭证策略)。
+Files are created when their corresponding features are initialized or saved. Treat the data directory as sensitive operational state.
+
+| File | Contents and operational role |
+| --- | --- |
+| `admin.password.json` | Salted PBKDF2-HMAC-SHA256 password hash and parameters; mode `0600` |
+| `instance.json` | Console-saved instance settings and revision |
+| `gateway.json` | Connections and applications; encrypted provider credentials, hashed application keys, and other unencrypted configuration |
+| `gateway.key` | Local AES-256-GCM encryption key required to decrypt saved provider credentials |
+| `policies.json` | Latest credential policy, revision, and rule-set version; created on first save |
+| `calls.jsonl` | Metadata-only start and finish records; mode `0600`, capped at 128 MiB |
+| `.instance.lock` | OS-held process lock; not a configuration file |
+| `admin.token`, if present | Legacy migration marker only; no longer accepted for authentication |
+
+Private state files must retain restrictive permissions. Configuration saves use a synced temporary file followed by atomic replacement and revision checks. Invalid or unsupported persisted state causes startup to fail rather than silently reset. A missing `policies.json` means the disabled initial policy, so do not delete it to change enforcement.
+
+For a consistent backup or upgrade:
+
+1. Stop the instance and prevent another process from using its data directory.
+2. Copy the data directory, deployment file, and the deployment environment settings to protected backup storage. Keep `gateway.key` with `gateway.json`.
+3. Replace the executable or image, or restore the backup to the intended data directory while stopped. Preserve ownership and private file modes.
+4. Start one instance. Check `/healthz`, sign in again, and verify connections, application grants, and the saved policy before application traffic resumes.
+
+Do not share a directory between multiple processes, containers, or hosts. The file lock is automatically released on exit or crash; deleting the lock file is not a way to unlock a running process. This version has no HA storage, automated backup, KMS integration, tamper-evident audit storage, or guaranteed power-loss recovery. The local encryption key cannot protect against an attacker who controls both the process and data directory.
+
+For log-capacity management, see [request records and archival](model-gateway.md#request-records-and-archival).
+
+## Administrator access and recovery
+
+There is one administrator password, no username, SSO, or MFA. Password hashing uses a random 16-byte salt and PBKDF2-HMAC-SHA256 with 600,000 iterations. Hashing runs at setup and login, not on model requests.
+
+The browser receives an HttpOnly, SameSite=Strict session cookie scoped to `/api/`; HTTPS sessions are marked Secure. Sessions expire after eight hours, logout revokes them, and a process restart clears them. Sessions are stored only in server memory, with a maximum of 128. Password attempts are limited globally to ten per minute, with one derivation at a time; exceeding either limit returns `429`.
+
+If the password is lost, a deployment administrator can stop the service, move `admin.password.json` to protected backup storage, restart on a controlled network, and set a replacement password. Preserve the other state files. If a legacy token marker remains, the legacy setup restrictions below still apply. There is no public password-reset endpoint.
+
+Application authentication is separate. Create or rotate an application key under **Applications & keys**; never use an administrator password or session as a model API key.
+
+## Migration from token-based administration
+
+The older `admin.token` file no longer authenticates management requests. It is retained only to identify an existing installation during migration. The deprecated `admin_token_file` and `GOVWEAVE_ADMIN_TOKEN_FILE` settings have the same migration-only purpose; omit them for new installations.
+
+An instance with a legacy token but no password accepts password setup only through a direct loopback connection with a loopback Host and no proxy forwarding headers. For a remote host, use an SSH tunnel to reach its loopback listener. This restriction prevents upgrading a token-protected instance from opening remote password setup.
+
+For a legacy container, proxy, or custom token location, isolate the management entry point and stop the instance. Move the old token to protected backup storage and remove its deprecated path override, then restart and complete password setup before restoring access. An explicitly configured token path that no longer exists must be corrected before startup. Model connections, application keys, instance settings, and call records remain in place.
+
+## Console language
+
+English is the default regardless of browser language. Choose **English / 简体中文** on the sign-in screen, console header, or editor. The choice is stored under `govweave.locale` in localStorage. Passwords and keys are not saved there. If storage is unavailable, switching still works for the page and a reload returns to English.
+
+Changing language preserves drafts, model grants, and any currently displayed one-time key. User-entered names, aliases, URLs, and log identifiers are not translated. API messages use English; applications should branch on stable `error.code` values. Translation assets are bundled locally.
+
+## Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| Browser cannot connect | Process logs, listener/port, firewall, and proxy routing; use the server's address for remote access |
+| `address already in use` | Another service owns the port; choose an unused port and update the public URL as needed |
+| Instance fields are read-only | A deployment file or environment variable manages them; change that source and restart |
+| A save returns `403 origin_denied` | Root origin, HTTPS scheme, proxy Host handling, and `X-GovWeave-Request: console`; configure `public_url` correctly |
+| Signed out after restart | Expected: sessions are memory-only; sign in with the existing password |
+| `429 login_limited` | Wait for the indicated retry interval; the limit is shared by the instance |
+| `401 invalid_api_key` on a model call | Use an active application key, not an administrator password or provider key |
+| `403 model_not_allowed` | The alias exists and its connection is granted to this application |
+| `403 policy_blocked` | Inspect the request ID and matched rules in Request logs; do not paste the secret into a support report |
+| `503 audit_unavailable` | Disk space, write permissions, and log capacity; stop and archive records as described in the model guide |
+| Connection check succeeds but inference fails | Checks only read `/models`; verify actual model support and inference permissions with an application request |
+| SSE arrives all at once | Proxy buffering and timeouts; the gateway forwards complete SSE events as they arrive |
+| Startup rejects a state file | Restore a consistent backup or repair it while stopped; do not delete configuration to bypass validation |
+
+See [error codes and streaming failures](model-gateway.md#streaming-timeouts-and-errors) for model-side handling.

@@ -1,15 +1,28 @@
-# ADR 0004：本地请求凭证策略
+# ADR 0004: Local request credential policy
 
-状态：已采纳。
+**English** | [简体中文](../zh-CN/adr/0004-request-credential-policy.md)
 
-在模型访问授权与上游调用之间加入本地、同步、请求侧的凭证样式检测。首版只提供一项 `credential-egress` 策略，不引入远程检查服务、用户正则、动态脚本、法律判定或审批执行器。
+- Status: Accepted, 2026-10-15.
+- Extends: The request path and metadata records in [ADR 0002](0002-model-gateway.md).
 
-策略默认关闭，支持观察和阻断。观察保留完整请求转发，只增加命中元数据；阻断在任何上游 I/O 前返回 403，包括流式请求。应用范围与模型连接范围取交集，空列表代表全部及将来新增的对象。授权检查独立生效，策略不会扩大模型权限。
+## Decision
 
-每个请求使用一个不可变策略快照。保存采用原子文件替换与独立修订号，已有请求不因保存而被中断。`policies.json` 保存最新配置；规则集版本绑定编译的规则代码，修改规则语义必须更新版本。当前不提供历史配置重放或完整管理员变更审计。
+Add local, synchronous credential-pattern checks between model authorization and upstream I/O. The first version provides one `credential-egress` policy. It introduces no remote inspector, user regex, dynamic script, legal decision engine, or approval executor.
 
-检查请求 JSON 的全部字符串 token，包含工具参数、扩展字段和重复字段，本层 JSON 转义由标准库解码。只识别私钥头与有限的带前缀凭证样式；明确排除编码附件、深层字符串编码、分片混淆和模型输出。保持 1 MiB 请求上限，在已有 64 个执行槽位内评估，记录单次检查耗时以便后续真实负载分析。
+The policy defaults to disabled and supports observe and block. Observe forwards the original request, including matching content, while adding fixed match metadata. Block returns `403` before provider I/O, including for streaming requests. Application and connection scopes intersect; an empty list means all current and future objects. Access grants remain independent.
 
-`content_policy` 与原有访问授权、连接/应用配置修订号分开。只保存固定策略 ID、修订号、规则集版本、模式、结果、命中规则 ID 和耗时，不保存匹配文本、字段位置或敏感内容摘要。阻断记录同样先获得持久化开始事件及结束容量；日志不可用时返回 503，不发送上游请求。
+Each request uses an immutable policy snapshot. Saves use atomic file replacement and an independent revision, without interrupting accepted requests. `policies.json` retains the latest configuration. The rule-set version identifies the compiled detector definitions; changes to their meaning require a version update. Historical reconstruction and complete administrator-change attribution are not implemented.
 
-后续可在真实使用反馈下扩展多策略、检测器、历史策略快照和 MCP 动作权限；EU/US 法规映射仍需独立设计和人工审阅，不能从模式命中直接推导法律合规性。
+Inspect all JSON string tokens, including tool arguments, extension fields, duplicate fields, and keys. Decode the current JSON layer through the standard library. Limit detection to private-key markers and selected credential prefixes. Encoded attachments, recursively escaped strings, split/obfuscated secrets, and model outputs remain outside scope. Keep the 1 MiB request cap and run evaluation inside the existing 64 execution slots.
+
+## Evidence and failure behavior
+
+Keep `content_policy` separate from model-access authorization and the connection/application configuration revision. Record only fixed policy ID, revision, rule-set version, mode, result, matched rule IDs, and check duration. Do not store matching text, field positions, or secret fingerprints.
+
+Blocking requests also require a durable start record and reserved finish capacity. If logging is unavailable, return `503` without provider I/O. Per-request check timing supports later analysis; it does not establish a production latency claim.
+
+## Consequences
+
+This provides one measurable enforcement point for model-request text while retaining the existing streaming response path. Pattern detection has false positives and gaps, documented in [Runtime policies](../runtime-policies.md).
+
+Multiple policies, richer detectors, complete historical snapshots, and MCP action controls can follow real deployment feedback. EU/US regulatory mappings require separate design and human review; a pattern match cannot establish legal compliance.

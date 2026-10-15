@@ -10,7 +10,7 @@ package_tmp=$(mktemp -d)
 trap 'rm -rf "$package_tmp"' EXIT HUP INT TERM
 mkdir -p "$package_tmp/$package_name" dist
 CGO_ENABLED=0 GOPROXY=off go build -trimpath -o "$package_tmp/$package_name/govweave" ./cmd/govweave
-cp README.md LICENSE THIRD_PARTY_NOTICES "$package_tmp/$package_name/"
+cp README.md README.zh-CN.md agent.md LICENSE THIRD_PARTY_NOTICES "$package_tmp/$package_name/"
 cp -R examples docs schemas api "$package_tmp/$package_name/"
 tar -czf "dist/$package_name.tar.gz" -C "$package_tmp" "$package_name"
 if command -v sha256sum >/dev/null 2>&1; then
