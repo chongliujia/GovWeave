@@ -37,7 +37,7 @@ func New(store *instance.Store, admin *auth.Manager, engine *gateway.Engine) htt
 	s.registerAuth(mux)
 	s.registerGateway(mux)
 	reserved := func(w http.ResponseWriter, r *http.Request) {
-		apiError(w, 501, "not_implemented", "此接口尚未实现；当前模型接口仅支持 Chat Completions 和模型列表")
+		apiError(w, 501, "not_implemented", "This endpoint is not implemented. Only Chat Completions and model listing are currently supported.")
 	}
 	mux.HandleFunc("/v1", reserved)
 	mux.HandleFunc("/v1/", reserved)
@@ -47,14 +47,14 @@ func New(store *instance.Store, admin *auth.Manager, engine *gateway.Engine) htt
 	files := http.FileServer(http.FS(web))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
-			apiError(w, 404, "not_found", "接口或页面不存在")
+			apiError(w, 404, "not_found", "Endpoint or page not found.")
 			return
 		}
 		switch r.URL.Path {
-		case "/", "/app.js", "/gateway.js", "/style.css", "/logo.svg":
+		case "/", "/app.js", "/gateway.js", "/policies.js", "/i18n.js", "/style.css", "/logo.svg":
 			files.ServeHTTP(w, r)
 		default:
-			apiError(w, 404, "not_found", "接口或页面不存在")
+			apiError(w, 404, "not_found", "Endpoint or page not found.")
 		}
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -69,7 +69,7 @@ func New(store *instance.Store, admin *auth.Manager, engine *gateway.Engine) htt
 func (s *Server) authorize(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !s.admin.Valid(sessionValue(r)) {
-			apiError(w, 401, "unauthorized", "请登录管理控制台")
+			apiError(w, 401, "unauthorized", "Please sign in to the management console.")
 			return
 		}
 		next(w, r)
@@ -87,7 +87,7 @@ func (s *Server) updateInstance(w http.ResponseWriter, r *http.Request) {
 	}
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mediaType != "application/json" {
-		apiError(w, 415, "unsupported_media_type", "请使用 application/json")
+		apiError(w, 415, "unsupported_media_type", "Use application/json")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 16*1024)
@@ -99,14 +99,14 @@ func (s *Server) updateInstance(w http.ResponseWriter, r *http.Request) {
 	if err := config.DecodeStrict(r.Body, &request); err != nil {
 		var tooLarge *http.MaxBytesError
 		if errors.As(err, &tooLarge) {
-			apiError(w, 413, "request_too_large", "配置请求不能超过 16 KiB")
+			apiError(w, 413, "request_too_large", "Configuration requests must not exceed 16 KiB.")
 			return
 		}
-		apiError(w, 400, "invalid_json", "配置 JSON 无效，不允许未知字段或多个对象")
+		apiError(w, 400, "invalid_json", "Invalid configuration JSON. Unknown fields and multiple objects are not allowed.")
 		return
 	}
 	if request.SchemaVersion != config.SchemaVersion || request.Revision == nil {
-		apiError(w, 400, "invalid_schema", "必须提供 schema_version: 1 和 revision")
+		apiError(w, 400, "invalid_schema", "Provide schema_version: 1 and revision.")
 		return
 	}
 	normalized, err := config.Normalize(request.Settings)
@@ -124,7 +124,7 @@ func (s *Server) updateInstance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		apiError(w, 500, "persistence_failed", "保存失败；原配置仍然生效，请检查数据目录权限和磁盘空间")
+		apiError(w, 500, "persistence_failed", "Could not save. The previous configuration remains active. Check data directory permissions and disk space.")
 		return
 	}
 	writeJSON(w, 200, view)

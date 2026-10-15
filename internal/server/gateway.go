@@ -14,6 +14,21 @@ func (s *Server) registerGateway(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/chat/completions", s.gateway.Chat)
 	mux.HandleFunc("GET /v1/models", s.gateway.Models)
 	mux.HandleFunc("GET /api/v1/gateway", s.authorize(func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, s.gateway.Store.Snapshot()) }))
+	mux.HandleFunc("GET /api/v1/policies/credential-egress", s.authorize(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 200, s.gateway.Policies.Snapshot())
+	}))
+	mux.HandleFunc("PUT /api/v1/policies/credential-egress", s.authorize(func(w http.ResponseWriter, r *http.Request) {
+		var input gateway.PolicyInput
+		if !s.readMutation(w, r, &input) {
+			return
+		}
+		policy, err := s.gateway.Policies.Save(input, s.gateway.Store.Snapshot())
+		if err != nil {
+			gatewayError(w, err)
+			return
+		}
+		writeJSON(w, 200, policy)
+	}))
 	mux.HandleFunc("GET /api/v1/requests", s.authorize(func(w http.ResponseWriter, r *http.Request) {
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 		writeJSON(w, 200, s.gateway.Audit.View(limit, r.URL.Query().Get("application_id")))
@@ -63,15 +78,15 @@ func (s *Server) readMutation(w http.ResponseWriter, r *http.Request, input any)
 	}
 	media, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || media != "application/json" {
-		apiError(w, 415, "unsupported_media_type", "请使用 application/json")
+		apiError(w, 415, "unsupported_media_type", "Use application/json")
 		return false
 	}
 	if err := config.DecodeStrict(http.MaxBytesReader(w, r.Body, 16*1024), input); err != nil {
 		var large *http.MaxBytesError
 		if errors.As(err, &large) {
-			apiError(w, 413, "request_too_large", "配置请求不能超过 16 KiB")
+			apiError(w, 413, "request_too_large", "Configuration requests must not exceed 16 KiB.")
 		} else {
-			apiError(w, 400, "invalid_json", "配置 JSON 无效，不允许未知字段或多个对象")
+			apiError(w, 400, "invalid_json", "Invalid configuration JSON. Unknown fields and multiple objects are not allowed.")
 		}
 		return false
 	}
@@ -87,9 +102,9 @@ func gatewayError(w http.ResponseWriter, err error) {
 	case errors.Is(err, gateway.ErrPersistence):
 		apiError(w, 500, "persistence_failed", err.Error())
 	case errors.Is(err, gateway.ErrAuditUnavailable):
-		apiError(w, 503, "audit_unavailable", "调用记录无法保存，请检查磁盘与记录容量")
+		apiError(w, 503, "audit_unavailable", "Could not save request records. Check disk space and log capacity.")
 	case errors.Is(err, gateway.ErrBusy):
-		apiError(w, 429, "gateway_busy", "当前并发请求已达上限")
+		apiError(w, 429, "gateway_busy", "The concurrent request limit has been reached.")
 	default:
 		apiError(w, 400, "invalid_settings", err.Error())
 	}

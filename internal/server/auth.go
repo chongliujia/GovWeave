@@ -23,7 +23,7 @@ func sessionValue(r *http.Request) string {
 func (s *Server) allowMutation(w http.ResponseWriter, r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	if r.Header.Get("X-GovWeave-Request") != "console" || r.Header.Get("Sec-Fetch-Site") == "cross-site" || (origin != "" && origin != "http://"+r.Host && origin != "https://"+r.Host && origin != s.store.View().PublicURL) {
-		apiError(w, 403, "origin_denied", "不允许跨站修改配置")
+		apiError(w, 403, "origin_denied", "Cross-site configuration changes are not allowed.")
 		return false
 	}
 	return true
@@ -78,7 +78,7 @@ func (s *Server) registerAuth(mux *http.ServeMux) {
 				return
 			}
 			if setup && !s.setupAllowed(r) {
-				apiError(w, 403, "local_setup_required", "旧版实例请从部署主机的 localhost 地址设置初始密码，或由运维按迁移文档开放一次初始化")
+				apiError(w, 403, "local_setup_required", "For a legacy instance, set the initial password from localhost on the deployment host, or follow the operator migration guide.")
 				return
 			}
 			var err error
@@ -105,7 +105,7 @@ func (s *Server) registerAuth(mux *http.ServeMux) {
 			}
 			value, err := s.admin.NewSession(sessionValue(r))
 			if err != nil {
-				apiError(w, 503, "session_unavailable", "登录会话暂时无法创建，请稍后重新登录")
+				apiError(w, 503, "session_unavailable", "Could not create a session. Try signing in again later.")
 				return
 			}
 			s.cookie(w, r, value, false)

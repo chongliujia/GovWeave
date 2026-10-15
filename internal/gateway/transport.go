@@ -16,22 +16,22 @@ func NormalizeUpstreamURL(value string) (string, error) {
 	value = strings.TrimSpace(value)
 	u, err := url.Parse(value)
 	if err != nil || len(value) > 2048 || u.User != nil || strings.ContainsAny(value, "?#\\") || u.RawPath != "" {
-		return "", errors.New("上游地址无效，不能包含凭证、查询参数或片段")
+		return "", errors.New("The upstream URL must not contain credentials, a query or a fragment.")
 	}
 	origin, err := config.NormalizeURL(u.Scheme + "://" + u.Host)
 	if err != nil {
-		return "", errors.New("上游地址须为有效的 HTTP(S) 地址")
+		return "", errors.New("The upstream URL must be a valid HTTP(S) URL.")
 	}
 	if ip := net.ParseIP(u.Hostname()); ip != nil && !allowedIP(ip) {
-		return "", errors.New("不能连接链路本地、组播或未指定地址")
+		return "", errors.New("Link-local, multicast and unspecified addresses are not allowed.")
 	}
 	for _, part := range strings.Split(u.Path, "/") {
 		if part == "." || part == ".." {
-			return "", errors.New("上游路径不能包含 . 或 ..")
+			return "", errors.New("The upstream path must not contain . or .. segments.")
 		}
 		for _, c := range part {
 			if !(c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || strings.ContainsRune("-_.~", c)) {
-				return "", errors.New("上游路径包含不支持的字符")
+				return "", errors.New("The upstream path contains unsupported characters.")
 			}
 		}
 	}

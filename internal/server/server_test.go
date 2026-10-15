@@ -139,7 +139,7 @@ func TestRequestBoundaries(t *testing.T) {
 
 func TestPublicAssetsAndHealthDoNotExposeConfig(t *testing.T) {
 	h := handler(t)
-	for _, path := range []string{"/", "/app.js", "/style.css", "/logo.svg", "/healthz"} {
+	for _, path := range []string{"/", "/app.js", "/i18n.js", "/style.css", "/logo.svg", "/healthz"} {
 		w := invoke(h, "GET", path, "", "", nil)
 		if w.Code != 200 {
 			t.Fatalf("asset %s: %d", path, w.Code)
@@ -155,5 +155,52 @@ func TestPublicAssetsAndHealthDoNotExposeConfig(t *testing.T) {
 		if invoke(h, "GET", path, "", "", nil).Code != 404 {
 			t.Fatalf("unexpected public resource: %s", path)
 		}
+	}
+}
+
+func TestCredentialPolicyManagement(t *testing.T) {
+	h := handler(t)
+	path := "/api/v1/policies/credential-egress"
+	body := `{"revision":0,"mode":"observe","rules":["private_key","api_key"],"application_ids":[],"connection_ids":[]}`
+	for _, method := range []string{"GET", "PUT"} {
+		if w := invoke(h, method, path, body, "", nil); w.Code != 401 {
+			t.Fatal("policy management missing authentication")
+		}
+	}
+	w := invoke(h, "GET", path, "", testPassword, nil)
+	var initial gateway.PolicySnapshot
+	if json.Unmarshal(w.Body.Bytes(), &initial) != nil || initial.Mode != "disabled" || initial.Revision != 0 {
+		t.Fatal("unexpected default policy")
+	}
+	for _, tc := range []struct {
+		body    string
+		headers map[string]string
+		status  int
+	}{
+		{body, map[string]string{"X-GovWeave-Request": ""}, 403},
+		{body, map[string]string{"Origin": "https://untrusted.example"}, 403},
+		{body, map[string]string{"Content-Type": "text/plain"}, 415},
+		{strings.TrimSuffix(body, "}") + `,"secret":"sensitive-test-value"}`, nil, 400},
+		{body + `{}`, nil, 400},
+		{`null`, nil, 400},
+		{strings.Replace(body, `"observe"`, `"invalid"`, 1), nil, 400},
+		{strings.Replace(body, `"application_ids":[]`, `"application_ids":["unknown"]`, 1), nil, 400},
+	} {
+		w := invoke(h, "PUT", path, tc.body, testPassword, tc.headers)
+		if w.Code != tc.status || strings.Contains(w.Body.String(), "sensitive-test-value") {
+			t.Fatalf("incorrect policy boundary response %d", w.Code)
+		}
+	}
+	w = invoke(h, "PUT", path, body, testPassword, nil)
+	var saved gateway.PolicySnapshot
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &saved) != nil || saved.Mode != "observe" || saved.Revision != 1 {
+		t.Fatal("could not save policy")
+	}
+	if invoke(h, "PUT", path, body, testPassword, nil).Code != 409 {
+		t.Fatal("policy update lost revision check")
+	}
+	w = invoke(h, "GET", path, "", testPassword, nil)
+	if !strings.Contains(w.Body.String(), `"mode":"observe"`) {
+		t.Fatal("failed updates changed saved policy")
 	}
 }

@@ -2,10 +2,11 @@ openapi: 3.1.0
 info:
   title: GovWeave model gateway and administration API
   version: 0.2.0-dev
-  description: Single-instance model connections, application authorization, Chat Completions and metadata-only
-    call records. MCP and regulatory policy enforcement are not implemented. All management mutations
-    require application/json and the X-GovWeave-Request header set to console; cross-site origins are
-    rejected.
+  description: Single-instance model connections, application authorization, Chat Completions, optional request
+    credential checks and metadata-only call records. MCP and regulatory policy enforcement are not implemented.
+    All management mutations require application/json and the X-GovWeave-Request header set to console; cross-site
+    origins are rejected. Human-readable messages default to English. Use stable error.code values for programmatic
+    handling; the console localizes known messages locally.
 paths:
   /healthz:
     get:
@@ -134,9 +135,12 @@ paths:
   /v1/chat/completions:
     post:
       summary: Authorized OpenAI-compatible Chat Completions with bounded JSON or SSE responses
-      description: 1 MiB request limit. Model must be a configured alias. Additional JSON parameters pass
-        through; provider-specific semantics are not translated. No automatic inference retries. SSE failure
-        after headers aborts the response stream and records failure; HTTP 200 alone does not imply completion.
+      description: 1 MiB request limit. Model must be a configured alias. Additional JSON parameters pass through;
+        provider-specific semantics are not translated. No automatic inference retries. SSE failure after headers
+        aborts the response stream and records failure; HTTP 200 alone does not imply completion. Enabled in-scope
+        credential policies inspect JSON string tokens before upstream I/O. A blocked match returns HTTP 403
+        with error.code policy_blocked, including for stream=true; no SSE stream starts. Audit unavailable
+        returns 503 even for policy hits.
       security:
       - applicationKey: []
       requestBody:
@@ -417,14 +421,49 @@ paths:
                 - data
         default:
           $ref: '#/components/responses/Error'
+  /api/v1/policies/credential-egress:
+    get:
+      summary: Read the credential egress policy
+      security:
+      - adminSession: []
+      responses:
+        '200': &id004
+          description: Saved policy; fresh instances default to disabled, revision 0.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialPolicy'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Atomically save the credential egress policy with revision checking
+      description: Changes affect new evaluations. Already evaluated requests retain their snapshot. Only one
+        built-in policy is supported; rules run locally on decoded request JSON strings. Observe forwards the
+        unmodified request, including matches. Block rejects before upstream I/O. No legal compliance determination.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CredentialPolicyInput'
+      responses:
+        '200': *id004
+        '409':
+          description: Revision conflict; reload before retrying.
+        default:
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     adminSession:
       type: apiKey
       in: cookie
       name: govweave_session
-      description: HttpOnly session established by password setup or login; expires after 8 hours, logout
-        or restart.
+      description: HttpOnly session established by password setup or login; expires after 8 hours, logout or
+        restart.
     applicationKey:
       type: http
       scheme: bearer
@@ -497,17 +536,17 @@ components:
           type: string
         created_at:
           type: string
-        revision: &id005
+        revision: &id006
           type: integer
           minimum: 0
-        enabled: &id004
+        enabled: &id005
           type: boolean
-        allow_insecure_http: *id004
+        allow_insecure_http: *id005
         timeout_seconds:
           type: integer
           minimum: 1
           maximum: 300
-        has_credential: *id004
+        has_credential: *id005
       required:
       - id
       - name
@@ -524,13 +563,13 @@ components:
       type: object
       properties:
         id: *id003
-        revision: *id005
+        revision: *id006
         name: *id003
         allowed_connections:
           type: array
           items: *id003
         key_prefix: *id003
-        revoked: *id004
+        revoked: *id005
         created_at: *id003
       required:
       - id
@@ -547,14 +586,14 @@ components:
           $ref: '#/components/schemas/Application'
         api_key:
           type: string
-          description: One-time plaintext application key, present only for creation or rotation. Never
-            appears in a later snapshot.
+          description: One-time plaintext application key, present only for creation or rotation. Never appears
+            in a later snapshot.
       required:
       - application
     GatewaySnapshot:
       type: object
       properties:
-        revision: *id005
+        revision: *id006
         connections:
           type: array
           items:
@@ -570,10 +609,10 @@ components:
     ProbeResult:
       type: object
       properties:
-        ok: *id004
-        model_found: *id004
-        http_status: *id005
-        duration_ms: *id005
+        ok: *id005
+        model_found: *id005
+        http_status: *id006
+        duration_ms: *id006
         message: *id003
         request_id: *id003
       required:
@@ -608,7 +647,11 @@ components:
           enum:
           - started
           - finished
-        policy_revision: *id005
+        policy_revision:
+          type: integer
+          minimum: 0
+          description: 'Legacy field: global connection/application configuration revision. Credential policy
+            version is content_policy.revision.'
         decision:
           enum:
           - allow
@@ -623,12 +666,16 @@ components:
           - failed
           - cancelled
           - incomplete
-        http_status: *id005
-        upstream_status: *id005
-        upstream_attempted: *id004
-        streaming: *id004
-        duration_ms: *id005
-        first_byte_ms: *id005
+        http_status: *id006
+        upstream_status: *id006
+        upstream_attempted: *id005
+        streaming: *id005
+        duration_ms: *id006
+        first_byte_ms: *id006
+        content_policy:
+          $ref: '#/components/schemas/PolicyAssessment'
+          description: Optional for backward compatibility. Present only after request credential policy evaluation;
+            separate from access authorization.
       required:
       - request_id
       - started_at
@@ -646,9 +693,9 @@ components:
     AuditView:
       type: object
       properties:
-        available: *id004
-        bytes: *id005
-        max_bytes: *id005
+        available: *id005
+        bytes: *id006
+        max_bytes: *id006
         records:
           type: array
           items:
@@ -681,6 +728,107 @@ components:
         request_id: *id003
       required:
       - error
+    CredentialPolicyInput:
+      type: object
+      additionalProperties: false
+      required:
+      - revision
+      - mode
+      - rules
+      - application_ids
+      - connection_ids
+      properties:
+        revision: &id008
+          type: integer
+          minimum: 0
+        mode: &id009
+          enum:
+          - disabled
+          - observe
+          - block
+        rules: &id010
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items:
+            enum:
+            - private_key
+            - api_key
+        application_ids: &id007
+          type: array
+          maxItems: 64
+          uniqueItems: true
+          items:
+            type: string
+          description: Empty means all, including future items. Non-empty IDs must exist; application and connection
+            scopes are ANDed.
+        connection_ids: *id007
+    CredentialPolicy:
+      type: object
+      required:
+      - revision
+      - mode
+      - rules
+      - application_ids
+      - connection_ids
+      - schema_version
+      - id
+      - ruleset_version
+      properties:
+        revision: *id008
+        mode: *id009
+        rules: *id010
+        application_ids: *id007
+        connection_ids: *id007
+        schema_version:
+          const: 1
+        id:
+          const: credential-egress
+        ruleset_version:
+          const: credentials-v1
+        updated_at:
+          type: string
+          format: date-time
+    PolicyAssessment:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - revision
+      - ruleset_version
+      - mode
+      - result
+      - matched_rules
+      - check_duration_us
+      properties:
+        id:
+          const: credential-egress
+        revision:
+          type: integer
+          minimum: 0
+        ruleset_version:
+          type: string
+        mode: *id009
+        result:
+          enum:
+          - disabled
+          - not_applicable
+          - allow
+          - observe
+          - block
+          - error
+        matched_rules:
+          type: array
+          maxItems: 2
+          items:
+            enum:
+            - private_key
+            - api_key
+          description: Fixed rule IDs only; no matched text, positions or hashes of secrets.
+        check_duration_us:
+          type: integer
+          minimum: 0
   requestBodies:
     Password:
       required: true
@@ -717,8 +865,8 @@ components:
       description: Session created; JSON contains only authentication state, never credentials
       headers:
         Set-Cookie:
-          description: govweave_session; Path=/api/; HttpOnly; SameSite=Strict; Max-Age=28800; Secure
-            when using HTTPS
+          description: govweave_session; Path=/api/; HttpOnly; SameSite=Strict; Max-Age=28800; Secure when
+            using HTTPS
           schema:
             type: string
       content:
@@ -734,8 +882,8 @@ components:
               setup_required:
                 const: false
     Error:
-      description: Structured error. Management APIs use 400/401/403/404/409/413/415/429/500/503; model
-        APIs additionally use 422/499/502/504. Error details from providers are not returned.
+      description: Structured error. Management APIs use 400/401/403/404/409/413/415/429/500/503; model APIs
+        additionally use 422/499/502/504. Error details from providers are not returned.
       content:
         application/json:
           schema:

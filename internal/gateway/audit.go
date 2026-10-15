@@ -19,25 +19,26 @@ var ErrAuditUnavailable = errors.New("audit_unavailable")
 // CallRecord intentionally has no generic metadata or body fields. Never add
 // prompts, responses, credentials, arbitrary headers, URLs or raw error strings.
 type CallRecord struct {
-	SchemaVersion     int    `json:"schema_version"`
-	RequestID         string `json:"request_id"`
-	Phase             string `json:"phase"`
-	StartedAt         string `json:"started_at"`
-	Timestamp         string `json:"timestamp"`
-	Operation         string `json:"operation"`
-	ApplicationID     string `json:"application_id,omitempty"`
-	ConnectionID      string `json:"connection_id,omitempty"`
-	Model             string `json:"model,omitempty"`
-	PolicyRevision    uint64 `json:"policy_revision"`
-	Decision          string `json:"decision"`
-	Outcome           string `json:"outcome"`
-	HTTPStatus        int    `json:"http_status"`
-	UpstreamStatus    int    `json:"upstream_status,omitempty"`
-	UpstreamAttempted bool   `json:"upstream_attempted"`
-	Streaming         bool   `json:"streaming"`
-	DurationMS        int64  `json:"duration_ms"`
-	FirstByteMS       *int64 `json:"first_byte_ms,omitempty"`
-	ErrorCode         string `json:"error_code,omitempty"`
+	SchemaVersion     int               `json:"schema_version"`
+	RequestID         string            `json:"request_id"`
+	Phase             string            `json:"phase"`
+	StartedAt         string            `json:"started_at"`
+	Timestamp         string            `json:"timestamp"`
+	Operation         string            `json:"operation"`
+	ApplicationID     string            `json:"application_id,omitempty"`
+	ConnectionID      string            `json:"connection_id,omitempty"`
+	Model             string            `json:"model,omitempty"`
+	PolicyRevision    uint64            `json:"policy_revision"`
+	Decision          string            `json:"decision"`
+	Outcome           string            `json:"outcome"`
+	HTTPStatus        int               `json:"http_status"`
+	UpstreamStatus    int               `json:"upstream_status,omitempty"`
+	UpstreamAttempted bool              `json:"upstream_attempted"`
+	Streaming         bool              `json:"streaming"`
+	DurationMS        int64             `json:"duration_ms"`
+	FirstByteMS       *int64            `json:"first_byte_ms,omitempty"`
+	ErrorCode         string            `json:"error_code,omitempty"`
+	ContentPolicy     *PolicyAssessment `json:"content_policy,omitempty"`
 }
 
 type Audit struct {

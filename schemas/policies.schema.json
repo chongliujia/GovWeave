@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GovWeave credential policy state",
+  "description": "Private policies.json created on first save; absent file means the disabled initial policy. Revision increases on each successful save.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "revision",
+    "mode",
+    "rules",
+    "application_ids",
+    "connection_ids",
+    "schema_version",
+    "id",
+    "ruleset_version",
+    "updated_at"
+  ],
+  "properties": {
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "mode": {
+      "enum": [
+        "disabled",
+        "observe",
+        "block"
+      ]
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "private_key",
+          "api_key"
+        ]
+      }
+    },
+    "application_ids": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      },
+      "description": "Empty means all, including future items. Non-empty IDs must exist; application and connection scopes are ANDed."
+    },
+    "connection_ids": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      },
+      "description": "Empty means all, including future items. Non-empty IDs must exist; application and connection scopes are ANDed."
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "const": "credential-egress"
+    },
+    "ruleset_version": {
+      "const": "credentials-v1"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -20,12 +20,12 @@ import (
 )
 
 var ErrBusy = errors.New("gateway_busy")
-var ErrConflict = errors.New("配置版本已变化，请刷新后再操作")
-var ErrNotFound = errors.New("记录不存在")
+var ErrConflict = errors.New("The configuration revision has changed. Refresh and try again.")
+var ErrNotFound = errors.New("The record does not exist.")
 var ErrInvalidKey = errors.New("invalid_api_key")
 var ErrDenied = errors.New("model_not_allowed")
 var ErrDisabled = errors.New("connection_disabled")
-var ErrPersistence = errors.New("保存失败，请检查数据目录")
+var ErrPersistence = errors.New("Could not save. Check the data directory.")
 
 type ConnectionInput struct {
 	Revision          uint64  `json:"revision"`
@@ -168,24 +168,24 @@ func validateConnection(in ConnectionInput) (ConnectionInput, error) {
 		return in, err
 	}
 	if strings.HasPrefix(in.BaseURL, "http://") && !in.AllowInsecureHTTP {
-		return in, errors.New("HTTP 上游未加密，请明确确认允许内网 HTTP，或改用 HTTPS")
+		return in, errors.New("HTTP providers are unencrypted. Explicitly allow HTTP on a trusted network, or use HTTPS.")
 	}
 	if !regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,99}$`).MatchString(in.Alias) {
-		return in, errors.New("模型别名须为 1–100 位字母、数字、点、下划线、横线或斜线")
+		return in, errors.New("Model aliases must contain 1–100 letters, digits, dots, underscores, hyphens or slashes.")
 	}
 	if len(in.Model) == 0 || len(in.Model) > 200 || strings.ContainsAny(in.Model, "\r\n\t") {
-		return in, errors.New("上游模型名称无效")
+		return in, errors.New("Invalid upstream model name.")
 	}
 	if in.TimeoutSeconds < 1 || in.TimeoutSeconds > 300 {
-		return in, errors.New("请求超时须为 1–300 秒")
+		return in, errors.New("The request timeout must be between 1 and 300 seconds.")
 	}
 	if in.APIKey != nil {
 		if len(*in.APIKey) > 4096 {
-			return in, errors.New("上游凭证过长")
+			return in, errors.New("The upstream credential is too long.")
 		}
 		for _, c := range *in.APIKey {
 			if c < 33 || c > 126 {
-				return in, errors.New("上游凭证不能包含空白或控制字符")
+				return in, errors.New("The upstream credential must not contain whitespace or control characters.")
 			}
 		}
 	}
@@ -241,7 +241,7 @@ func (s *Store) SaveConnection(id string, input ConnectionInput) (Connection, er
 			index, old = i, c
 		}
 		if c.Alias == in.Alias && c.ID != id {
-			return Connection{}, errors.New("此模型别名已存在")
+			return Connection{}, errors.New("This model alias already exists.")
 		}
 	}
 	if id != "" && index < 0 {
@@ -252,7 +252,7 @@ func (s *Store) SaveConnection(id string, input ConnectionInput) (Connection, er
 	}
 	if id == "" {
 		if len(s.state.Connections) >= 256 {
-			return Connection{}, errors.New("最多支持 256 个模型连接")
+			return Connection{}, errors.New("A maximum of 256 model connections is supported.")
 		}
 		id, err = storage.ID("conn_", 12)
 		if err != nil {
@@ -264,7 +264,7 @@ func (s *Store) SaveConnection(id string, input ConnectionInput) (Connection, er
 	if in.APIKey != nil {
 		credential, err = seal(s.vault, id, *in.APIKey)
 		if err != nil {
-			return Connection{}, errors.New("凭证加密失败")
+			return Connection{}, errors.New("Could not encrypt the credential.")
 		}
 	}
 	next := s.clone()
@@ -282,7 +282,7 @@ func (s *Store) SaveConnection(id string, input ConnectionInput) (Connection, er
 
 func (s *Store) validateAllowed(ids []string) ([]string, error) {
 	if len(ids) < 1 || len(ids) > 256 {
-		return nil, errors.New("请授权至少一个模型连接")
+		return nil, errors.New("Grant access to at least one model connection.")
 	}
 	seen := map[string]bool{}
 	for _, id := range ids {
@@ -294,7 +294,7 @@ func (s *Store) validateAllowed(ids []string) ([]string, error) {
 			}
 		}
 		if !found || seen[id] {
-			return nil, errors.New("模型授权列表无效或包含重复项")
+			return nil, errors.New("The model grants are invalid or contain duplicates.")
 		}
 		seen[id] = true
 	}
@@ -337,11 +337,11 @@ func (s *Store) SaveApplication(id string, in ApplicationInput) (Application, st
 			return Application{}, "", ErrConflict
 		}
 		if app.Revoked {
-			return Application{}, "", errors.New("应用已撤销，请创建新应用")
+			return Application{}, "", errors.New("This application has been revoked. Create a new application.")
 		}
 	} else {
 		if len(s.state.Applications) >= 1024 {
-			return Application{}, "", errors.New("最多支持 1024 个应用")
+			return Application{}, "", errors.New("A maximum of 1,024 applications is supported.")
 		}
 		id, err = storage.ID("app_", 12)
 		if err != nil {
@@ -378,7 +378,7 @@ func (s *Store) ChangeKey(id string, revision uint64, revoke bool) (Application,
 			return Application{}, "", ErrConflict
 		}
 		if app.Revoked {
-			return Application{}, "", errors.New("应用已撤销")
+			return Application{}, "", errors.New("This application has been revoked.")
 		}
 		next := s.clone()
 		key := ""

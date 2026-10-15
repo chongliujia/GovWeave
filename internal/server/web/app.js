@@ -1,9 +1,12 @@
+import { t, formatDateTime, initializeLocale, onLocaleChange } from "/i18n.js";
 import { createGatewayConsole } from "/gateway.js";
 // The bootstrap console has no runtime dependencies, remote assets or telemetry.
 // The server manages a revocable HttpOnly session; passwords never enter browser storage.
 const element = (id) => document.getElementById(id);
 let sessionGeneration = 0;
 let setupRequired = false;
+let loginStatus = { setup_required: false };
+let authBusy = false;
 let current = null;
 let saving = false;
 const gateway = createGatewayConsole({ request, notice, copy, getInstance: () => current });
@@ -31,44 +34,46 @@ async function request(path, options = {}) {
       },
     });
     const data = await response.json();
-    if (path !== "/healthz" && generation !== sessionGeneration) throw new Error("管理会话已结束，请重新登录。");
+    if (path !== "/healthz" && generation !== sessionGeneration) throw new Error(t("Your session has ended. Please sign in again."));
     if (!response.ok) {
       if (response.status === 401 && !path.startsWith("/api/v1/auth/")) resetSession();
-      throw new Error(data.error?.message || `请求失败 (${response.status})`);
+      throw new Error(t(data.error?.message) || t("Request failed ({status})", { status: response.status }));
     }
     return data;
   } catch (error) {
-    if (error.name === "AbortError") throw new Error("请求超时，请检查服务连接后重试。");
-    if (error instanceof TypeError || error instanceof SyntaxError) throw new Error("无法连接 GovWeave，请检查服务地址和反向代理配置。");
+    if (error.name === "AbortError") throw new Error(t("The request timed out. Check the connection and try again."));
+    if (error instanceof TypeError || error instanceof SyntaxError) throw new Error(t("Cannot connect to GovWeave. Check the service URL and reverse proxy settings."));
     throw error;
   } finally { clearTimeout(timer); }
 }
 
 function isManaged(source) { return source === "file" || source === "environment"; }
-const sourceLabel = { file: "部署文件管理 · 只读", environment: "环境变量管理 · 只读", console: "控制台配置", unconfigured: "待配置" };
+const sourceLabel = { file: "Deployment file · Read-only", environment: "Environment · Read-only", console: "Console", unconfigured: "Not configured" };
 
-function render(view) {
+function render(view, preserveInputs = false) {
   current = view;
   document.body.dataset.authenticated = "true";
   element("login-panel").hidden = true;
   element("dashboard").hidden = false;
   element("logout").hidden = false;
-  element("workspace-name").textContent = view.organization_name || "企业工作空间";
-  element("organization").value = view.organization_name;
-  element("public-url").value = view.public_url;
+  element("workspace-name").textContent = view.organization_name || t("Enterprise workspace");
+  if (!preserveInputs) {
+    element("organization").value = view.organization_name;
+    element("public-url").value = view.public_url;
+  }
   element("organization").disabled = isManaged(view.sources.organization_name);
   element("public-url").disabled = isManaged(view.sources.public_url);
   element("use-current").hidden = isManaged(view.sources.public_url);
-  element("organization-source").textContent = sourceLabel[view.sources.organization_name];
-  element("url-source").textContent = sourceLabel[view.sources.public_url];
+  element("organization-source").textContent = t(sourceLabel[view.sources.organization_name]);
+  element("url-source").textContent = t(sourceLabel[view.sources.public_url]);
   element("listen-addr").textContent = view.listen_addr;
-  element("setup-title").textContent = view.configured ? "实例地址已配置" : "完成实例初始化";
-  element("setup-description").textContent = view.configured ? "查看当前接入地址，或在下方调整实例配置。" : "设置组织名称和应用实际使用的网关访问地址。";
-  element("setup-status").textContent = view.configured ? "配置就绪" : "待配置";
+  element("setup-title").textContent = view.configured ? t("Instance URL configured") : t("Set up your instance");
+  element("setup-description").textContent = view.configured ? t("Review your endpoints or update the instance settings below.") : t("Set your organization name and the gateway URL your applications will use.");
+  element("setup-status").textContent = view.configured ? t("Configured") : t("Not configured");
   element("save-settings").disabled = isManaged(view.sources.organization_name) && isManaged(view.sources.public_url);
-  element("save-meta").textContent = view.updated_at ? `保存版本 ${view.revision} · ${new Date(view.updated_at).toLocaleString("zh-CN")}` : (view.configured ? "当前配置由部署参数提供" : "尚未保存配置");
+  element("save-meta").textContent = view.updated_at ? t("Revision {revision} · {time}", { revision: view.revision, time: formatDateTime(view.updated_at) }) : (view.configured ? t("Configuration is managed by deployment settings") : t("No saved configuration"));
   for (const [name, endpoint] of Object.entries(view.endpoints)) {
-    element(`${name}-url`).textContent = endpoint.url || "保存配置后显示";
+    element(`${name}-url`).textContent = endpoint.url || t("Available after saving settings");
     document.querySelector(`[data-copy="${name}-url"]`).disabled = !endpoint.url;
   }
   gateway.renderExample();
@@ -85,26 +90,27 @@ function resetSession() {
   element("dashboard").hidden = true;
   element("login-panel").hidden = false;
   element("logout").hidden = true;
-  element("workspace-name").textContent = "企业工作空间";
+  element("workspace-name").textContent = t("Enterprise workspace");
   element("notice").hidden = true;
   element("login-notice").hidden = true;
 }
 
 function renderLogin(status) {
+  loginStatus = status;
   setupRequired = status.setup_required;
   const allowed = !setupRequired || status.setup_allowed !== false;
   element("login-index").textContent = setupRequired ? "SETUP / 01" : "ACCESS / 01";
-  element("login-title").textContent = setupRequired ? "设置管理员密码" : "欢迎回来";
-  element("login-description").textContent = setupRequired ? "首次使用，设置一个密码即可进入控制台。" : "输入密码，继续管理你的 AI 网关。";
-  element("login-submit-label").textContent = setupRequired ? "设置密码并进入" : "进入工作空间";
+  element("login-title").textContent = setupRequired ? t("Set your administrator password") : t("Welcome back");
+  element("login-description").textContent = setupRequired ? t("Set a password to start using your instance.") : t("Enter your password to manage your AI gateway.");
+  element("login-submit-label").textContent = setupRequired ? t("Set password & continue") : t("Enter workspace");
   element("admin-password").autocomplete = setupRequired ? "new-password" : "current-password";
-  element("admin-password").placeholder = setupRequired ? "设置管理员密码" : "输入管理员密码";
+  element("admin-password").placeholder = setupRequired ? t("Set your administrator password") : t("Enter your password");
   element("admin-password").disabled = !allowed;
   element("confirm-password-field").hidden = !setupRequired;
   element("confirm-password").required = setupRequired;
   element("confirm-password").disabled = !setupRequired || !allowed;
-  element("login-submit").disabled = !allowed;
-  if (!allowed) notice("旧版实例需要在部署主机上打开 localhost 地址设置密码。容器部署请参阅部署文档中的迁移步骤。", true);
+  element("login-submit").disabled = !allowed || authBusy;
+  if (!allowed) notice(t("For a legacy instance, set your password from localhost on the deployment host. For containers, follow the migration guide."), true);
 }
 
 async function enterWorkspace() {
@@ -125,10 +131,11 @@ async function restoreSession() {
 element("login-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   if (setupRequired && element("admin-password").value !== element("confirm-password").value) {
-    notice("两次输入的密码不一致。", true);
+    notice(t("The passwords do not match."), true);
     element("confirm-password").focus();
     return;
   }
+  authBusy = true;
   element("login-submit").disabled = true;
   try {
     await request(`/api/v1/auth/${setupRequired ? "setup" : "login"}`, {
@@ -141,7 +148,7 @@ element("login-form").addEventListener("submit", async (event) => {
     element("login-form").reset();
     try { renderLogin(await request("/api/v1/auth/status")); } catch { /* Preserve the original failure. */ }
     notice(error.message, true);
-  } finally { element("login-submit").disabled = element("admin-password").disabled; }
+  } finally { authBusy = false; element("login-submit").disabled = element("admin-password").disabled; }
 });
 
 element("logout").addEventListener("click", async () => {
@@ -156,7 +163,7 @@ element("logout").addEventListener("click", async () => {
 element("use-current").addEventListener("click", () => { element("public-url").value = location.origin; });
 element("reload-settings").addEventListener("click", async () => {
   if (saving) return;
-  try { render(await request("/api/v1/instance")); notice("已加载当前生效的配置。"); }
+  try { render(await request("/api/v1/instance")); notice(t("The current configuration has been loaded.")); }
   catch (error) { notice(error.message, true); }
 });
 
@@ -173,7 +180,7 @@ element("settings-form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ schema_version: 1, revision: current.revision, organization_name: element("organization").value, public_url: element("public-url").value }),
     });
     render(view);
-    notice("配置已保存。接入地址已更新；域名解析与网络连通性仍由企业部署环境决定。");
+    notice(t("Settings saved and endpoints updated. DNS and network connectivity depend on your deployment environment."));
   } catch (error) { notice(error.message, true); }
   finally {
     saving = false;
@@ -196,8 +203,8 @@ async function copy(text) {
       try { copied = document.execCommand("copy"); } finally { temporary.remove(); }
       if (!copied) throw new Error("clipboard unavailable");
     }
-    notice("已复制到剪贴板。");
-  } catch { notice("浏览器不允许自动复制，请选中文本后手动复制。", true); }
+    notice(t("Copied to clipboard."));
+  } catch { notice(t("Your browser blocked copying. Select the text and copy it manually."), true); }
 }
 
 document.querySelectorAll("[data-copy]").forEach((button) => {
@@ -215,20 +222,30 @@ element("export-config").addEventListener("click", () => {
   link.download = "govweave.deployment.json";
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  notice("已导出生效配置，不包含密码或密钥。使用该文件启动后，组织名称和访问地址将由部署文件管理。");
+  notice(t("Configuration exported without passwords or keys. Using this file makes the organization name and URL deployment-managed."));
 });
 
 async function checkHealth(announce = false) {
   element("health-check").disabled = true;
   try {
     const health = await request("/healthz");
-    if (health.status !== "ok" || health.service !== "govweave") throw new Error("当前地址未返回有效的 GovWeave 健康状态。");
-    element("service-status").textContent = "本地服务在线";
+    if (health.status !== "ok" || health.service !== "govweave") throw new Error(t("This URL did not return a valid GovWeave health response."));
+    element("service-status").textContent = t("Local service online");
     element("service-status").dataset.state = "ok";
-    if (announce) notice("当前控制台服务响应正常。此检查不验证配置域名的连通性，也不表示模型或 MCP 已可用。");
-  } catch (error) { element("service-status").textContent = "服务连接失败"; element("service-status").dataset.state = "error"; notice(error.message, true); }
+    if (announce) notice(t("The console is responding. This check does not verify the configured domain, model readiness or MCP availability."));
+  } catch (error) { element("service-status").textContent = t("Service unavailable"); element("service-status").dataset.state = "error"; notice(error.message, true); }
   finally { element("health-check").disabled = false; }
 }
 element("health-check").addEventListener("click", () => checkHealth(true));
+initializeLocale();
+onLocaleChange(() => {
+  // Translate labels without resetting forms, selections, keys or the current page.
+  document.querySelectorAll(".notice").forEach(item => { item.hidden = true; });
+  renderLogin(loginStatus);
+  if (current) render(current, true);
+  gateway.relocalize();
+  const state = element("service-status").dataset.state;
+  element("service-status").textContent = t(state === "ok" ? "Local service online" : state === "error" ? "Service unavailable" : "Connecting");
+});
 checkHealth();
 restoreSession().catch(error => notice(error.message, true));

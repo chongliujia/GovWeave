@@ -20,10 +20,11 @@ const maxResponseBytes = 8 << 20
 const maxStreamBytes = 64 << 20
 
 type Engine struct {
-	Store  *Store
-	Audit  *Audit
-	client *http.Client
-	slots  chan struct{}
+	Store    *Store
+	Audit    *Audit
+	Policies *PolicyStore
+	client   *http.Client
+	slots    chan struct{}
 }
 
 func Open(dir string) (*Engine, error) {
@@ -31,11 +32,15 @@ func Open(dir string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	policies, err := OpenPolicies(dir, store.Snapshot())
+	if err != nil {
+		return nil, err
+	}
 	audit, err := OpenAudit(dir)
 	if err != nil {
 		return nil, err
 	}
-	return &Engine{Store: store, Audit: audit, client: newHTTPClient(), slots: make(chan struct{}, 64)}, nil
+	return &Engine{Store: store, Audit: audit, Policies: policies, client: newHTTPClient(), slots: make(chan struct{}, 64)}, nil
 }
 
 func (g *Engine) Close() error { g.client.CloseIdleConnections(); return g.Audit.Close() }
@@ -48,20 +53,22 @@ func respond(w http.ResponseWriter, status int, value any) {
 
 func failure(w http.ResponseWriter, status int, code, requestID string) {
 	messages := map[string]string{
-		"invalid_api_key":   "应用密钥无效或已撤销，请使用有效的应用密钥。",
-		"model_not_allowed": "当前应用未获准使用此模型。", "connection_disabled": "模型连接已停用。",
-		"invalid_request":   "请求须包含模型别名和非空 messages 数组；stream 必须为布尔值。",
-		"request_too_large": "请求体超过 1 MiB 限制。", "unsupported_media_type": "请使用 application/json。",
-		"audit_unavailable": "调用记录无法可靠保存，已停止向上游发送请求。",
-		"gateway_busy":      "当前并发请求已达上限，请稍后重试。",
-		"upstream_timeout":  "上游模型请求超时。", "upstream_unreachable": "无法连接已配置的上游模型服务。",
-		"upstream_error":            "上游模型返回错误，请联系管理员检查连接配置。",
-		"invalid_upstream_response": "上游返回了不支持或无效的响应。", "response_too_large": "上游响应超过限制。",
-		"client_cancelled": "客户端已取消请求。", "credential_unavailable": "无法读取上游凭证。",
+		"invalid_api_key":   "The application key is invalid or revoked. Use a valid application key.",
+		"model_not_allowed": "This application is not allowed to use this model.", "connection_disabled": "The model connection is disabled.",
+		"invalid_request":   "Include a model alias and a non-empty messages array. The stream field must be a boolean.",
+		"request_too_large": "The request exceeds the 1 MiB limit.", "unsupported_media_type": "Use application/json.",
+		"audit_unavailable":  "Request records could not be saved reliably. Upstream requests have been stopped.",
+		"gateway_busy":       "The concurrent request limit has been reached. Try again later.",
+		"policy_blocked":     "The request was blocked by a credential egress policy. Contact your administrator with the request ID.",
+		"policy_unavailable": "The request could not be checked. No upstream request was sent.",
+		"upstream_timeout":   "The upstream model request timed out.", "upstream_unreachable": "Could not connect to the configured model provider.",
+		"upstream_error":            "The upstream model returned an error. Ask your administrator to check the connection.",
+		"invalid_upstream_response": "The upstream response is invalid or unsupported.", "response_too_large": "The upstream response exceeds the size limit.",
+		"client_cancelled": "The client cancelled the request.", "credential_unavailable": "Could not read the upstream credential.",
 	}
 	message := messages[code]
 	if message == "" {
-		message = "网关暂时无法完成请求。"
+		message = "The gateway cannot complete this request right now."
 	}
 	respond(w, status, map[string]any{"error": map[string]any{"message": message, "type": "gateway_error", "param": nil, "code": code}, "request_id": requestID})
 }
@@ -165,8 +172,18 @@ func (g *Engine) Chat(w http.ResponseWriter, r *http.Request) {
 		reject(429, "gateway_busy")
 		return
 	}
+	record.ContentPolicy, err = g.Policies.Evaluate(body, resolved.Application.ID, resolved.Connection.ID)
+	if err != nil {
+		reject(503, "policy_unavailable")
+		return
+	}
 	if err := g.Audit.Begin(record); err != nil {
 		reject(503, "audit_unavailable")
+		return
+	}
+	if record.ContentPolicy.Result == "block" {
+		record.Outcome = "blocked"
+		reject(403, "policy_blocked")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Duration(resolved.Connection.TimeoutSeconds)*time.Second)
@@ -422,7 +439,7 @@ func (g *Engine) Probe(ctx context.Context, id string) (ProbeResult, error) {
 		record.Outcome = "failed"
 		record.HTTPStatus = 200 // The administration API returns a completed probe result with ok=false.
 		record.ErrorCode = "upstream_unreachable"
-		result.Message = "连接失败，请检查网络、证书和上游地址。"
+		result.Message = "Connection failed. Check the network, certificates and provider URL."
 		return result, nil
 	}
 	defer response.Body.Close()
@@ -439,7 +456,7 @@ func (g *Engine) Probe(ctx context.Context, id string) (ProbeResult, error) {
 	if err != nil || len(data) > MaxRequestBytes || response.StatusCode != 200 || json.Unmarshal(data, &list) != nil || list.Data == nil {
 		record.Outcome = "failed"
 		record.ErrorCode = "upstream_error"
-		result.Message = "上游未返回有效的模型列表；此检查只测试 GET /models，不等于推理测试。"
+		result.Message = "The provider did not return a valid model list. This check only tests GET /models, not inference."
 		return result, nil
 	}
 	for _, model := range list.Data {
@@ -449,9 +466,9 @@ func (g *Engine) Probe(ctx context.Context, id string) (ProbeResult, error) {
 		}
 	}
 	result.OK = true
-	result.Message = "连接成功，已读取模型列表。请通过应用密钥验证实际推理。"
+	result.Message = "Connected and retrieved the model list. Use an application key to verify inference."
 	if !result.ModelFound {
-		result.Message = "连接成功，但列表中没有配置的模型名称，请检查名称。"
+		result.Message = "Connected, but the configured model was not in the list. Check its name."
 	}
 	record.Outcome = "completed"
 	result.DurationMS = time.Since(start).Milliseconds()

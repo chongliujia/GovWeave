@@ -23,11 +23,11 @@ const SessionLifetime = 8 * time.Hour
 const iterations = 600000
 
 var (
-	ErrConfigured     = errors.New("管理员密码已设置，请直接登录")
-	ErrPassword       = errors.New("密码错误，请重试")
-	ErrPasswordLength = errors.New("密码须为 12–128 个字符")
-	ErrRateLimited    = errors.New("登录尝试过于频繁，请稍后再试")
-	ErrPersistence    = errors.New("无法保存管理员密码，请检查数据目录权限和磁盘空间")
+	ErrConfigured     = errors.New("An administrator password is already set. Please sign in.")
+	ErrPassword       = errors.New("Incorrect password. Please try again.")
+	ErrPasswordLength = errors.New("The password must contain 12–128 characters.")
+	ErrRateLimited    = errors.New("Too many sign-in attempts. Please try again later.")
+	ErrPersistence    = errors.New("Could not save the administrator password. Check data directory permissions and disk space.")
 )
 
 type credential struct {

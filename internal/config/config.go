@@ -135,11 +135,11 @@ func Load(path string, lookup func(string) (string, bool)) (Deployment, error) {
 func NormalizeName(value string) (string, error) {
 	value = strings.TrimSpace(value)
 	if !utf8.ValidString(value) || utf8.RuneCountInString(value) < 1 || utf8.RuneCountInString(value) > 100 {
-		return "", errors.New("组织名称须为 1–100 个字符")
+		return "", errors.New("The organization name must contain 1–100 characters.")
 	}
 	for _, c := range value {
 		if unicode.IsControl(c) {
-			return "", errors.New("组织名称不能包含控制字符")
+			return "", errors.New("The organization name must not contain control characters.")
 		}
 	}
 	return value, nil
@@ -147,7 +147,7 @@ func NormalizeName(value string) (string, error) {
 
 func NormalizeURL(value string) (string, error) {
 	value = strings.TrimSpace(value)
-	bad := errors.New("访问地址须为完整的 HTTP(S) 地址，不能包含账号、路径（包括 /v1）、查询参数或片段")
+	bad := errors.New("Enter a complete HTTP(S) origin without credentials, paths (including /v1), a query or a fragment.")
 	if len(value) > 2048 || strings.ContainsAny(value, "?#\\") {
 		return "", bad
 	}
@@ -161,7 +161,7 @@ func NormalizeURL(value string) (string, error) {
 	}
 	if ip := net.ParseIP(host); ip != nil {
 		if ip.IsUnspecified() || ip.IsMulticast() {
-			return "", errors.New("请填写应用可访问的地址，不能使用 0.0.0.0、:: 或组播地址")
+			return "", errors.New("Enter an address applications can reach. Do not use 0.0.0.0, :: or a multicast address.")
 		}
 	} else {
 		if len(host) == 0 || len(host) > 253 {

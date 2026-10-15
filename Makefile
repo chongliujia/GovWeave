@@ -14,6 +14,9 @@ check:
 	test -z "$$(gofmt -l cmd internal)"
 	node --check internal/server/web/app.js
 	node --check internal/server/web/gateway.js
+	node --check internal/server/web/policies.js
+	node --check internal/server/web/i18n.js
+	node tests/i18n-check.cjs
 
 package:
 	sh scripts/package-offline.sh

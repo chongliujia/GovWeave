@@ -12,8 +12,8 @@ import (
 	"govweave/internal/config"
 )
 
-var ErrConflict = errors.New("配置已更新，请重新加载后再保存")
-var ErrManaged = errors.New("此字段由部署文件或环境变量管理，请通过部署配置修改")
+var ErrConflict = errors.New("The configuration has changed. Reload it before saving.")
+var ErrManaged = errors.New("This field is managed by deployment configuration. Change it in the deployment file or environment.")
 
 type State struct {
 	SchemaVersion int    `json:"schema_version"`

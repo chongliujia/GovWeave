@@ -1,3 +1,5 @@
+import { t, formatDateTime, formatTime } from "/i18n.js";
+import { createPolicyConsole, policyResults, policyRules } from "/policies.js";
 const el = id => document.getElementById(id);
 const node = (tag, text, className) => {
   const value = document.createElement(tag);
@@ -7,15 +9,18 @@ const node = (tag, text, className) => {
 };
 
 export function createGatewayConsole({ request, notice, copy, getInstance }) {
+  const policies = createPolicyConsole({ request, notice });
   let state = { connections: [], applications: [] };
   let editingConnection = null, editingApplication = null;
-  let auditSnapshot = null;
+  let auditSnapshot = null, requestSnapshot = null, inspectedRequest = null;
+  let overviewUpdatedAt = null, overviewFailed = false, activePage = "overview";
   const pages = {
-    overview: ["运行总览", "OVERVIEW / 01", "从应用到模型，查看网关当前的接入关系与调用状态。"],
-    connections: ["模型连接", "MODEL CONNECTIONS / 02", "定义上游模型与企业服务别名，统一应用的模型接入。"],
-    applications: ["应用与密钥", "APPLICATION ACCESS / 03", "为每个应用划定访问边界，让密钥与模型授权各归其位。"],
-    requests: ["调用记录", "REQUEST LOG / 04", "查看授权决定与执行结果，沿着请求 ID 追踪每次调用。"],
-    deployment: ["部署与接入", "INSTANCE SETTINGS / 05", "设置企业自己的网关地址，生成可直接使用的接入信息。"],
+    overview: ["Overview", "OVERVIEW / 01", "See how applications connect to models and review recent activity."],
+    connections: ["Model connections", "MODEL CONNECTIONS / 02", "Configure upstream models and service aliases for consistent application access."],
+    applications: ["Applications & keys", "APPLICATION ACCESS / 03", "Give each application its own key and explicit model grants."],
+    policies: ["Runtime policies", "RUNTIME POLICIES / 04", "Control credential egress with local checks before model execution."],
+    requests: ["Request logs", "REQUEST LOG / 05", "Review authorization and execution results for each request ID."],
+    deployment: ["Deployment & access", "INSTANCE SETTINGS / 06", "Set your gateway URL and generate connection details for your applications."],
   };
   const send = (path, data, method = "POST") => request(path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
   async function act(button, operation) {
@@ -29,14 +34,18 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     button.addEventListener("click", () => act(button, operation));
     return button;
   }
-  function chooseTab(name) {
-    if (!getInstance() || !pages[name]) return;
-    const [title, eyebrow, description] = pages[name];
+  function renderHeading(name) {
+    const [title, eyebrow, description] = pages[name].map(key => t(key));
     el("current-page-title").textContent = title;
     el("page-title").textContent = title;
     el("page-eyebrow").textContent = eyebrow;
     el("page-description").textContent = description;
     document.title = `${title} · GovWeave`;
+  }
+  function chooseTab(name) {
+    if (!getInstance() || !pages[name]) return;
+    activePage = name;
+    renderHeading(name);
     el("notice").hidden = true;
     document.querySelectorAll(".console-page").forEach(page => { page.hidden = page.id !== `page-${name}`; });
     document.querySelectorAll(".tabs [data-tab]").forEach(button => {
@@ -70,16 +79,16 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   function resetConnection() {
     editingConnection = null; el("connection-form").reset();
     el("connection-editor").querySelector(".editor-notice").hidden = true;
-    el("connection-form-title").textContent = "添加模型连接";
-    el("credential-hint").textContent = "本地模型可留空。已保存的凭证使用本地密钥加密。";
+    el("connection-form-title").textContent = t("Add model connection");
+    el("credential-hint").textContent = t("Leave empty for models that need no key. Saved credentials are encrypted with a local key.");
   }
   function editConnection(connection) {
     resetConnection(); editingConnection = connection;
-    el("connection-form-title").textContent = `编辑：${connection.name}`;
+    el("connection-form-title").textContent = t("Edit: {name}", { name: connection.name });
     for (const [field, key] of Object.entries({ name: "name", url: "base_url", model: "model", alias: "alias", timeout: "timeout_seconds" })) el(`connection-${field}`).value = connection[key];
     el("connection-enabled").checked = connection.enabled;
     el("connection-http").checked = connection.allow_insecure_http;
-    el("credential-hint").textContent = connection.has_credential ? "已有加密凭证。留空保留原凭证，填写则替换。" : "尚未配置上游凭证。";
+    el("credential-hint").textContent = connection.has_credential ? t("An encrypted credential is saved. Leave empty to keep it, or enter a replacement.") : t("No upstream credential configured.");
     el("connection-editor").showModal();
     el("connection-name").focus();
   }
@@ -87,32 +96,32 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     const list = el("connection-list"); list.replaceChildren();
     const query = el("connection-search").value.trim().toLocaleLowerCase();
     const connections = state.connections.filter(c => `${c.name} ${c.alias} ${c.model} ${c.base_url}`.toLocaleLowerCase().includes(query));
-    el("connection-count").textContent = query ? `${connections.length} / ${state.connections.length} 个连接` : `${state.connections.length} 个连接`;
+    el("connection-count").textContent = query ? t(state.connections.length === 1 ? "{count} / {total} connection" : "{count} / {total} connections", { count: connections.length, total: state.connections.length }) : t(state.connections.length === 1 ? "{count} connection" : "{count} connections", { count: state.connections.length });
     if (!connections.length) list.append(query
-      ? emptyState("没有找到匹配的连接", "试试其他名称、别名或上游模型。")
-      : emptyState("连接你的第一个模型", "添加上游地址和模型别名，再为企业应用开放访问。", "添加模型连接 →", openConnection));
+      ? emptyState(t("No matching connections"), t("Try another name, alias or upstream model."))
+      : emptyState(t("Connect your first model"), t("Add a provider URL and model alias, then grant access to your applications."), t("Add model connection →"), openConnection));
     for (const [index, connection] of connections.entries()) {
       const row = node("article", undefined, "list-item connection-columns"); row.dataset.connectionId = connection.id;
       const upstream = node("div", undefined, "item-upstream"), address = node("p", connection.base_url);
       address.title = connection.base_url;
       upstream.append(node("strong", connection.model), address);
       const status = node("div", undefined, "item-status");
-      status.append(node("span", connection.enabled ? "已启用" : "已停用", `capability ${connection.enabled ? "available" : "planned"}`), node("small", `${connection.timeout_seconds}s · ${connection.has_credential ? "已配凭证" : "无凭证"}`));
+      status.append(node("span", connection.enabled ? t("Enabled") : t("Disabled"), `capability ${connection.enabled ? "available" : "planned"}`), node("small", `${connection.timeout_seconds}s · ${connection.has_credential ? t("Credential saved") : t("No credential")}`));
       const actions = node("div", undefined, "item-actions");
-      actions.append(action("编辑", async () => editConnection(connection)), action("检查连接", async () => {
+      actions.append(action(t("Edit"), async () => editConnection(connection)), action(t("Check connection"), async () => {
         const result = await send(`/api/v1/connections/${connection.id}/test`, {});
-        notice(`${connection.name}：${result.message}（${result.duration_ms} ms）`, !result.ok || !result.model_found);
+        notice(`${connection.name}: ${t(result.message)} (${result.duration_ms} ms)`, !result.ok || !result.model_found);
       }));
       row.append(identity(connection.name, connection.alias, index), upstream, status, actions); list.append(row);
     }
   }
   function renderGrants(selected = []) {
     const container = el("application-grants"); container.replaceChildren();
-    if (!state.connections.length) container.append(node("p", "请先添加模型连接。", "empty-state"));
+    if (!state.connections.length) container.append(node("p", t("Add a model connection first."), "empty-state"));
     for (const connection of state.connections) {
       const label = node("label", undefined, "check-line grant-option");
       const input = node("input"); input.type = "checkbox"; input.value = connection.id; input.checked = selected.includes(connection.id);
-      const description = node("span", connection.name + (connection.enabled ? "" : "（已停用）"));
+      const description = node("span", connection.name + (connection.enabled ? "" : t(" (disabled)")));
       description.append(node("small", connection.alias));
       label.append(input, description); container.append(label);
     }
@@ -120,8 +129,8 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   function resetApplication() {
     editingApplication = null; el("application-form").reset(); renderGrants();
     el("application-editor").querySelector(".editor-notice").hidden = true;
-    el("application-form-title").textContent = "创建应用";
-    el("save-application").textContent = "创建应用并生成密钥";
+    el("application-form-title").textContent = t("Create application");
+    el("save-application").textContent = t("Create application & key");
   }
   function showKey(key) {
     el("new-api-key").textContent = key || "";
@@ -131,31 +140,31 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     const list = el("application-list"); list.replaceChildren();
     const query = el("application-search").value.trim().toLocaleLowerCase();
     const apps = state.applications.filter(a => `${a.name} ${a.key_prefix}`.toLocaleLowerCase().includes(query));
-    el("application-count").textContent = query ? `${apps.length} / ${state.applications.length} 个应用` : `${state.applications.length} 个应用`;
+    el("application-count").textContent = query ? t(state.applications.length === 1 ? "{count} / {total} application" : "{count} / {total} applications", { count: apps.length, total: state.applications.length }) : t(state.applications.length === 1 ? "{count} application" : "{count} applications", { count: state.applications.length });
     if (!apps.length) list.append(query
-      ? emptyState("没有找到匹配的应用", "试试其他应用名称或密钥前缀。")
-      : emptyState("为第一个应用划定访问边界", "选择允许使用的模型，为应用生成独立密钥。", "创建应用 →", openApplication));
+      ? emptyState(t("No matching applications"), t("Try another application name or key prefix."))
+      : emptyState(t("Authorize your first application"), t("Choose allowed models and create a separate key for your application."), t("Create application →"), openApplication));
     for (const [index, app] of apps.entries()) {
       const row = node("article", undefined, "list-item application-columns"); row.dataset.applicationId = app.id;
       const grants = node("div", undefined, "granted-models");
       for (const connection of state.connections.filter(c => app.allowed_connections.includes(c.id))) grants.append(node("span", connection.alias, "model-tag"));
       const status = node("div", undefined, "item-status");
-      status.append(node("span", app.revoked ? "已撤销" : "有效", `capability ${app.revoked ? "revoked" : "available"}`));
+      status.append(node("span", app.revoked ? t("Revoked") : t("Active"), `capability ${app.revoked ? "revoked" : "available"}`));
       row.append(identity(app.name, `${app.key_prefix}…`, index), grants, status);
       if (!app.revoked) {
         const actions = node("div", undefined, "item-actions");
-        actions.append(action("编辑授权", async () => {
+        actions.append(action(t("Edit grants"), async () => {
           editingApplication = app; el("application-name").value = app.name; renderGrants(app.allowed_connections);
-          el("application-form-title").textContent = `编辑：${app.name}`;
-          el("save-application").textContent = "保存应用授权"; el("application-editor").showModal(); el("application-name").focus();
-        }), action("轮换密钥", async () => {
-          if (!window.confirm(`为“${app.name}”生成新密钥？旧密钥将立即失效，已受理的请求继续执行。`)) return;
+          el("application-form-title").textContent = t("Edit: {name}", { name: app.name });
+          el("save-application").textContent = t("Save application grants"); el("application-editor").showModal(); el("application-name").focus();
+        }), action(t("Rotate key"), async () => {
+          if (!window.confirm(t("Generate a new key for “{name}”? The old key will stop working immediately. Accepted requests will continue.", { name: app.name }))) return;
           const result = await send(`/api/v1/applications/${app.id}/rotate`, { revision: app.revision });
-          showKey(result.api_key); resetApplication(); await refresh(); notice("密钥已轮换，请更新应用的环境变量。");
-        }), action("撤销应用", async () => {
-          if (!window.confirm(`撤销“${app.name}”的密钥？此应用将不能发起新调用，已受理的请求继续执行。`)) return;
+          showKey(result.api_key); resetApplication(); await refresh(); notice(t("Key rotated. Update the application's environment variables."));
+        }), action(t("Revoke application"), async () => {
+          if (!window.confirm(t("Revoke the key for “{name}”? This application will no longer be able to start requests. Accepted requests will continue.", { name: app.name }))) return;
           await send(`/api/v1/applications/${app.id}/revoke`, { revision: app.revision });
-          showKey(""); resetApplication(); await refresh(); notice("应用已撤销。");
+          showKey(""); resetApplication(); await refresh(); notice(t("Application revoked."));
         })); row.append(actions);
       }
       if (app.revoked) row.append(node("div", "—", "item-actions muted"));
@@ -170,18 +179,18 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   }
   function renderExample() {
     const instance = getInstance();
-    el("instance-host").textContent = instance?.public_url ? new URL(instance.public_url).host : "尚未配置访问地址";
+    el("instance-host").textContent = instance?.public_url ? new URL(instance.public_url).host : t("Instance URL not configured");
     el("overview-setup").hidden = !instance || instance.configured;
     const app = state.applications.find(a => a.id === el("example-app").value && !a.revoked);
     const connection = app && state.connections.find(c => c.enabled && app.allowed_connections.includes(c.id));
-    const comment = "# GOVWEAVE_API_KEY 应使用应用密钥，不能使用管理员密码。";
-    let example = comment + "\n# 请先保存实例地址，再选择具有已启用模型授权的应用。";
+    const comment = t("# Use an application API key for GOVWEAVE_API_KEY, not the administrator password.");
+    let example = comment + "\n" + t("# Save the instance URL, then select an application with an enabled model grant.");
     if (instance?.public_url && connection) example = [
       "import os", "from openai import OpenAI", "", comment,
       "client = OpenAI(", `    base_url=${JSON.stringify(instance.endpoints.models.url)},`,
       '    api_key=os.environ["GOVWEAVE_API_KEY"],', "    max_retries=0,", `    timeout=${connection.timeout_seconds + 10}.0,`, ")", "",
       "stream = client.chat.completions.create(", `    model=${JSON.stringify(connection.alias)},`,
-      '    messages=[{"role": "user", "content": "总结这份资料"}],', "    stream=True,", ")",
+      `    messages=[{"role": "user", "content": ${JSON.stringify(t("Summarize this document."))}}],`, "    stream=True,", ")",
       "for chunk in stream:", "    if chunk.choices:", '        print(chunk.choices[0].delta.content or "", end="", flush=True)',
     ].join("\n");
     el("sdk-example").textContent = example; el("copy-example").disabled = !(instance?.public_url && connection);
@@ -190,50 +199,63 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     state = await request("/api/v1/gateway");
     const selected = [...el("application-grants").querySelectorAll("input:checked")].map(input => input.value);
     renderConnections(); renderApplications(); renderGrants(selected);
-    populateSelect("example-app", "选择接入应用", state.applications.filter(a => !a.revoked));
+    populateSelect("example-app", t("Select an application"), state.applications.filter(a => !a.revoked));
     if (!el("example-app").value) el("example-app").value = state.applications.find(a => !a.revoked)?.id || "";
-    populateSelect("requests-app", "全部应用与连接检查", state.applications); renderExample();
+    populateSelect("requests-app", t("All applications and connection checks"), state.applications); renderExample();
     renderOverview();
+    await policies.refresh(state);
     await refreshOverview();
   }
-  const outcomes = { completed: "已完成", blocked: "已拦截", failed: "失败", cancelled: "已取消", rejected: "已拒绝", in_progress: "执行中", incomplete: "结束状态未知" };
-  const operationNames = { "chat.completions": "模型对话", "models.list": "模型列表", "connection.test": "连接检查" };
-  const applicationName = record => state.applications.find(a => a.id === record.application_id)?.name || (record.operation === "connection.test" ? "管理员检查" : "未识别应用");
+  const outcomes = { completed: "Completed", blocked: "Blocked", failed: "Failed", cancelled: "Cancelled", rejected: "Rejected", in_progress: "In progress", incomplete: "Outcome unknown" };
+  const operationNames = { "chat.completions": "Chat completion", "models.list": "Model list", "connection.test": "Connection check" };
+  const applicationName = record => state.applications.find(a => a.id === record.application_id)?.name || (record.operation === "connection.test" ? t("Administrator check") : t("Unknown application"));
   const statusClass = record => ["failed", "blocked", "rejected"].includes(record.outcome) ? "failed" : record.outcome === "completed" ? "available" : "muted-status";
   function inspectRequest(record) {
+    inspectedRequest = record;
     el("request-detail").querySelector(".editor-notice").hidden = true;
     el("detail-request-id").textContent = record.request_id;
     const status = node("div", undefined, "detail-outcome");
-    status.append(node("strong", outcomes[record.outcome] || record.outcome), node("span", `HTTP ${record.http_status || "—"}`));
+    status.append(node("strong", t(outcomes[record.outcome] || record.outcome)), node("span", `HTTP ${record.http_status || "—"}`));
     el("request-detail-state").replaceChildren(status);
     const fields = el("request-detail-fields"); fields.replaceChildren();
     const values = [
-      ["调用时间", new Date(record.started_at).toLocaleString("zh-CN")], ["调用应用", applicationName(record)],
-      ["模型别名", record.model || "—"], ["操作", record.operation + (record.streaming ? " · SSE" : "")],
-      ["访问授权", record.decision === "allow" ? "已授权" : record.decision === "deny" ? "拒绝授权" : "未评估"],
-      ["上游请求", record.upstream_attempted ? `已尝试 · ${record.upstream_status || "未收到状态码"}` : "未请求上游"],
-      ["总耗时", `${record.duration_ms} ms`], ["上游首字节", record.first_byte_ms === undefined ? "—" : `${record.first_byte_ms} ms`],
-      ["配置版本", String(record.policy_revision)], ["错误码", record.error_code || "—"], ["连接 ID", record.connection_id || "—"],
+      [t("Started at"), formatDateTime(record.started_at)], [t("Application"), applicationName(record)],
+      [t("Model alias"), record.model || "—"], [t("Action"), record.operation + (record.streaming ? " · SSE" : "")],
+      [t("Access authorization"), record.decision === "allow" ? t("Allowed") : record.decision === "deny" ? t("Denied") : t("Not evaluated")],
+      [t("Upstream request"), record.upstream_attempted ? t("Attempted · {status}", { status: record.upstream_status || t("No status received") }) : t("No upstream request")],
+      [t("Total duration"), `${record.duration_ms} ms`], [t("Upstream first byte"), record.first_byte_ms === undefined ? "—" : `${record.first_byte_ms} ms`],
+      [t("Configuration revision"), String(record.policy_revision)], [t("Error code"), record.error_code || "—"], [t("Connection ID"), record.connection_id || "—"],
     ];
+    if (record.content_policy) {
+      const policy = record.content_policy;
+      values.push(
+        [t("Credential policy"), t(policyResults[policy.result] || policy.result)],
+        [t("Policy revision"), `${policy.id} / ${policy.revision} / ${policy.ruleset_version}`],
+        [t("Matched rules"), policy.matched_rules.map(rule => t(policyRules[rule] || rule)).join(", ") || t("None")],
+        [t("Policy check duration"), `${policy.check_duration_us} µs`],
+      );
+    } else values.push([t("Credential policy"), t("Not evaluated")]);
     for (const [label, value] of values) { const row = node("div"); row.append(node("dt", label), node("dd", value)); fields.append(row); }
-    el("request-detail").showModal();
+    if (!el("request-detail").open) el("request-detail").showModal();
   }
   function renderRequestTable(view) {
-    el("audit-status").textContent = `${view.available ? "记录正常" : "记录不可用 · 新调用已停止"} · ${(view.bytes / 1048576).toFixed(2)} / 128 MiB`;
+    requestSnapshot = view;
+    el("audit-status").textContent = `${view.available ? t("Logging available") : t("Logging unavailable · New requests stopped")} · ${(view.bytes / 1048576).toFixed(2)} / 128 MiB`;
     const list = el("request-list"); list.replaceChildren();
     if (!view.records.length) {
       const tr = node("tr"), td = node("td", undefined, "table-empty"); td.colSpan = 5;
-      td.append(node("strong", "尚无调用记录"), node("span", "使用应用密钥发起请求后，在这里查看授权决定与执行结果。")); tr.append(td); list.append(tr);
+      td.append(node("strong", t("No request records yet")), node("span", t("Send a request with an application key to see its authorization and execution results here."))); tr.append(td); list.append(tr);
     }
     for (const record of view.records) {
       const tr = node("tr"); tr.dataset.requestId = record.request_id;
       const identity = node("td"), requestButton = action(record.request_id, async () => inspectRequest(record));
-      requestButton.className = "request-open"; requestButton.setAttribute("aria-label", `查看调用 ${record.request_id}`);
-      identity.append(node("span", new Date(record.started_at).toLocaleString("zh-CN")), requestButton);
+      requestButton.className = "request-open"; requestButton.setAttribute("aria-label", t("View request {id}", { id: record.request_id }));
+      identity.append(node("span", formatDateTime(record.started_at)), requestButton);
       const model = node("td"); model.append(node("span", applicationName(record)), node("code", record.model || "—"));
-      const operation = node("td"); operation.append(node("span", (operationNames[record.operation] || record.operation) + (record.streaming ? " · 流式" : "")), node("small", record.decision === "allow" ? "已授权" : record.decision === "deny" ? "拒绝授权" : "未评估"));
-      const result = node("td"); result.append(node("span", `${outcomes[record.outcome] || record.outcome} · ${record.http_status || "—"}`, `capability ${statusClass(record)}`), node("small", record.error_code || (record.upstream_attempted ? `上游 ${record.upstream_status || "未响应"}` : "未请求上游")));
-      const duration = node("td", `${record.duration_ms} ms`); duration.append(node("small", record.first_byte_ms === undefined ? "—" : `首字节 ${record.first_byte_ms} ms`));
+      const operation = node("td"); operation.append(node("span", (t(operationNames[record.operation] || record.operation)) + (record.streaming ? t(" · Streaming") : "")), node("small", record.decision === "allow" ? t("Allowed") : record.decision === "deny" ? t("Denied") : t("Not evaluated")));
+      const result = node("td"); result.append(node("span", `${t(outcomes[record.outcome] || record.outcome)} · ${record.http_status || "—"}`, `capability ${statusClass(record)}`), node("small", record.error_code || (record.upstream_attempted ? t("Upstream {status}", { status: record.upstream_status || t("No response") }) : t("No upstream request"))));
+      if (record.content_policy?.matched_rules.length) result.append(node("small", t(policyResults[record.content_policy.result]), "policy-match"));
+      const duration = node("td", `${record.duration_ms} ms`); duration.append(node("small", record.first_byte_ms === undefined ? "—" : t("First byte {duration} ms", { duration: record.first_byte_ms })));
       tr.append(identity, model, operation, result, duration); list.append(tr);
     }
   }
@@ -244,14 +266,14 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   }
   function topologyNodes(id, items, type) {
     const list = el(id); list.replaceChildren();
-    if (!items.length) { list.append(node("div", type === "app" ? "尚无有效应用" : "尚无启用的模型", "topology-empty")); return; }
+    if (!items.length) { list.append(node("div", type === "app" ? t("No active applications") : t("No enabled models"), "topology-empty")); return; }
     for (const item of items.slice(0, 3)) {
       const row = node("div", undefined, "topology-node"), description = node("div");
-      description.append(node("strong", item.name), node("small", type === "app" ? `${item.allowed_connections.length} MODEL GRANTS` : item.alias));
+      description.append(node("strong", item.name), node("small", type === "app" ? t(item.allowed_connections.length === 1 ? "{count} MODEL GRANT" : "{count} MODEL GRANTS", { count: item.allowed_connections.length }) : item.alias));
       row.append(node("span", type === "app" ? "A" : "M", "node-initial"), description, node("span", undefined, "status-dot"));
       list.append(row);
     }
-    if (items.length > 3) list.append(node("div", `+ ${items.length - 3} MORE`, "topology-more"));
+    if (items.length > 3) list.append(node("div", t("+ {count} MORE", { count: items.length - 3 }), "topology-more"));
   }
   function renderOverview() {
     const models = state.connections.filter(c => c.enabled), apps = state.applications.filter(a => !a.revoked);
@@ -259,10 +281,10 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     el("nav-app-count").textContent = apps.length;
     el("metric-models").textContent = String(models.length).padStart(2, "0");
     el("metric-apps").textContent = String(apps.length).padStart(2, "0");
-    el("metric-models-note").textContent = `${state.connections.length} 个连接 · ${state.connections.length - models.length} 个已停用`;
-    el("metric-apps-note").textContent = `${state.applications.length} 个应用 · ${state.applications.length - apps.length} 个已撤销`;
-    el("topology-app-count").textContent = `${apps.length} ACTIVE`;
-    el("topology-model-count").textContent = `${models.length} ENABLED`;
+    el("metric-models-note").textContent = t(state.connections.length === 1 ? "{total} connection · {disabled} disabled" : "{total} connections · {disabled} disabled", { total: state.connections.length, disabled: state.connections.length - models.length });
+    el("metric-apps-note").textContent = t(state.applications.length === 1 ? "{total} application · {revoked} revoked" : "{total} applications · {revoked} revoked", { total: state.applications.length, revoked: state.applications.length - apps.length });
+    el("topology-app-count").textContent = t("{count} ACTIVE", { count: apps.length });
+    el("topology-model-count").textContent = t("{count} ENABLED", { count: models.length });
     topologyNodes("topology-apps", apps, "app"); topologyNodes("topology-models", models, "model");
     if (!auditSnapshot) return;
     const chats = auditSnapshot.records.filter(r => r.operation === "chat.completions");
@@ -270,18 +292,18 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     el("metric-requests").textContent = String(chats.length).padStart(2, "0");
     el("metric-issues").textContent = String(issues).padStart(2, "0");
     el("metric-issues").classList.toggle("has-issues", issues > 0);
-    el("metric-issues-note").textContent = auditSnapshot.available ? `${chats.filter(r => r.outcome === "completed").length} 次完成 · ${chats.filter(r => r.outcome === "cancelled").length} 次取消` : "记录不可用 · 新调用已停止";
+    el("metric-issues-note").textContent = auditSnapshot.available ? t("{completed} completed · {cancelled} cancelled", { completed: chats.filter(r => r.outcome === "completed").length, cancelled: chats.filter(r => r.outcome === "cancelled").length }) : t("Logging unavailable · New requests stopped");
     const list = el("overview-records"); list.replaceChildren();
     if (!auditSnapshot.records.length) {
       const empty = node("div", undefined, "overview-empty"), text = node("div");
-      text.append(node("strong", "等待第一次调用"), node("p", "配置模型并为应用授权后，每次调用的结果会显示在这里。"));
-      empty.append(text, action("开始接入 →", async () => chooseTab(models.length ? "applications" : "connections"))); list.append(empty);
+      text.append(node("strong", t("Waiting for the first request")), node("p", t("Connect a model and authorize an application to see request results here.")));
+      empty.append(text, action(t("Get started →"), async () => chooseTab(models.length ? "applications" : "connections"))); list.append(empty);
     }
     for (const record of auditSnapshot.records.slice(0, 5)) {
       const row = node("div", undefined, "recent-row"), description = node("div");
       const issue = ["failed", "blocked", "rejected"].includes(record.outcome);
-      description.append(node("strong", applicationName(record)), node("small", `${new Date(record.started_at).toLocaleTimeString("zh-CN", { hour12: false })} / ${operationNames[record.operation] || record.operation}`));
-      const inspect = action(`${outcomes[record.outcome] || record.outcome} ↗`, async () => inspectRequest(record));
+      description.append(node("strong", applicationName(record)), node("small", `${formatTime(record.started_at)} / ${t(operationNames[record.operation] || record.operation)}`));
+      const inspect = action(`${t(outcomes[record.outcome] || record.outcome)} ↗`, async () => inspectRequest(record));
       inspect.className = `text-button capability ${statusClass(record)}`;
       row.append(node("span", issue ? "!" : "↗", `activity-mark${issue ? " issue" : ""}`), description, node("code", record.model || "—", "recent-model"), inspect, node("span", `${record.duration_ms} ms`, "recent-duration"));
       list.append(row);
@@ -290,34 +312,38 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   async function refreshOverview() {
     try {
       auditSnapshot = await request("/api/v1/requests?limit=100");
-      el("overview-updated").textContent = `${new Date().toLocaleTimeString("zh-CN", { hour12: false })} 更新`;
+      overviewUpdatedAt = new Date(); overviewFailed = false;
+      el("overview-updated").textContent = t("Updated {time}", { time: formatTime(overviewUpdatedAt) });
       renderOverview();
     } catch (error) {
-      auditSnapshot = null;
-      el("metric-requests").textContent = el("metric-issues").textContent = "—";
-      el("overview-updated").textContent = "调用记录加载失败";
-      el("metric-issues-note").textContent = "请刷新重试";
-      el("overview-records").replaceChildren(node("div", "暂时无法读取调用记录，请刷新重试。", "overview-empty"));
+      auditSnapshot = null; overviewFailed = true;
+      renderOverviewFailure();
       throw error;
     }
+  }
+  function renderOverviewFailure() {
+    el("metric-requests").textContent = el("metric-issues").textContent = "—";
+    el("overview-updated").textContent = t("Could not load request records");
+    el("metric-issues-note").textContent = t("Refresh to try again");
+    el("overview-records").replaceChildren(node("div", t("Request records are temporarily unavailable. Refresh to try again."), "overview-empty"));
   }
   el("connection-form").addEventListener("submit", event => {
     event.preventDefault(); act(el("save-connection"), async () => {
       const input = { revision: editingConnection?.revision || 0, name: el("connection-name").value, base_url: el("connection-url").value, model: el("connection-model").value, alias: el("connection-alias").value, enabled: el("connection-enabled").checked, allow_insecure_http: el("connection-http").checked, timeout_seconds: Number(el("connection-timeout").value) };
-      if (el("clear-credential").checked && el("connection-key").value) throw new Error("清除凭证时请保持 API Key 输入框为空。");
+      if (el("clear-credential").checked && el("connection-key").value) throw new Error(t("Leave the API key field empty when removing the saved credential."));
       if (el("clear-credential").checked || el("connection-key").value) input.api_key = el("connection-key").value;
       await send(editingConnection ? `/api/v1/connections/${editingConnection.id}` : "/api/v1/connections", input, editingConnection ? "PUT" : "POST");
-      el("connection-editor").close(); resetConnection(); await refresh(); notice("模型连接已保存。可检查连接，再为应用授予权限。");
+      el("connection-editor").close(); resetConnection(); await refresh(); notice(t("Connection saved. Check connectivity, then grant access to applications."));
     });
   });
   el("application-form").addEventListener("submit", event => {
     event.preventDefault(); act(el("save-application"), async () => {
       const allowed = [...el("application-grants").querySelectorAll("input:checked")].map(input => input.value);
-      if (!allowed.length) throw new Error("请至少选择一个模型连接。");
+      if (!allowed.length) throw new Error(t("Select at least one model connection."));
       const result = await send(editingApplication ? `/api/v1/applications/${editingApplication.id}` : "/api/v1/applications", { revision: editingApplication?.revision || 0, name: el("application-name").value, allowed_connections: allowed }, editingApplication ? "PUT" : "POST");
       el("application-editor").close();
       if (result.api_key) showKey(result.api_key);
-      resetApplication(); await refresh(); notice("应用已保存。接入示例可在“部署与接入”页面查看。");
+      resetApplication(); await refresh(); notice(t("Application saved. Find connection examples under Deployment & access."));
     });
   });
   el("new-connection").addEventListener("click", openConnection);
@@ -327,24 +353,47 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   el("connection-search").addEventListener("input", renderConnections);
   el("application-search").addEventListener("input", renderApplications);
   el("refresh-overview").addEventListener("click", () => act(el("refresh-overview"), refresh));
-  el("refresh-gateway").addEventListener("click", () => act(el("refresh-gateway"), async () => { await refresh(); resetConnection(); resetApplication(); notice("已加载最新配置，请重新选择需要编辑的连接或应用。"); }));
+  el("refresh-gateway").addEventListener("click", () => act(el("refresh-gateway"), async () => { await refresh(); resetConnection(); resetApplication(); notice(t("Latest configuration loaded. Select a connection or application to edit.")); }));
   el("refresh-requests").addEventListener("click", () => act(el("refresh-requests"), loadRequests));
   el("requests-app").addEventListener("change", () => act(el("refresh-requests"), loadRequests));
   el("example-app").addEventListener("change", renderExample);
   el("copy-new-key").addEventListener("click", () => copy(el("new-api-key").textContent));
   el("dismiss-key").addEventListener("click", () => showKey(""));
-  return { refresh, renderExample, enter() { chooseTab("overview"); }, reset() {
-    state = { connections: [], applications: [] }; editingConnection = editingApplication = null; auditSnapshot = null;
+  function relocalize() {
+    if (!getInstance()) { document.title = t("GovWeave · Enterprise AI Gateway"); return; }
+    renderHeading(activePage);
+    policies.relocalize();
+    renderConnections(); renderApplications();
+    const selected = [...el("application-grants").querySelectorAll("input:checked")].map(input => input.value);
+    renderGrants(selected);
+    populateSelect("example-app", t("Select an application"), state.applications.filter(a => !a.revoked));
+    populateSelect("requests-app", t("All applications and connection checks"), state.applications);
+    renderExample(); renderOverview();
+    if (overviewUpdatedAt) el("overview-updated").textContent = t("Updated {time}", { time: formatTime(overviewUpdatedAt) });
+    if (overviewFailed) renderOverviewFailure();
+    if (requestSnapshot) renderRequestTable(requestSnapshot);
+    if (el("request-detail").open && inspectedRequest) inspectRequest(inspectedRequest);
+    el("connection-form-title").textContent = editingConnection ? t("Edit: {name}", { name: editingConnection.name }) : t("Add model connection");
+    el("credential-hint").textContent = editingConnection
+      ? t(editingConnection.has_credential ? "An encrypted credential is saved. Leave empty to keep it, or enter a replacement." : "No upstream credential configured.")
+      : t("Leave empty for models that need no key. Saved credentials are encrypted with a local key.");
+    el("application-form-title").textContent = editingApplication ? t("Edit: {name}", { name: editingApplication.name }) : t("Create application");
+    el("save-application").textContent = t(editingApplication ? "Save application grants" : "Create application & key");
+  }
+  return { refresh, renderExample, relocalize, enter() { chooseTab("overview"); }, reset() {
+    policies.reset();
+    state = { connections: [], applications: [] }; editingConnection = editingApplication = null; auditSnapshot = requestSnapshot = inspectedRequest = null;
+    overviewUpdatedAt = null; overviewFailed = false;
     for (const id of ["connection-editor", "application-editor", "request-detail"]) { if (el(id).open) el(id).close(); }
     el("connection-search").value = el("application-search").value = "";
     showKey(""); resetConnection(); resetApplication(); renderConnections(); renderApplications();
     el("request-list").replaceChildren(); el("overview-records").replaceChildren();
     for (const id of ["metric-models", "metric-apps", "metric-requests", "metric-issues", "nav-model-count", "nav-app-count"]) el(id).textContent = "—";
-    el("overview-updated").textContent = "尚未加载";
+    el("overview-updated").textContent = t("Not loaded");
     el("topology-apps").replaceChildren(); el("topology-models").replaceChildren();
     el("request-detail-fields").replaceChildren(); el("request-detail-state").replaceChildren(); el("detail-request-id").textContent = "";
-    populateSelect("example-app", "请先创建应用", []); populateSelect("requests-app", "全部应用与连接检查", []);
+    populateSelect("example-app", t("Create an application first"), []); populateSelect("requests-app", t("All applications and connection checks"), []);
     el("sdk-example").textContent = ""; el("audit-status").textContent = "";
-    document.title = "GovWeave · 企业 AI 网关";
+    document.title = t("GovWeave · Enterprise AI Gateway");
   } };
 }
