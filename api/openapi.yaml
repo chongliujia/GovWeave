@@ -1,0 +1,742 @@
+openapi: 3.1.0
+info:
+  title: GovWeave model gateway and administration API
+  version: 0.2.0-dev
+  description: Single-instance model connections, application authorization, Chat Completions and metadata-only
+    call records. MCP and regulatory policy enforcement are not implemented. All management mutations
+    require application/json and the X-GovWeave-Request header set to console; cross-site origins are
+    rejected.
+paths:
+  /healthz:
+    get:
+      summary: Process liveness (not model readiness)
+      responses:
+        '200':
+          description: Service is running
+  /api/v1/auth/status:
+    get:
+      summary: Read setup and current session status (no credentials in response)
+      responses:
+        '200':
+          description: Authentication status
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - setup_required
+                - setup_allowed
+                - authenticated
+                properties:
+                  setup_required:
+                    type: boolean
+                  setup_allowed:
+                    type: boolean
+                  authenticated:
+                    type: boolean
+  /api/v1/auth/setup:
+    post:
+      summary: Set the first administrator password once and create a session
+      description: Initialize new instances before exposing them to other users. Legacy token installations
+        require direct loopback access; see migration documentation.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        $ref: '#/components/requestBodies/Password'
+      responses:
+        '200':
+          $ref: '#/components/responses/LoggedIn'
+        '409':
+          description: Password already configured; use login
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/login:
+    post:
+      summary: Verify password and issue a fresh session cookie
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        $ref: '#/components/requestBodies/Password'
+      responses:
+        '200':
+          $ref: '#/components/responses/LoggedIn'
+        '401':
+          description: Invalid password
+        '429':
+          description: Global limit of 10 password attempts per minute or another derivation is in progress;
+            Retry-After is 60 seconds
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/auth/logout:
+    post:
+      summary: Revoke this session immediately and expire its cookie
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '200':
+          description: Logged out (also succeeds for an expired session)
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/instance:
+    get:
+      summary: Read effective configuration, field sources and endpoint capability status
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Effective instance configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instance'
+        '401':
+          description: Missing or expired administrator session
+    put:
+      summary: Validate and atomically persist settings with optimistic concurrency
+      security:
+      - adminSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/instance.schema.json
+      responses:
+        '200':
+          description: Saved effective configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Instance'
+        '400':
+          description: Invalid schema, name, URL or JSON
+        '401':
+          description: Missing or expired administrator session
+        '403':
+          description: Cross-origin write refused
+        '409':
+          description: Stale revision or deployment-managed field
+        '413':
+          description: Request exceeds 16 KiB
+        '415':
+          description: Expected application/json
+        '500':
+          description: Persistence failed; effective settings remain unchanged
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+  /v1/chat/completions:
+    post:
+      summary: Authorized OpenAI-compatible Chat Completions with bounded JSON or SSE responses
+      description: 1 MiB request limit. Model must be a configured alias. Additional JSON parameters pass
+        through; provider-specific semantics are not translated. No automatic inference retries. SSE failure
+        after headers aborts the response stream and records failure; HTTP 200 alone does not imply completion.
+      security:
+      - applicationKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model:
+                  type: string
+                  maxLength: 100
+                messages:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                stream:
+                  type: boolean
+                  default: false
+              required:
+              - model
+              - messages
+      responses:
+        '200':
+          description: Valid JSON completion or SSE events terminated by [DONE]
+          headers:
+            X-Request-ID:
+              schema: &id003
+                type: string
+              description: Gateway-generated request ID for call record correlation
+          content:
+            application/json:
+              schema:
+                type: object
+            text/event-stream:
+              schema:
+                type: string
+        default:
+          $ref: '#/components/responses/Error'
+  /mcp:
+    post:
+      summary: Reserved MCP endpoint; not implemented
+      responses:
+        '501':
+          description: MCP gateway is not implemented
+  /api/v1/gateway:
+    get:
+      summary: Read connections and applications; no credentials, ciphertext or key hashes
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GatewaySnapshot'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/connections:
+    post:
+      summary: Create connection
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connection'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: &id001
+              $ref: ../schemas/gateway.schema.json#/$defs/connection
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+  /api/v1/connections/{id}:
+    put:
+      summary: Update connection using its current revision
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Connection'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: *id001
+      parameters:
+      - $ref: '#/components/parameters/RecordID'
+      - $ref: '#/components/parameters/ConsoleRequest'
+  /api/v1/applications:
+    post:
+      summary: Create application
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationResult'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: &id002
+              $ref: ../schemas/gateway.schema.json#/$defs/application
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+  /api/v1/applications/{id}:
+    put:
+      summary: Update application using its current revision
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationResult'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: *id002
+      parameters:
+      - $ref: '#/components/parameters/RecordID'
+      - $ref: '#/components/parameters/ConsoleRequest'
+  /api/v1/connections/{id}/test:
+    post:
+      summary: Explicitly probe upstream GET /models; does not verify inference
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProbeResult'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      parameters:
+      - $ref: '#/components/parameters/RecordID'
+      - $ref: '#/components/parameters/ConsoleRequest'
+  /api/v1/applications/{id}/rotate:
+    post:
+      summary: Rotate application key; existing admitted requests continue
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationResult'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Revision'
+      parameters:
+      - $ref: '#/components/parameters/RecordID'
+      - $ref: '#/components/parameters/ConsoleRequest'
+  /api/v1/applications/{id}/revoke:
+    post:
+      summary: Revoke application key; existing admitted requests continue
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationResult'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Revision'
+      parameters:
+      - $ref: '#/components/parameters/RecordID'
+      - $ref: '#/components/parameters/ConsoleRequest'
+  /api/v1/requests:
+    get:
+      summary: Read the recent metadata-only call index, not a tamper-proof evidence ledger
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditView'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 100
+      - name: application_id
+        in: query
+        schema: *id003
+  /v1/models:
+    get:
+      summary: List only enabled aliases allowed for the authenticated application
+      security:
+      - applicationKey: []
+      responses:
+        '200':
+          description: OpenAI-compatible model list, without an upstream network call
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  object:
+                    const: list
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: *id003
+                        object:
+                          const: model
+                        created:
+                          const: 0
+                        owned_by:
+                          const: govweave
+                      required:
+                      - id
+                      - object
+                      - created
+                      - owned_by
+                required:
+                - object
+                - data
+        default:
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    adminSession:
+      type: apiKey
+      in: cookie
+      name: govweave_session
+      description: HttpOnly session established by password setup or login; expires after 8 hours, logout
+        or restart.
+    applicationKey:
+      type: http
+      scheme: bearer
+      description: Application key returned only on creation or rotation; never use an administrator password
+        or session here.
+  schemas:
+    Instance:
+      type: object
+      required:
+      - schema_version
+      - revision
+      - organization_name
+      - public_url
+      - configured
+      - sources
+      - listen_addr
+      - endpoints
+      properties:
+        schema_version:
+          const: 1
+        revision:
+          type: integer
+          minimum: 0
+        organization_name:
+          type: string
+        public_url:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        configured:
+          type: boolean
+          description: Organization name and public URL are set; not model readiness
+        listen_addr:
+          type: string
+        sources:
+          type: object
+          additionalProperties:
+            enum:
+            - unconfigured
+            - console
+            - file
+            - environment
+        endpoints:
+          type: object
+          additionalProperties:
+            type: object
+            required:
+            - url
+            - status
+            properties:
+              url:
+                type: string
+              status:
+                enum:
+                - available
+                - planned
+    Connection:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        base_url:
+          type: string
+        model:
+          type: string
+        alias:
+          type: string
+        created_at:
+          type: string
+        revision: &id005
+          type: integer
+          minimum: 0
+        enabled: &id004
+          type: boolean
+        allow_insecure_http: *id004
+        timeout_seconds:
+          type: integer
+          minimum: 1
+          maximum: 300
+        has_credential: *id004
+      required:
+      - id
+      - name
+      - base_url
+      - model
+      - alias
+      - created_at
+      - revision
+      - enabled
+      - allow_insecure_http
+      - timeout_seconds
+      - has_credential
+    Application:
+      type: object
+      properties:
+        id: *id003
+        revision: *id005
+        name: *id003
+        allowed_connections:
+          type: array
+          items: *id003
+        key_prefix: *id003
+        revoked: *id004
+        created_at: *id003
+      required:
+      - id
+      - revision
+      - name
+      - allowed_connections
+      - key_prefix
+      - revoked
+      - created_at
+    ApplicationResult:
+      type: object
+      properties:
+        application:
+          $ref: '#/components/schemas/Application'
+        api_key:
+          type: string
+          description: One-time plaintext application key, present only for creation or rotation. Never
+            appears in a later snapshot.
+      required:
+      - application
+    GatewaySnapshot:
+      type: object
+      properties:
+        revision: *id005
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Connection'
+        applications:
+          type: array
+          items:
+            $ref: '#/components/schemas/Application'
+      required:
+      - revision
+      - connections
+      - applications
+    ProbeResult:
+      type: object
+      properties:
+        ok: *id004
+        model_found: *id004
+        http_status: *id005
+        duration_ms: *id005
+        message: *id003
+        request_id: *id003
+      required:
+      - ok
+      - model_found
+      - http_status
+      - duration_ms
+      - message
+      - request_id
+    CallRecord:
+      type: object
+      properties:
+        request_id:
+          type: string
+        started_at:
+          type: string
+        timestamp:
+          type: string
+        operation:
+          type: string
+        application_id:
+          type: string
+        connection_id:
+          type: string
+        model:
+          type: string
+        error_code:
+          type: string
+        schema_version:
+          const: 1
+        phase:
+          enum:
+          - started
+          - finished
+        policy_revision: *id005
+        decision:
+          enum:
+          - allow
+          - deny
+          - not_evaluated
+        outcome:
+          enum:
+          - in_progress
+          - completed
+          - blocked
+          - rejected
+          - failed
+          - cancelled
+          - incomplete
+        http_status: *id005
+        upstream_status: *id005
+        upstream_attempted: *id004
+        streaming: *id004
+        duration_ms: *id005
+        first_byte_ms: *id005
+      required:
+      - request_id
+      - started_at
+      - timestamp
+      - operation
+      - schema_version
+      - phase
+      - policy_revision
+      - decision
+      - outcome
+      - http_status
+      - upstream_attempted
+      - streaming
+      - duration_ms
+    AuditView:
+      type: object
+      properties:
+        available: *id004
+        bytes: *id005
+        max_bytes: *id005
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/CallRecord'
+      required:
+      - available
+      - bytes
+      - max_bytes
+      - records
+    Revision:
+      type: object
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+      required:
+      - revision
+      additionalProperties: false
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: *id003
+            message: *id003
+          required:
+          - code
+          - message
+        request_id: *id003
+      required:
+      - error
+  requestBodies:
+    Password:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - password
+            additionalProperties: false
+            properties:
+              password:
+                type: string
+                minLength: 12
+                maxLength: 128
+                writeOnly: true
+  parameters:
+    ConsoleRequest:
+      name: X-GovWeave-Request
+      in: header
+      required: true
+      schema:
+        type: string
+        const: console
+    RecordID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Connection or application ID from the administrative snapshot.
+  responses:
+    LoggedIn:
+      description: Session created; JSON contains only authentication state, never credentials
+      headers:
+        Set-Cookie:
+          description: govweave_session; Path=/api/; HttpOnly; SameSite=Strict; Max-Age=28800; Secure
+            when using HTTPS
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+            - authenticated
+            - setup_required
+            properties:
+              authenticated:
+                const: true
+              setup_required:
+                const: false
+    Error:
+      description: Structured error. Management APIs use 400/401/403/404/409/413/415/429/500/503; model
+        APIs additionally use 422/499/502/504. Error details from providers are not returned.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

@@ -1,0 +1,12 @@
+/data/
+/bin/
+/dist/
+.env
+*.token
+*.local.json
+coverage.out
+
+__pycache__/
+
+# Local cloud credentials are never part of the project.
+/.aws

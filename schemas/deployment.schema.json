@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:govweave:deployment:1",
+  "title": "GovWeave deployment configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "listen_addr": {"type": "string", "minLength": 1},
+    "data_dir": {"type": "string", "minLength": 1},
+    "admin_token_file": {"type": "string", "minLength": 1, "deprecated": true, "description": "Legacy migration detection only; no longer accepted for authentication. New installs set a password in the console."},
+    "organization_name": {"type": "string", "minLength": 1, "maxLength": 100},
+    "public_url": {"type": "string", "format": "uri", "maxLength": 2048, "description": "HTTP(S) origin only, without credentials, path, query or fragment. Server performs additional validation."}
+  }
+}

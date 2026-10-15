@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:govweave:instance-update:1",
+  "title": "GovWeave instance update v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "revision", "organization_name", "public_url"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "revision": {"type": "integer", "minimum": 0},
+    "organization_name": {"type": "string", "minLength": 1, "maxLength": 100},
+    "public_url": {"type": "string", "format": "uri", "maxLength": 2048}
+  }
+}

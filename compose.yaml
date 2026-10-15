@@ -1,0 +1,20 @@
+services:
+  govweave:
+    image: govweave:0.2.0-dev
+    build: .
+    pull_policy: never
+    command: ["-config", "/etc/govweave/deployment.json"]
+    ports:
+      - "${GOVWEAVE_BIND_IP:-127.0.0.1}:${GOVWEAVE_PORT:-8080}:8080"
+    environment:
+      GOVWEAVE_LISTEN_ADDR: "0.0.0.0:8080"
+      GOVWEAVE_DATA_DIR: "/data"
+    volumes:
+      - govweave-data:/data
+      - ${GOVWEAVE_CONFIG:-./examples/deployment.json}:/etc/govweave/deployment.json:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+volumes:
+  govweave-data:
