@@ -145,7 +145,7 @@ cd govweave-0.2.0-dev-linux-amd64
 ./govweave -config examples/deployment.json
 ```
 
-The target needs neither Go nor Node, but its OS and CPU must match the artifact. On macOS, use `shasum -a 256 -c` for checksum verification. Checksums are provided; signed releases are not implemented. The archive contains the executable, English and Chinese documentation, examples, API schemas, and licenses. It contains no instance data, credentials, model weights, or regulatory datasets. Source-build commands in these guides require a source checkout, which is not included in the binary archive.
+The target needs neither Go nor Node, but its OS and CPU must match the artifact. On macOS, use `shasum -a 256 -c` for checksum verification. Checksums are provided; signed releases are not implemented. The archive contains the executable, English and Chinese documentation, examples, API schemas, and licenses. It contains no instance data, credentials, model weights, or regulatory source-text datasets. A narrow source-backed draft rule pack is included as an example. Source-build commands in these guides require a source checkout, which is not included in the binary archive.
 
 For an offline container installation, save the locally built image:
 
@@ -172,17 +172,26 @@ Files are created when their corresponding features are initialized or saved. Tr
 | `instance.json` | Console-saved instance settings and revision |
 | `gateway.json` | Connections and applications; encrypted provider credentials, hashed application keys, and other unencrypted configuration |
 | `gateway.key` | Local AES-256-GCM encryption key required to decrypt saved provider credentials |
-| `policies.json` | Latest credential policy, revision, and rule-set version; created on first save |
-| `calls.jsonl` | Metadata-only start and finish records; mode `0600`, capped at 128 MiB |
+| `tools.json` | Read-tool settings, encrypted credentials and immutable metadata history; at most 32 tools / 128 total snapshots / 4 MiB; created on first save |
+| `output-policies.json` | Sensitive-output policy history; disabled revision zero plus at most 127 updates / 2 MiB; private atomic state, created on first save |
+| `policies.json` | Credential policy history and active revision (schema 2); up to 1024 snapshots / 8 MiB; created on first save |
+| `assessment-reports/` | Explicit historical report snapshots, including structured governance fact values; private files, 256 reports / 64 MiB total |
+| `evidence.key` and `evidence/` | Separate encrypted risk-content vault and private capture/access metadata; back up together; see [risk evidence](risk-evidence.md) |
+| `task-evidence/` | Private plaintext task metadata snapshots, authenticated with a purpose-derived key tied to `evidence.key`; 256 snapshots / 2 MiB per file / 64 MiB total; no automatic expiry or eviction |
+| `products.json` | Registered product profiles, administrative fact values and revision; private, maximum 4 MiB; latest reports are memory-only |
+| `rule-packs/` | Optional local declarative plugin files; loaded on startup; include in backups |
+| `calls.jsonl` | Metadata-only start and finish records, including opt-in bounded trace identifiers; mode `0600`, capped at 128 MiB |
 | `.instance.lock` | OS-held process lock; not a configuration file |
 | `admin.token`, if present | Legacy migration marker only; no longer accepted for authentication |
 
-Private state files must retain restrictive permissions. Configuration saves use a synced temporary file followed by atomic replacement and revision checks. Invalid or unsupported persisted state causes startup to fail rather than silently reset. A missing `policies.json` means the disabled initial policy, so do not delete it to change enforcement.
+Trace queries use the global latest 1,000 request index entries rebuilt from this audit on startup, not a complete task-history store. See [heterogeneous Agent tracing](agent-tracing.md) for scoped access and retention limits.
+
+Private state files must retain restrictive permissions. Configuration saves use a synced temporary file followed by atomic replacement and revision checks. Invalid or unsupported persisted state causes startup to fail rather than silently reset. A missing `policies.json` or `output-policies.json` means that policy starts disabled; preserve both in backups and do not delete them to change enforcement.
 
 For a consistent backup or upgrade:
 
 1. Stop the instance and prevent another process from using its data directory.
-2. Copy the data directory, deployment file, and the deployment environment settings to protected backup storage. Keep `gateway.key` with `gateway.json`.
+2. Copy the data directory, deployment file, and the deployment environment settings to protected backup storage. Keep `gateway.key` with `gateway.json` and `tools.json`. The tool history retains encrypted historical credentials, so protect the complete backup.
 3. Replace the executable or image, or restore the backup to the intended data directory while stopped. Preserve ownership and private file modes.
 4. Start one instance. Check `/healthz`, sign in again, and verify connections, application grants, and the saved policy before application traffic resumes.
 
@@ -233,3 +242,5 @@ Changing language preserves drafts, model grants, and any currently displayed on
 | Startup rejects a state file | Restore a consistent backup or repair it while stopped; do not delete configuration to bypass validation |
 
 See [error codes and streaming failures](model-gateway.md#streaming-timeouts-and-errors) for model-side handling.
+
+Active testing adds private `test-plans.json` and `test-runs/` plus installed `test-suites/`. Include them in stopped-instance backups. Scheduling may resume model calls after restart when explicitly enabled; inspect the plan before restoring into an environment with reachable providers. See [Active assessment](active-assessments.md) for capacity and response-retention limits.

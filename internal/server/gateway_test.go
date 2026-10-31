@@ -33,7 +33,7 @@ func TestGatewayAdminContractAndCredentialSeparation(t *testing.T) {
 	if strings.Contains(w.Body.String(), app.APIKey) || strings.Contains(w.Body.String(), "private-provider-token") || strings.Contains(w.Body.String(), "key_hash") {
 		t.Fatal("snapshot leaked secrets")
 	}
-	for _, path := range []string{"/api/v1/gateway", "/api/v1/requests", "/api/v1/instance"} {
+	for _, path := range []string{"/api/v1/gateway", "/api/v1/requests", "/api/v1/instance", "/api/v1/policies/credential-egress/history", "/api/v1/policies/credential-egress/revisions/0"} {
 		if invoke(h, "GET", path, "", app.APIKey, nil).Code != 401 {
 			t.Fatal("application key accessed management")
 		}

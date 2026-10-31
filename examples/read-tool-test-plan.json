@@ -1,0 +1,14 @@
+{
+  "revision": 0,
+  "application_id": "replace-with-product-application-id",
+  "target_version": "release-1.0.0",
+  "suite_id": "read-tool-output-controls",
+  "suite_version": "1.0.0",
+  "context": "Dedicated synthetic resources on one read tool; no claim of general Agent safety or legal compliance.",
+  "schedule_enabled": false,
+  "interval_seconds": 3600,
+  "timeout_seconds": 15,
+  "retain_responses": false,
+  "target_kind": "read_tool",
+  "tool_alias": "synthetic-read"
+}

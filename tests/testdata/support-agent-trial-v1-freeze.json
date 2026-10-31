@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-29T14:09:52.269006+00:00",
+  "files_sha256": {
+    "tests/testdata/support-agent-trial-v1.json": "9146c3adc5d97b7df8f6098dba0caf066aa06c5a6a578fba8d84b140ff51a581",
+    "examples/support-agent/app.example.json": "cd69529bd610e63cc9b6c1634fdb81ad51fd453aef6274cc5a4f623ba41d8e03",
+    "examples/support-agent/knowledge.json": "b6bf2cc47aef9aa3fc2274a01ea9417ad62be4286f8b5943ad5aab969587ed99",
+    "examples/support-agent/knowledge/billing-contact.txt": "11c4f98ac40e6ced8d292b5264ca464038360304ab21789959f952dcfe4ab277",
+    "examples/support-agent/knowledge/customer-ticket.txt": "20359832faaa28b2a38f76f8482b6757c3f014028bff27d79f5cf3be2413a5e0",
+    "examples/support-agent/knowledge/encoded-ticket.txt": "08d2b1f49371a9bb012e30f8230d33836625b817dc3db28834c12b67d4526076",
+    "examples/support-agent/knowledge/hex-ticket.txt": "c68a889117022ff2cd32908937bcea25228eb3d1057d613ecc5cb634beaa1564",
+    "examples/support-agent/knowledge/refund-policy.txt": "2bc6e601c158326498fec312c7a61a64454bab965b10508c389fca5e7c0ca18e",
+    "examples/support-agent/knowledge/security-training.txt": "4a008c4b6508c5e9c259525d090ce25e9ed3525c8ac0e9021865abf6f9deb181",
+    "examples/support-agent/knowledge/service-hours.txt": "de147ac9a01bbf15422ae475654f2d943c001cd1bb2288902977f2b970c31151",
+    "examples/support-agent/knowledge/staff-roster.txt": "f0cc735c5ea80489ccae9f28c5f31884950e1f8c59d26c624f5fc106148366cd",
+    "examples/support-agent/knowledge/vendor-note.txt": "9766d2247d7528921ae3e4cc3e56ae01f011b7d5ce247497480cd5a9233f1465"
+  },
+  "protocol": "Authored visible cases and sample business documents fixed before implementing or measuring the trial. Existing corpora and detector/scorer versions stay unchanged. Custom data must be measured separately."
+}

@@ -1,0 +1,839 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Offline synthetic canary quality and local detector cost benchmark",
+  "description": "Versioned standalone-stage ablation on frozen authored cases. Timing excludes queue wait, gateway I/O and models; these measurements do not establish a production realtime SLA or regulatory compliance.",
+  "$ref": "#/$defs/Report",
+  "$defs": {
+    "StageDescriptor": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "version"
+          ],
+          "properties": {
+            "id": {
+              "const": "exact"
+            },
+            "version": {
+              "const": "literal-exact-v1"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "version"
+          ],
+          "properties": {
+            "id": {
+              "const": "normalized"
+            },
+            "version": {
+              "const": "canary-normalized-ablation-v1"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "version"
+          ],
+          "properties": {
+            "id": {
+              "const": "single_layer"
+            },
+            "version": {
+              "const": "canary-v2-depth1-ablation-v1"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "version"
+          ],
+          "properties": {
+            "id": {
+              "const": "two_layer"
+            },
+            "version": {
+              "const": "synthetic-canary-v2"
+            }
+          }
+        }
+      ]
+    },
+    "Options": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repetitions_per_case_per_round",
+        "warmup_passes_per_round",
+        "trials",
+        "workers",
+        "seed"
+      ],
+      "properties": {
+        "repetitions_per_case_per_round": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "warmup_passes_per_round": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "trials": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "workers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ]
+          },
+          "maxItems": 2,
+          "uniqueItems": true
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": -9223372036854775808,
+          "maximum": 9223372036854775807
+        }
+      }
+    },
+    "Environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "go_version",
+        "goos",
+        "goarch",
+        "logical_cpus",
+        "gomaxprocs",
+        "build_settings"
+      ],
+      "properties": {
+        "go_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "goos": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "goarch": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "logical_cpus": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "gomaxprocs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "build_settings": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "vcs.revision": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "vcs.modified": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "GOOS": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "GOARCH": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "CGO_ENABLED": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "GOAMD64": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "GOARM64": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "-race": {
+              "type": "string",
+              "maxLength": 256
+            }
+          }
+        }
+      }
+    },
+    "StageCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "group",
+        "category",
+        "expected",
+        "response_bytes",
+        "eligible",
+        "state",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "group": {
+          "type": "string",
+          "enum": [
+            "validation",
+            "challenge",
+            "boundary"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "expected": {
+          "type": "string",
+          "enum": [
+            "exposed",
+            "not_exposed",
+            "unevaluable"
+          ]
+        },
+        "response_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 32768
+        },
+        "eligible": {
+          "type": "boolean"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "observed",
+            "not_observed",
+            "unknown"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "Transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from_stage",
+        "added_true_positive_ids",
+        "lost_true_positive_ids",
+        "added_false_positive_ids",
+        "resolved_false_positive_ids",
+        "became_unknown_ids",
+        "resolved_unknown_ids"
+      ],
+      "properties": {
+        "from_stage": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "normalized",
+            "single_layer",
+            "two_layer"
+          ]
+        },
+        "added_true_positive_ids": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "lost_true_positive_ids": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "added_false_positive_ids": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "resolved_false_positive_ids": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "became_unknown_ids": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        },
+        "resolved_unknown_ids": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "maxItems": 256,
+          "uniqueItems": true
+        }
+      }
+    },
+    "StageQuality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "score",
+        "groups",
+        "cases"
+      ],
+      "properties": {
+        "stage": {
+          "$ref": "#/$defs/StageDescriptor"
+        },
+        "score": {
+          "$ref": "canary.schema.json#/$defs/Score"
+        },
+        "groups": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 3,
+          "additionalProperties": false,
+          "properties": {
+            "validation": {
+              "$ref": "canary.schema.json#/$defs/Score"
+            },
+            "challenge": {
+              "$ref": "canary.schema.json#/$defs/Score"
+            },
+            "boundary": {
+              "$ref": "canary.schema.json#/$defs/Score"
+            }
+          }
+        },
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/StageCase"
+          },
+          "maxItems": 256
+        },
+        "transition": {
+          "$ref": "#/$defs/Transition"
+        }
+      }
+    },
+    "LatencyStats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "calls",
+        "unique_cases",
+        "mean_ns",
+        "min_ns",
+        "p50_ns",
+        "p95_ns",
+        "p99_ns",
+        "max_ns",
+        "p99_is_maximum"
+      ],
+      "properties": {
+        "calls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200000
+        },
+        "unique_cases": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "mean_ns": {
+          "type": "number",
+          "minimum": 0
+        },
+        "min_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "p50_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "p95_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "p99_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "p99_is_maximum": {
+          "type": "boolean"
+        }
+      },
+      "description": "Empirical nearest-rank call wall times in nanoseconds; repeated calls are not independent quality cases. p99_is_maximum indicates that nearest-rank P99 selects the last sorted observation."
+    },
+    "LatencySlice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage_id",
+        "axis",
+        "value",
+        "latency"
+      ],
+      "properties": {
+        "stage_id": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "normalized",
+            "single_layer",
+            "two_layer"
+          ]
+        },
+        "axis": {
+          "type": "string",
+          "enum": [
+            "all",
+            "group",
+            "label",
+            "category",
+            "input_bytes",
+            "eligibility",
+            "outcome",
+            "unknown_reason"
+          ]
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "latency": {
+          "$ref": "#/$defs/LatencyStats"
+        }
+      }
+    },
+    "Round": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trial",
+        "workers",
+        "seed",
+        "expected_calls",
+        "calls",
+        "batch_elapsed_ns",
+        "complete",
+        "stage_latencies"
+      ],
+      "properties": {
+        "trial": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "workers": {
+          "type": "integer",
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "expected_calls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200000
+        },
+        "calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 200000
+        },
+        "batch_elapsed_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "stage_latencies": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/LatencySlice"
+              },
+              {
+                "properties": {
+                  "axis": {
+                    "const": "all"
+                  },
+                  "value": {
+                    "const": "all"
+                  }
+                }
+              }
+            ]
+          },
+          "maxItems": 4
+        }
+      }
+    },
+    "Load": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workers",
+        "calls",
+        "batch_elapsed_ns",
+        "harness_inclusive_calls_per_second",
+        "slices"
+      ],
+      "properties": {
+        "workers": {
+          "type": "integer",
+          "enum": [
+            1,
+            2
+          ]
+        },
+        "calls": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200000
+        },
+        "batch_elapsed_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "harness_inclusive_calls_per_second": {
+          "type": "number",
+          "minimum": 0
+        },
+        "slices": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/LatencySlice"
+          },
+          "maxItems": 2200
+        }
+      }
+    },
+    "Report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "benchmark_version",
+        "state",
+        "measured_at",
+        "corpus_id",
+        "corpus_version",
+        "corpus_sha256",
+        "provenance",
+        "options",
+        "environment",
+        "stages",
+        "rounds",
+        "loads",
+        "limitations"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "benchmark_version": {
+          "const": "canary-cost-quality-v1"
+        },
+        "executable_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "completed",
+            "incomplete"
+          ]
+        },
+        "error_code": {
+          "const": "benchmark_cancelled_or_inconsistent"
+        },
+        "measured_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "corpus_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "corpus_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "corpus_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "provenance": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "options": {
+          "$ref": "#/$defs/Options"
+        },
+        "environment": {
+          "$ref": "#/$defs/Environment"
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "prefixItems": [
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/StageQuality"
+                },
+                {
+                  "properties": {
+                    "stage": {
+                      "properties": {
+                        "id": {
+                          "const": "exact"
+                        }
+                      }
+                    }
+                  },
+                  "not": {
+                    "required": [
+                      "transition"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/StageQuality"
+                },
+                {
+                  "properties": {
+                    "stage": {
+                      "properties": {
+                        "id": {
+                          "const": "normalized"
+                        }
+                      }
+                    },
+                    "transition": {
+                      "properties": {
+                        "from_stage": {
+                          "const": "exact"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "transition"
+                  ]
+                }
+              ]
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/StageQuality"
+                },
+                {
+                  "properties": {
+                    "stage": {
+                      "properties": {
+                        "id": {
+                          "const": "single_layer"
+                        }
+                      }
+                    },
+                    "transition": {
+                      "properties": {
+                        "from_stage": {
+                          "const": "normalized"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "transition"
+                  ]
+                }
+              ]
+            },
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/StageQuality"
+                },
+                {
+                  "properties": {
+                    "stage": {
+                      "properties": {
+                        "id": {
+                          "const": "two_layer"
+                        }
+                      }
+                    },
+                    "transition": {
+                      "properties": {
+                        "from_stage": {
+                          "const": "single_layer"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "transition"
+                  ]
+                }
+              ]
+            }
+          ],
+          "items": false
+        },
+        "rounds": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/Round"
+          },
+          "maxItems": 10
+        },
+        "loads": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/$defs/Load"
+          },
+          "maxItems": 2
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "maxItems": 32
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "incomplete"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "error_code"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "error_code"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

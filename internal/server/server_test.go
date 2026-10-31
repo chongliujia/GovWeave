@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
 	"govweave/internal/auth"
+	"govweave/internal/compliance"
 	"govweave/internal/config"
 	"govweave/internal/gateway"
+	"govweave/internal/governance"
 	"govweave/internal/instance"
 )
 
@@ -24,6 +27,10 @@ type testHandler struct {
 const validBody = `{"schema_version":1,"revision":0,"organization_name":"测试企业","public_url":"https://ai.example.com/"}`
 
 func handler(t *testing.T) http.Handler {
+	return handlerWithCompliance(t, nil)
+}
+
+func handlerWithCompliance(t *testing.T, evaluator *compliance.Engine) http.Handler {
 	t.Helper()
 	s, err := instance.Open(config.Deployment{SchemaVersion: 1, DataDir: t.TempDir(), ListenAddr: "127.0.0.1:8080", Sources: map[string]string{}})
 	if err != nil {
@@ -38,7 +45,18 @@ func handler(t *testing.T) http.Handler {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { engine.Close() })
-	h := New(s, administrator, engine)
+	if evaluator == nil {
+		evaluator, err = compliance.Open(t.TempDir())
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	products, err := governance.Open(t.TempDir(), engine, evaluator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(products.Close)
+	h := New(s, administrator, engine, evaluator, products)
 	w := invoke(h, "POST", "/api/v1/auth/setup", `{"password":"`+testPassword+`"}`, "", nil)
 	if w.Code != 200 {
 		t.Fatalf("setup authentication: %d %s", w.Code, w.Body.String())
@@ -202,5 +220,38 @@ func TestCredentialPolicyManagement(t *testing.T) {
 	w = invoke(h, "GET", path, "", testPassword, nil)
 	if !strings.Contains(w.Body.String(), `"mode":"observe"`) {
 		t.Fatal("failed updates changed saved policy")
+	}
+	for _, route := range []string{path + "/history", path + "/revisions/0"} {
+		for _, credential := range []string{"", "gw_app_synthetic-application-key"} {
+			if invoke(h, "GET", route, "", credential, nil).Code != 401 {
+				t.Fatal("policy history did not require administrator session")
+			}
+		}
+	}
+	w = invoke(h, "GET", path+"/history?limit=1", "", testPassword, nil)
+	var page gateway.PolicyHistory
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &page) != nil || page.Total != 2 || len(page.Snapshots) != 1 || page.Snapshots[0].Revision != 1 || page.NextBeforeRevision == nil || *page.NextBeforeRevision != 1 {
+		t.Fatalf("invalid history page: %s", w.Body.String())
+	}
+	w = invoke(h, "GET", path+"/history?limit=1&before_revision=1", "", testPassword, nil)
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &page) != nil || len(page.Snapshots) != 1 || page.Snapshots[0].Revision != 0 {
+		t.Fatal("initial policy missing from history")
+	}
+	for _, suffix := range []string{"/history?limit=0", "/history?limit=101", "/history?limit=", "/history?limit=abc", "/history?before_revision=-1", "/history?before_revision=", "/history?before_revision=18446744073709551616", "/revisions/nope", "/revisions/-1"} {
+		if invoke(h, "GET", path+suffix, "", testPassword, nil).Code != 400 {
+			t.Fatalf("invalid history query accepted: %s", suffix)
+		}
+	}
+	if invoke(h, "GET", path+"/revisions/99", "", testPassword, nil).Code != 404 {
+		t.Fatal("unknown history revision not reported")
+	}
+	updatedBody := strings.Replace(strings.Replace(body, `"revision":0`, `"revision":1`, 1), `"observe"`, `"block"`, 1)
+	if invoke(h, "PUT", path, updatedBody, testPassword, nil).Code != 200 {
+		t.Fatal("could not update policy")
+	}
+	w = invoke(h, "GET", path+"/revisions/1", "", testPassword, nil)
+	var historical gateway.PolicySnapshot
+	if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &historical) != nil || !reflect.DeepEqual(historical, saved) {
+		t.Fatal("historical revision changed after policy update")
 	}
 }

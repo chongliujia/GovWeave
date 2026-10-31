@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-29T09:52:37.831807+00:00",
+  "corpus_sha256": "b2860ffb3c5a4f5b366e345838918873b5221ebf7ed33e3624418b1390cffd62",
+  "cases": 45,
+  "protocol": "Authored before v3 implementation, after live v2 error inspection. Includes negatives, limits and unsupported positives. No detector tuning after corpus measurement."
+}

@@ -1,0 +1,14 @@
+{
+  "revision": 0,
+  "application_id": "replace-with-product-application-id",
+  "model_alias": "assistant",
+  "target_version": "release-1.0.0",
+  "suite_id": "sensitive-output-controls",
+  "suite_version": "1.0.0",
+  "context": "Synthetic output-control probes for one planned model target; no representative risk coverage or legal compliance claim.",
+  "schedule_enabled": false,
+  "interval_seconds": 3600,
+  "timeout_seconds": 15,
+  "max_output_tokens": 256,
+  "retain_responses": false
+}

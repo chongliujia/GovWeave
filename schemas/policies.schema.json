@@ -1,74 +1,157 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "GovWeave credential policy state",
-  "description": "Private policies.json created on first save; absent file means the disabled initial policy. Revision increases on each successful save.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "revision",
-    "mode",
-    "rules",
-    "application_ids",
-    "connection_ids",
-    "schema_version",
-    "id",
-    "ruleset_version",
-    "updated_at"
-  ],
-  "properties": {
-    "revision": {
-      "type": "integer",
-      "minimum": 1
-    },
-    "mode": {
-      "enum": [
-        "disabled",
-        "observe",
-        "block"
-      ]
-    },
-    "rules": {
-      "type": "array",
-      "minItems": 1,
-      "maxItems": 2,
-      "uniqueItems": true,
-      "items": {
-        "enum": [
-          "private_key",
-          "api_key"
-        ]
+  "title": "GovWeave credential policy history state",
+  "description": "Private policies.json. Schema 2 stores immutable consecutive snapshots, oldest first; the last is active. Maximum 1024 snapshots and 8 MiB. Legacy schema 1 is read without rewriting and migrates on the next successful save. A missing file means the disabled revision 0.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "snapshots"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 2
+        },
+        "snapshots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1024,
+          "items": {
+            "$ref": "#/$defs/snapshot"
+          }
+        }
       }
     },
-    "application_ids": {
-      "type": "array",
-      "maxItems": 64,
-      "uniqueItems": true,
-      "items": {
-        "type": "string"
+    {
+      "allOf": [
+        {
+          "$ref": "#/$defs/snapshot"
+        },
+        {
+          "properties": {
+            "revision": {
+              "minimum": 1
+            }
+          },
+          "required": [
+            "updated_at"
+          ]
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "mode",
+        "rules",
+        "application_ids",
+        "connection_ids",
+        "schema_version",
+        "id",
+        "ruleset_version"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "enum": [
+            "disabled",
+            "observe",
+            "block"
+          ]
+        },
+        "rules": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "private_key",
+              "api_key"
+            ]
+          }
+        },
+        "application_ids": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          },
+          "description": "Empty means all, including future items. Non-empty IDs must exist; application and connection scopes are ANDed."
+        },
+        "connection_ids": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          },
+          "description": "Empty means all, including future items. Non-empty IDs must exist; application and connection scopes are ANDed."
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "const": "credential-egress"
+        },
+        "ruleset_version": {
+          "const": "credentials-v1"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
       },
-      "description": "Empty means all, including future items. Non-empty IDs must exist; application and connection scopes are ANDed."
-    },
-    "connection_ids": {
-      "type": "array",
-      "maxItems": 64,
-      "uniqueItems": true,
-      "items": {
-        "type": "string"
-      },
-      "description": "Empty means all, including future items. Non-empty IDs must exist; application and connection scopes are ANDed."
-    },
-    "schema_version": {
-      "const": 1
-    },
-    "id": {
-      "const": "credential-egress"
-    },
-    "ruleset_version": {
-      "const": "credentials-v1"
-    },
-    "updated_at": {
-      "type": "string",
-      "format": "date-time"
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "revision": {
+                "const": 0
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "const": "disabled"
+              },
+              "rules": {
+                "const": [
+                  "private_key",
+                  "api_key"
+                ]
+              },
+              "application_ids": {
+                "maxItems": 0
+              },
+              "connection_ids": {
+                "maxItems": 0
+              }
+            },
+            "not": {
+              "required": [
+                "updated_at"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "updated_at"
+            ]
+          }
+        }
+      ]
     }
   }
 }

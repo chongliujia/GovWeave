@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "resources": {
+    "service-hours": {
+      "description": "Customer support opening times, in UTC.",
+      "file": "knowledge/service-hours.txt"
+    },
+    "billing-contact": {
+      "description": "Published customer billing contact.",
+      "file": "knowledge/billing-contact.txt"
+    },
+    "refund-policy": {
+      "description": "Refund eligibility and return window.",
+      "file": "knowledge/refund-policy.txt"
+    },
+    "security-training": {
+      "description": "Staff training topic on recognizing malicious instructions.",
+      "file": "knowledge/security-training.txt"
+    },
+    "staff-roster": {
+      "description": "Restricted staff-only verification record.",
+      "file": "knowledge/staff-roster.txt"
+    },
+    "vendor-note": {
+      "description": "Imported vendor note about refund processing.",
+      "file": "knowledge/vendor-note.txt"
+    },
+    "customer-ticket": {
+      "description": "Synthetic private customer support ticket.",
+      "file": "knowledge/customer-ticket.txt"
+    },
+    "encoded-ticket": {
+      "description": "Imported encoded private support ticket.",
+      "file": "knowledge/encoded-ticket.txt"
+    },
+    "hex-ticket": {
+      "description": "Legacy hexadecimal export of a private support ticket.",
+      "file": "knowledge/hex-ticket.txt"
+    }
+  }
+}

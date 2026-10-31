@@ -1,5 +1,7 @@
 import { t, formatDateTime, formatTime } from "/i18n.js";
-import { createPolicyConsole, policyResults, policyRules } from "/policies.js";
+import { createPolicyConsole, policyResults, policyRules, renderPolicySnapshot } from "/policies.js";
+import { createIntegrationConsole } from "/integration.js";
+import { createEvidenceConsole } from "/evidence.js";
 const el = id => document.getElementById(id);
 const node = (tag, text, className) => {
   const value = document.createElement(tag);
@@ -13,13 +15,20 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   let state = { connections: [], applications: [] };
   let editingConnection = null, editingApplication = null;
   let auditSnapshot = null, requestSnapshot = null, inspectedRequest = null;
+  let inspectedPolicy = null, inspectedPolicyStatus = "idle", policyInspectionEpoch = 0;
   let overviewUpdatedAt = null, overviewFailed = false, activePage = "overview";
+  const integration = createIntegrationConsole({ getState: () => state, getInstance, request, openRecords: async (applicationID, record) => {
+    chooseTab("requests"); el("requests-app").value = applicationID;
+    await act(el("refresh-requests"), async () => { await loadRequests(); if (record) inspectRequest(record); });
+  } });
+  const evidence = createEvidenceConsole({ request, getState: () => state });
   const pages = {
     overview: ["Overview", "OVERVIEW / 01", "See how applications connect to models and review recent activity."],
     connections: ["Model connections", "MODEL CONNECTIONS / 02", "Configure upstream models and service aliases for consistent application access."],
     applications: ["Applications & keys", "APPLICATION ACCESS / 03", "Give each application its own key and explicit model grants."],
     policies: ["Runtime policies", "RUNTIME POLICIES / 04", "Control credential egress with local checks before model execution."],
     requests: ["Request logs", "REQUEST LOG / 05", "Review authorization and execution results for each request ID."],
+    evidence: ["Risk evidence", "RISK EVIDENCE / 06", "Inspect retained request evidence, recorded findings and their relationships."],
     deployment: ["Deployment & access", "INSTANCE SETTINGS / 06", "Set your gateway URL and generate connection details for your applications."],
   };
   const send = (path, data, method = "POST") => request(path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
@@ -44,6 +53,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   }
   function chooseTab(name) {
     if (!getInstance() || !pages[name]) return;
+    if (name !== activePage) { integration.clear(); evidence.clear(); }
     activePage = name;
     renderHeading(name);
     el("notice").hidden = true;
@@ -54,6 +64,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
       if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
     });
     window.scrollTo({ top: 0, behavior: "instant" });
+    if (name === "evidence") evidence.enter();
   }
   document.querySelectorAll("[data-tab]").forEach(button => button.addEventListener("click", event => {
     event.preventDefault(); chooseTab(button.dataset.tab);
@@ -181,19 +192,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     const instance = getInstance();
     el("instance-host").textContent = instance?.public_url ? new URL(instance.public_url).host : t("Instance URL not configured");
     el("overview-setup").hidden = !instance || instance.configured;
-    const app = state.applications.find(a => a.id === el("example-app").value && !a.revoked);
-    const connection = app && state.connections.find(c => c.enabled && app.allowed_connections.includes(c.id));
-    const comment = t("# Use an application API key for GOVWEAVE_API_KEY, not the administrator password.");
-    let example = comment + "\n" + t("# Save the instance URL, then select an application with an enabled model grant.");
-    if (instance?.public_url && connection) example = [
-      "import os", "from openai import OpenAI", "", comment,
-      "client = OpenAI(", `    base_url=${JSON.stringify(instance.endpoints.models.url)},`,
-      '    api_key=os.environ["GOVWEAVE_API_KEY"],', "    max_retries=0,", `    timeout=${connection.timeout_seconds + 10}.0,`, ")", "",
-      "stream = client.chat.completions.create(", `    model=${JSON.stringify(connection.alias)},`,
-      `    messages=[{"role": "user", "content": ${JSON.stringify(t("Summarize this document."))}}],`, "    stream=True,", ")",
-      "for chunk in stream:", "    if chunk.choices:", '        print(chunk.choices[0].delta.content or "", end="", flush=True)',
-    ].join("\n");
-    el("sdk-example").textContent = example; el("copy-example").disabled = !(instance?.public_url && connection);
+    integration.render();
   }
   async function refresh() {
     state = await request("/api/v1/gateway");
@@ -202,6 +201,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     populateSelect("example-app", t("Select an application"), state.applications.filter(a => !a.revoked));
     if (!el("example-app").value) el("example-app").value = state.applications.find(a => !a.revoked)?.id || "";
     populateSelect("requests-app", t("All applications and connection checks"), state.applications); renderExample();
+    evidence.refresh();
     renderOverview();
     await policies.refresh(state);
     await refreshOverview();
@@ -210,7 +210,37 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   const operationNames = { "chat.completions": "Chat completion", "models.list": "Model list", "connection.test": "Connection check" };
   const applicationName = record => state.applications.find(a => a.id === record.application_id)?.name || (record.operation === "connection.test" ? t("Administrator check") : t("Unknown application"));
   const statusClass = record => ["failed", "blocked", "rejected"].includes(record.outcome) ? "failed" : record.outcome === "completed" ? "available" : "muted-status";
+  function renderRequestPolicy() {
+    el("request-policy-snapshot").hidden = !inspectedRequest?.content_policy;
+    el("load-request-policy").hidden = !!inspectedPolicy;
+    el("load-request-policy").disabled = inspectedPolicyStatus === "loading";
+    const messages = {
+      loading: "Loading policy snapshot…",
+      missing: "This revision was not retained. Configurations from before the history baseline cannot be reconstructed.",
+      error: "Could not load this policy snapshot. Try again.",
+    };
+    el("request-policy-status").textContent = t(messages[inspectedPolicyStatus] || "");
+    el("request-policy-fields").replaceChildren();
+    if (inspectedPolicy) renderPolicySnapshot(el("request-policy-fields"), inspectedPolicy);
+  }
+  el("load-request-policy").addEventListener("click", async () => {
+    if (!inspectedRequest?.content_policy || inspectedPolicyStatus === "loading") return;
+    const generation = policyInspectionEpoch, revision = inspectedRequest.content_policy.revision;
+    inspectedPolicyStatus = "loading"; renderRequestPolicy();
+    try {
+      const snapshot = await request(`/api/v1/policies/credential-egress/revisions/${revision}`);
+      if (generation !== policyInspectionEpoch) return;
+      inspectedPolicy = snapshot; inspectedPolicyStatus = "loaded";
+    } catch (error) {
+      if (generation !== policyInspectionEpoch) return;
+      inspectedPolicyStatus = error.status === 404 ? "missing" : "error";
+    }
+    if (generation === policyInspectionEpoch) renderRequestPolicy();
+  });
   function inspectRequest(record) {
+    if (inspectedRequest?.request_id !== record.request_id) {
+      policyInspectionEpoch++; inspectedPolicy = null; inspectedPolicyStatus = "idle";
+    }
     inspectedRequest = record;
     el("request-detail").querySelector(".editor-notice").hidden = true;
     el("detail-request-id").textContent = record.request_id;
@@ -236,6 +266,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
       );
     } else values.push([t("Credential policy"), t("Not evaluated")]);
     for (const [label, value] of values) { const row = node("div"); row.append(node("dt", label), node("dd", value)); fields.append(row); }
+    renderRequestPolicy();
     if (!el("request-detail").open) el("request-detail").showModal();
   }
   function renderRequestTable(view) {
@@ -251,6 +282,10 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
       const identity = node("td"), requestButton = action(record.request_id, async () => inspectRequest(record));
       requestButton.className = "request-open"; requestButton.setAttribute("aria-label", t("View request {id}", { id: record.request_id }));
       identity.append(node("span", formatDateTime(record.started_at)), requestButton);
+      if (record.application_id) {
+        const retained = action(t("Risk evidence"), async () => { chooseTab("evidence"); evidence.openRequest(record.application_id, record.request_id); });
+        retained.dataset.evidenceFor = record.request_id; identity.append(retained);
+      }
       const model = node("td"); model.append(node("span", applicationName(record)), node("code", record.model || "—"));
       const operation = node("td"); operation.append(node("span", (t(operationNames[record.operation] || record.operation)) + (record.streaming ? t(" · Streaming") : "")), node("small", record.decision === "allow" ? t("Allowed") : record.decision === "deny" ? t("Denied") : t("Not evaluated")));
       const result = node("td"); result.append(node("span", `${t(outcomes[record.outcome] || record.outcome)} · ${record.http_status || "—"}`, `capability ${statusClass(record)}`), node("small", record.error_code || (record.upstream_attempted ? t("Upstream {status}", { status: record.upstream_status || t("No response") }) : t("No upstream request"))));
@@ -356,13 +391,13 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   el("refresh-gateway").addEventListener("click", () => act(el("refresh-gateway"), async () => { await refresh(); resetConnection(); resetApplication(); notice(t("Latest configuration loaded. Select a connection or application to edit.")); }));
   el("refresh-requests").addEventListener("click", () => act(el("refresh-requests"), loadRequests));
   el("requests-app").addEventListener("change", () => act(el("refresh-requests"), loadRequests));
-  el("example-app").addEventListener("change", renderExample);
   el("copy-new-key").addEventListener("click", () => copy(el("new-api-key").textContent));
   el("dismiss-key").addEventListener("click", () => showKey(""));
   function relocalize() {
     if (!getInstance()) { document.title = t("GovWeave · Enterprise AI Gateway"); return; }
     renderHeading(activePage);
     policies.relocalize();
+    evidence.relocalize();
     renderConnections(); renderApplications();
     const selected = [...el("application-grants").querySelectorAll("input:checked")].map(input => input.value);
     renderGrants(selected);
@@ -381,6 +416,9 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     el("save-application").textContent = t(editingApplication ? "Save application grants" : "Create application & key");
   }
   return { refresh, renderExample, relocalize, enter() { chooseTab("overview"); }, reset() {
+    integration.clear();
+    evidence.reset();
+    policyInspectionEpoch++; inspectedPolicy = null; inspectedPolicyStatus = "idle";
     policies.reset();
     state = { connections: [], applications: [] }; editingConnection = editingApplication = null; auditSnapshot = requestSnapshot = inspectedRequest = null;
     overviewUpdatedAt = null; overviewFailed = false;
@@ -392,6 +430,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     el("overview-updated").textContent = t("Not loaded");
     el("topology-apps").replaceChildren(); el("topology-models").replaceChildren();
     el("request-detail-fields").replaceChildren(); el("request-detail-state").replaceChildren(); el("detail-request-id").textContent = "";
+    renderRequestPolicy();
     populateSelect("example-app", t("Create an application first"), []); populateSelect("requests-app", t("All applications and connection checks"), []);
     el("sdk-example").textContent = ""; el("audit-status").textContent = "";
     document.title = t("GovWeave · Enterprise AI Gateway");

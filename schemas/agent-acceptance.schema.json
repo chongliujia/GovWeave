@@ -1,0 +1,848 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bounded Agent acceptance with planned denominators and audited gateway attribution",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "state",
+    "live_acceptance",
+    "created_at",
+    "model_mode",
+    "model",
+    "request_profile",
+    "request_parameters",
+    "preflight",
+    "corpus_sha256",
+    "selected_cases",
+    "repetitions",
+    "model_call_budget",
+    "remaining_model_call_budget",
+    "run_budget_seconds",
+    "stop_reason",
+    "binary_sha256",
+    "source_sha256",
+    "metrics",
+    "trajectories",
+    "regressions",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "const": "knowledge-agent-acceptance-v1"
+    },
+    "state": {
+      "enum": [
+        "completed",
+        "incomplete"
+      ]
+    },
+    "live_acceptance": {
+      "enum": [
+        "not_evaluated_on_live_model",
+        "selected_checks_passed",
+        "failed_selected_checks",
+        "inconclusive"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "model_mode": {
+      "enum": [
+        "scripted_local",
+        "moonshot"
+      ]
+    },
+    "model": {
+      "enum": [
+        "scripted-knowledge-agent",
+        "kimi-k2.6",
+        "unsupported"
+      ]
+    },
+    "request_profile": {
+      "const": "moonshot-k2.6-instant-v1"
+    },
+    "request_parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "thinking",
+        "max_tokens"
+      ],
+      "properties": {
+        "thinking": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "const": "disabled"
+            }
+          }
+        },
+        "max_tokens": {
+          "const": 512
+        }
+      }
+    },
+    "preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "reason",
+        "model_list_requests"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "local_fixture",
+            "ready",
+            "blocked"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "model_list_requests": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "corpus_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "selected_cases": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 7,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "repetitions": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 3
+    },
+    "model_call_budget": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 128
+    },
+    "remaining_model_call_budget": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 128
+    },
+    "run_budget_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 600
+    },
+    "stop_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 200
+    },
+    "binary_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source_sha256": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instructions-v1",
+        "instructions-v2",
+        "instructions-v2-reviewed"
+      ],
+      "properties": {
+        "instructions-v1": {
+          "$ref": "#/$defs/Metrics"
+        },
+        "instructions-v2": {
+          "$ref": "#/$defs/Metrics"
+        },
+        "instructions-v2-reviewed": {
+          "$ref": "#/$defs/Metrics"
+        }
+      }
+    },
+    "trajectories": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 63,
+      "items": {
+        "$ref": "#/$defs/Trajectory"
+      }
+    },
+    "regressions": {
+      "type": "array",
+      "maxItems": 63,
+      "items": {
+        "$ref": "#/$defs/Regression"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "maxLength": 1000
+      }
+    },
+    "selected_controls": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "instructions-v1",
+          "instructions-v2",
+          "instructions-v2-reviewed"
+        ]
+      }
+    },
+    "model_interval_seconds": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 60
+    },
+    "sensitive_detector_version": {
+      "enum": [
+        "sensitive-text-v2",
+        "sensitive-text-v3"
+      ]
+    },
+    "task_grading_version": {
+      "const": "task-facts-v1"
+    },
+    "task_expectations_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "task_fact_acceptance": {
+      "enum": [
+        "not_evaluated_on_live_model",
+        "selected_checks_passed",
+        "failed_selected_checks",
+        "inconclusive"
+      ]
+    }
+  },
+  "$defs": {
+    "Event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "step",
+        "round_trip_ms"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "model",
+            "tool"
+          ]
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^req_[A-Za-z0-9_-]{22}$"
+        },
+        "http_status": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599
+        },
+        "round_trip_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "output_policy_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_action": {
+          "const": "redacted"
+        },
+        "tool_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "authorization": {
+          "enum": [
+            "allowed",
+            "denied",
+            "unknown"
+          ]
+        },
+        "decision": {
+          "enum": [
+            "allow",
+            "observe",
+            "redact",
+            "block"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation",
+            "outcome",
+            "duration_ms",
+            "policy_revision"
+          ],
+          "properties": {
+            "operation": {
+              "enum": [
+                "chat.completions",
+                "tools.invoke"
+              ]
+            },
+            "outcome": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "upstream_attempted": {
+              "type": "boolean"
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "policy_revision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "output_policy": {
+              "$ref": "content.schema.json#/$defs/OutputAssessment"
+            },
+            "instruction_policy": {
+              "$ref": "tools.schema.json#/$defs/InstructionAssessment"
+            },
+            "tool_revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "tool_snapshot_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "error_code": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "upstream_status": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 599
+            }
+          }
+        },
+        "expected_resource": {
+          "type": "boolean"
+        },
+        "pacing_wait_ms": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "Trajectory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "label",
+        "controls",
+        "repetition",
+        "status",
+        "reason",
+        "trace_id",
+        "events",
+        "elapsed_ms",
+        "usage",
+        "audit_complete",
+        "expected_read_attempted",
+        "expected_read_returned",
+        "expected_gateway_executed",
+        "attack_success",
+        "task_completed",
+        "gateway_effect",
+        "gateway_effect_reason",
+        "intervention",
+        "task_reason"
+      ],
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "label": {
+          "enum": [
+            "benign",
+            "attack"
+          ]
+        },
+        "controls": {
+          "enum": [
+            "instructions-v1",
+            "instructions-v2",
+            "instructions-v2-reviewed"
+          ]
+        },
+        "repetition": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "status": {
+          "enum": [
+            "not_run",
+            "completed",
+            "blocked",
+            "limited",
+            "error"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "trace_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^trace_[a-f0-9]{32}$"
+        },
+        "events": {
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "$ref": "#/$defs/Event"
+          }
+        },
+        "elapsed_ms": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "usage": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "prompt_tokens",
+            "completion_tokens",
+            "total_tokens"
+          ],
+          "properties": {
+            "prompt_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "completion_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_tokens": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "audit_complete": {
+          "type": "boolean"
+        },
+        "expected_read_attempted": {
+          "type": "boolean"
+        },
+        "expected_read_returned": {
+          "type": "boolean"
+        },
+        "expected_gateway_executed": {
+          "type": "boolean"
+        },
+        "attack_success": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "task_completed": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "gateway_effect": {
+          "enum": [
+            "pass",
+            "fail",
+            "unknown"
+          ]
+        },
+        "gateway_effect_reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "intervention": {
+          "type": "boolean"
+        },
+        "task_reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "task_assessment": {
+          "$ref": "#/$defs/TaskAssessment"
+        }
+      }
+    },
+    "Metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planned",
+        "executed",
+        "attacks",
+        "attack_successes",
+        "attack_unknown",
+        "gateway_pass",
+        "gateway_fail",
+        "gateway_unknown",
+        "benign",
+        "benign_completed",
+        "benign_unknown",
+        "benign_blocked",
+        "benign_intervened",
+        "model_requests",
+        "model_upstream_calls",
+        "tool_requests",
+        "attack_rate_lower",
+        "attack_rate_upper",
+        "task_latency_p50_ms",
+        "task_latency_p95_ms",
+        "reported_tokens"
+      ],
+      "properties": {
+        "planned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "executed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attacks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attack_successes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attack_unknown": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gateway_pass": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gateway_fail": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gateway_unknown": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "benign": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "benign_completed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "benign_unknown": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "benign_blocked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "benign_intervened": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "model_requests": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "model_upstream_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tool_requests": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attack_rate_lower": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "attack_rate_upper": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "task_latency_p50_ms": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "task_latency_p95_ms": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "reported_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "model_pacing_wait_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "task_checks_completed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "task_checks_failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "task_checks_unknown": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "format_equivalent": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fact_mismatches": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Regression": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "controls",
+        "repetition",
+        "status",
+        "reason",
+        "task_reason",
+        "gateway_effect",
+        "gateway_effect_reason"
+      ],
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "controls": {
+          "enum": [
+            "instructions-v1",
+            "instructions-v2",
+            "instructions-v2-reviewed"
+          ]
+        },
+        "repetition": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "status": {
+          "enum": [
+            "not_run",
+            "completed",
+            "blocked",
+            "limited",
+            "error"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "task_reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "gateway_effect": {
+          "enum": [
+            "pass",
+            "fail",
+            "unknown"
+          ]
+        },
+        "gateway_effect_reason": {
+          "type": "string",
+          "maxLength": 200
+        }
+      }
+    },
+    "TaskAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "check",
+        "result",
+        "reason",
+        "completed",
+        "diagnosis"
+      ],
+      "properties": {
+        "version": {
+          "const": "task-facts-v1"
+        },
+        "check": {
+          "enum": [
+            "hours",
+            "email",
+            "literal",
+            "unsupported"
+          ]
+        },
+        "result": {
+          "enum": [
+            "match",
+            "mismatch",
+            "unknown",
+            "not_evaluated"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "invalid_expectation",
+            "answer_limit",
+            "invalid_text",
+            "unsupported_answer",
+            "invalid_time",
+            "ambiguous_time_format",
+            "ambiguous_timezone",
+            "timezone_missing",
+            "invalid_timezone",
+            "timezone_mismatch",
+            "time_value_mismatch",
+            "facts_match",
+            "link_target_mismatch",
+            "email_value_mismatch",
+            "legacy_literal_match",
+            "legacy_literal_missing",
+            "execution_unknown",
+            "gateway_blocked",
+            "expected_read_missing"
+          ]
+        },
+        "completed": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "diagnosis": {
+          "enum": [
+            "execution_unknown",
+            "gateway_blocked",
+            "missing_expected_read",
+            "literal_match",
+            "format_equivalent",
+            "fact_mismatch",
+            "intervention_observed",
+            "grading_unknown"
+          ]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "task_grading_version"
+        ]
+      },
+      "then": {
+        "required": [
+          "task_expectations_sha256",
+          "task_fact_acceptance"
+        ]
+      }
+    }
+  ]
+}

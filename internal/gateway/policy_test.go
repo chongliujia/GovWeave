@@ -227,6 +227,10 @@ func TestConcurrentPolicySnapshots(t *testing.T) {
 				if err != nil || (result.Revision == 0 && result.Result != "disabled") || (result.Revision > 0 && result.Result != result.Mode) {
 					t.Error("inconsistent policy snapshot")
 				}
+				snapshot, lookupErr := p.Revision(result.Revision)
+				if lookupErr != nil || snapshot.Mode != result.Mode || snapshot.RulesetVersion != result.RulesetVersion {
+					t.Error("concurrent assessment cannot be traced to its retained snapshot")
+				}
 			}
 		}()
 	}
@@ -241,6 +245,9 @@ func TestConcurrentPolicySnapshots(t *testing.T) {
 		}
 	}
 	wg.Wait()
+	if history := p.History(100, nil); history.Total != 11 || history.Snapshots[0].Revision != 10 || history.Snapshots[10].Revision != 0 {
+		t.Fatal("concurrent evaluations changed policy history")
+	}
 }
 
 func BenchmarkCredentialPolicy(b *testing.B) {

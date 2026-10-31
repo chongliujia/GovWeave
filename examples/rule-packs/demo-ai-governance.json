@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "id": "demo-ai-governance",
+  "version": "1.0.0",
+  "name": "Illustrative internal AI governance controls",
+  "framework_kind": "internal_policy",
+  "sources": [
+    {
+      "title": "GovWeave synthetic demonstration policy (not a law or certification)",
+      "version": "1.0.0"
+    }
+  ],
+  "review": {
+    "status": "draft"
+  },
+  "controls": [
+    {
+      "id": "AI-DISCLOSURE",
+      "title": "User-facing AI disclosure is verified",
+      "citation": "DEMO-001",
+      "severity": "medium",
+      "applies_when": {
+        "fact": "product.user_facing",
+        "operator": "eq",
+        "value": true
+      },
+      "requirement": {
+        "fact": "transparency.disclosure_verified",
+        "operator": "eq",
+        "value": true,
+        "source": "assessment"
+      }
+    },
+    {
+      "id": "CREDENTIAL-EGRESS",
+      "title": "Credential blocking is configured for the product",
+      "citation": "DEMO-002",
+      "severity": "high",
+      "requirement": {
+        "all": [
+          {
+            "fact": "runtime.credential_policy_mode",
+            "operator": "eq",
+            "value": "block",
+            "source": "runtime"
+          },
+          {
+            "fact": "runtime.credential_policy_covers_product",
+            "operator": "eq",
+            "value": true,
+            "source": "runtime"
+          }
+        ]
+      }
+    }
+  ]
+}

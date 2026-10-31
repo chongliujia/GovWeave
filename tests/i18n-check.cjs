@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 async function main() {
   const source = await fs.readFile('internal/server/web/i18n.js', 'utf8');
   const catalog = JSON.parse(source.split('const chinese = ')[1].split(';\nconst preferenceKey')[0]);
-  for (const file of ['app.js', 'gateway.js', 'policies.js']) {
+  for (const file of ['app.js', 'gateway.js', 'integration.js', 'evidence.js', 'policies.js']) {
     const js = await fs.readFile(`internal/server/web/${file}`, 'utf8');
     assert.ok(!/[\p{Script=Han}]/u.test(js), `${file} contains untranslated source text`);
     for (const match of js.matchAll(/\bt\(("(?:\\.|[^"\\])*")/g)) {

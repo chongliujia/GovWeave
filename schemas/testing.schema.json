@@ -1,0 +1,1366 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GovWeave active assessment",
+  "description": "Bounded synthetic test execution and partial lifecycle evidence; not framework certification.",
+  "$ref": "#/$defs/Suite",
+  "$defs": {
+    "Message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "content"
+      ],
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": [
+            "system",
+            "user",
+            "assistant"
+          ]
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 16384
+        }
+      }
+    },
+    "Case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "check",
+        "scope"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "messages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Message"
+          },
+          "minItems": 1,
+          "maxItems": 8
+        },
+        "check": {
+          "type": "string",
+          "enum": [
+            "equals",
+            "contains",
+            "not_contains",
+            "json_valid",
+            "manual",
+            "credential_block",
+            "canary_absent",
+            "output_protected",
+            "output_allowed",
+            "tool_denied"
+          ]
+        },
+        "expected": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "endpoint_output",
+            "gateway_control"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "credential",
+            "email",
+            "phone"
+          ]
+        },
+        "resource_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "check": {
+                "enum": [
+                  "equals",
+                  "contains",
+                  "not_contains",
+                  "output_allowed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "expected"
+            ],
+            "properties": {
+              "expected": {
+                "minLength": 1
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "expected"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "check": {
+                "enum": [
+                  "credential_block",
+                  "output_protected",
+                  "output_allowed",
+                  "tool_denied"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "scope": {
+                "const": "gateway_control"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "scope": {
+                "const": "endpoint_output"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "check": {
+                "const": "canary_absent"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "messages": {
+                "minItems": 2,
+                "allOf": [
+                  {
+                    "contains": {
+                      "properties": {
+                        "role": {
+                          "const": "system"
+                        },
+                        "content": {
+                          "pattern": "\\{\\{CANARY\\}\\}"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "contains": {
+                      "properties": {
+                        "role": {
+                          "const": "user"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "check": {
+                "const": "output_protected"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "category"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "category"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "resource_id"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "messages"
+              ]
+            },
+            "properties": {
+              "check": {
+                "enum": [
+                  "output_protected",
+                  "output_allowed",
+                  "tool_denied"
+                ]
+              }
+            }
+          },
+          "else": {
+            "required": [
+              "messages"
+            ],
+            "properties": {
+              "check": {
+                "not": {
+                  "const": "tool_denied"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "name",
+        "description",
+        "limitations",
+        "cases"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "minItems": 1,
+          "maxItems": 16
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Case"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        },
+        "target_kind": {
+          "type": "string",
+          "enum": [
+            "",
+            "read_tool"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "target_kind"
+            ],
+            "properties": {
+              "target_kind": {
+                "const": "read_tool"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cases": {
+                "items": {
+                  "required": [
+                    "resource_id"
+                  ]
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "cases": {
+                "items": {
+                  "not": {
+                    "required": [
+                      "resource_id"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "SuiteDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "name",
+        "sha256",
+        "cases"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "cases": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        }
+      }
+    },
+    "Catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "suites"
+      ],
+      "properties": {
+        "suites": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SuiteDescriptor"
+          },
+          "minItems": 0,
+          "maxItems": 16
+        }
+      }
+    },
+    "PlanInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "application_id",
+        "target_version",
+        "suite_id",
+        "suite_version",
+        "context",
+        "schedule_enabled",
+        "interval_seconds",
+        "timeout_seconds",
+        "retain_responses"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "application_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "model_alias": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 100
+        },
+        "target_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "suite_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "suite_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "schedule_enabled": {
+          "type": "boolean"
+        },
+        "interval_seconds": {
+          "type": "integer",
+          "minimum": 300,
+          "maximum": 2592000
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1024
+        },
+        "retain_responses": {
+          "type": "boolean"
+        },
+        "target_kind": {
+          "type": "string",
+          "enum": [
+            "",
+            "read_tool"
+          ]
+        },
+        "tool_alias": {
+          "anyOf": [
+            {
+              "const": ""
+            },
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "target_kind"
+            ],
+            "properties": {
+              "target_kind": {
+                "const": "read_tool"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "tool_alias"
+            ],
+            "properties": {
+              "tool_alias": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+              },
+              "model_alias": {
+                "const": ""
+              },
+              "max_output_tokens": {
+                "const": 0
+              }
+            }
+          },
+          "else": {
+            "required": [
+              "model_alias",
+              "max_output_tokens"
+            ],
+            "properties": {
+              "model_alias": {
+                "minLength": 1
+              },
+              "max_output_tokens": {
+                "minimum": 1
+              },
+              "tool_alias": {
+                "const": ""
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product_id",
+        "revision",
+        "application_id",
+        "target_version",
+        "suite_id",
+        "suite_version",
+        "context",
+        "schedule_enabled",
+        "interval_seconds",
+        "timeout_seconds",
+        "retain_responses"
+      ],
+      "properties": {
+        "product_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "application_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "model_alias": {
+          "type": "string",
+          "minLength": 0,
+          "maxLength": 100
+        },
+        "target_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "suite_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "suite_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "schedule_enabled": {
+          "type": "boolean"
+        },
+        "interval_seconds": {
+          "type": "integer",
+          "minimum": 300,
+          "maximum": 2592000
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1024
+        },
+        "retain_responses": {
+          "type": "boolean"
+        },
+        "next_run_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_run_id": {
+          "type": "string",
+          "pattern": "^test_[A-Za-z0-9_-]{22}$"
+        },
+        "last_error": {
+          "type": "string"
+        },
+        "target_kind": {
+          "type": "string",
+          "enum": [
+            "",
+            "read_tool"
+          ]
+        },
+        "tool_alias": {
+          "anyOf": [
+            {
+              "const": ""
+            },
+            {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+            }
+          ]
+        },
+        "plan_id": {
+          "type": "string",
+          "enum": [
+            "",
+            "model",
+            "read_tool"
+          ],
+          "description": "Absent or empty identifies the legacy default plan; named plans are selected explicitly."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "target_kind"
+            ],
+            "properties": {
+              "target_kind": {
+                "const": "read_tool"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "tool_alias"
+            ],
+            "properties": {
+              "tool_alias": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+              },
+              "model_alias": {
+                "const": ""
+              },
+              "max_output_tokens": {
+                "const": 0
+              }
+            }
+          },
+          "else": {
+            "required": [
+              "model_alias",
+              "max_output_tokens"
+            ],
+            "properties": {
+              "model_alias": {
+                "minLength": 1
+              },
+              "max_output_tokens": {
+                "minimum": 1
+              },
+              "tool_alias": {
+                "const": ""
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "plan_id"
+            ],
+            "properties": {
+              "plan_id": {
+                "const": "model"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "target_kind": {
+                "const": ""
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "plan_id"
+            ],
+            "properties": {
+              "plan_id": {
+                "const": "read_tool"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "target_kind"
+            ],
+            "properties": {
+              "target_kind": {
+                "const": "read_tool"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "CaseResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "status",
+        "reason",
+        "http_status",
+        "duration_ms",
+        "response_bytes"
+      ],
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pass",
+            "fail",
+            "unknown"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "http_status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 599
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "response_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "response_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8192
+        },
+        "response": {
+          "type": "string",
+          "maxLength": 8192
+        },
+        "synthetic_marker": {
+          "type": "string",
+          "pattern": "^GW-CANARY-[0-9a-f]{32}$"
+        },
+        "detection": {
+          "allOf": [
+            {
+              "$ref": "canary.schema.json#/$defs/Detection"
+            },
+            {
+              "properties": {
+                "version": {
+                  "type": "string",
+                  "enum": [
+                    "synthetic-canary-v1",
+                    "synthetic-canary-v2"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "output_check": {
+          "$ref": "#/$defs/OutputCheckEvidence"
+        }
+      }
+    },
+    "Comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "previous_run_id",
+        "regressions",
+        "recoveries"
+      ],
+      "properties": {
+        "previous_run_id": {
+          "type": "string"
+        },
+        "regressions": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16
+        },
+        "recoveries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16
+        }
+      }
+    },
+    "Summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "product_id",
+        "phase",
+        "state",
+        "status",
+        "started_at",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^test_[A-Za-z0-9_-]{22}$"
+        },
+        "product_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "pre_deployment",
+            "operation"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "running",
+            "completed",
+            "error",
+            "interrupted"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "passed",
+            "failed",
+            "inconclusive"
+          ]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "plan_id": {
+          "type": "string",
+          "enum": [
+            "",
+            "model",
+            "read_tool"
+          ],
+          "description": "Absent or empty identifies the legacy default plan; named plans are selected explicitly."
+        }
+      }
+    },
+    "Run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "runner_version",
+        "id",
+        "phase",
+        "trigger",
+        "state",
+        "status",
+        "started_at",
+        "product",
+        "plan",
+        "suite",
+        "suite_sha256",
+        "gateway_revision",
+        "policy_revision",
+        "connection_id",
+        "connection_revision",
+        "cases",
+        "input",
+        "rule_pack"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "runner_version": {
+          "type": "string",
+          "enum": [
+            "bounded-chat-tests-v1",
+            "bounded-chat-tests-v2",
+            "bounded-chat-tests-v3",
+            "bounded-chat-tests-v4",
+            "bounded-tool-tests-v1"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^test_[A-Za-z0-9_-]{22}$"
+        },
+        "phase": {
+          "type": "string",
+          "enum": [
+            "pre_deployment",
+            "operation"
+          ]
+        },
+        "trigger": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "scheduled"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "running",
+            "completed",
+            "error",
+            "interrupted"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "passed",
+            "failed",
+            "inconclusive"
+          ]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finished_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "product": {
+          "$ref": "products.schema.json#/$defs/Product"
+        },
+        "plan": {
+          "$ref": "#/$defs/Plan"
+        },
+        "suite": {
+          "$ref": "#/$defs/Suite"
+        },
+        "suite_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "gateway_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "policy_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "connection_id": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "connection_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CaseResult"
+          },
+          "minItems": 0,
+          "maxItems": 16
+        },
+        "comparison": {
+          "$ref": "#/$defs/Comparison"
+        },
+        "input": {
+          "$ref": "compliance.schema.json#/$defs/EvaluationInput"
+        },
+        "rule_pack": {
+          "$ref": "compliance.schema.json#/$defs/Pack"
+        },
+        "evaluation": {
+          "$ref": "compliance.schema.json#/$defs/Evaluation"
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "tool_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "tool_revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "runner_version": {
+                "const": "bounded-chat-tests-v2"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cases": {
+                "items": {
+                  "properties": {
+                    "detection": {
+                      "properties": {
+                        "version": {
+                          "const": "synthetic-canary-v1"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "runner_version": {
+                "enum": [
+                  "bounded-chat-tests-v3",
+                  "bounded-chat-tests-v4"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cases": {
+                "items": {
+                  "properties": {
+                    "detection": {
+                      "properties": {
+                        "version": {
+                          "const": "synthetic-canary-v2"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "runner_version": {
+                "enum": [
+                  "bounded-chat-tests-v1",
+                  "bounded-chat-tests-v2",
+                  "bounded-chat-tests-v3"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "cases": {
+                "items": {
+                  "not": {
+                    "required": [
+                      "output_check"
+                    ]
+                  }
+                }
+              },
+              "suite": {
+                "properties": {
+                  "cases": {
+                    "items": {
+                      "properties": {
+                        "check": {
+                          "not": {
+                            "enum": [
+                              "output_protected",
+                              "output_allowed"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "runner_version": {
+                "const": "bounded-tool-tests-v1"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "tool_id",
+              "tool_revision"
+            ],
+            "properties": {
+              "connection_id": {
+                "const": ""
+              },
+              "connection_revision": {
+                "const": 0
+              },
+              "plan": {
+                "required": [
+                  "target_kind"
+                ],
+                "properties": {
+                  "target_kind": {
+                    "const": "read_tool"
+                  }
+                }
+              },
+              "suite": {
+                "required": [
+                  "target_kind"
+                ],
+                "properties": {
+                  "target_kind": {
+                    "const": "read_tool"
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "tool_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "tool_revision"
+                  ]
+                }
+              ]
+            },
+            "properties": {
+              "plan": {
+                "properties": {
+                  "target_kind": {
+                    "const": ""
+                  }
+                }
+              },
+              "suite": {
+                "properties": {
+                  "target_kind": {
+                    "const": ""
+                  }
+                }
+              },
+              "connection_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+              },
+              "connection_revision": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Runs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runs"
+      ],
+      "properties": {
+        "runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Summary"
+          },
+          "minItems": 0,
+          "maxItems": 128
+        }
+      }
+    },
+    "Replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "run_id",
+        "matches",
+        "evaluation"
+      ],
+      "properties": {
+        "run_id": {
+          "type": "string"
+        },
+        "matches": {
+          "type": "boolean"
+        },
+        "evaluation": {
+          "$ref": "compliance.schema.json#/$defs/Evaluation"
+        }
+      }
+    },
+    "OutputCheckEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "audit_committed",
+        "upstream_attempted",
+        "outcome"
+      ],
+      "properties": {
+        "audit_committed": {
+          "type": "boolean"
+        },
+        "upstream_attempted": {
+          "type": "boolean"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "",
+            "rejected",
+            "blocked",
+            "completed",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "error_code": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "policy": {
+          "$ref": "content.schema.json#/$defs/OutputAssessment"
+        },
+        "tool": {
+          "$ref": "#/$defs/ToolCheckEvidence"
+        }
+      }
+    },
+    "ToolCheckEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "authorization",
+        "output_mode",
+        "content_state"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "authorization": {
+          "enum": [
+            "allowed",
+            "denied",
+            "unknown"
+          ]
+        },
+        "output_mode": {
+          "enum": [
+            "block",
+            "observe"
+          ]
+        },
+        "content_state": {
+          "enum": [
+            "observed",
+            "not_observed",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "Plans": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plans"
+      ],
+      "properties": {
+        "plans": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/Plan"
+          }
+        }
+      }
+    }
+  }
+}

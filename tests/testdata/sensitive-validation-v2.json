@@ -1,0 +1,606 @@
+{
+  "schema_version": 1,
+  "id": "sensitive-validation-v2",
+  "description": "Frozen internal transfer set for bounded text normalization; authored before v2 implementation, after v1 error inspection. Not externally independent.",
+  "cases": [
+    {
+      "id": "credential-01",
+      "group": "credential",
+      "text": "sk-TransferSyntheticTokenAbc890123456",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "credential-02",
+      "group": "credential",
+      "text": "ｓｋ－ＴｒａｎｓｆｅｒＳｙｎｔｈｅｔｉｃＴｏｋｅｎＡｂｃ８９０１２３４５６",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "credential-03",
+      "group": "credential",
+      "text": "sk-​TransferSyntheticTokenAbc890123456",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "credential-04",
+      "group": "credential",
+      "text": "sk-Trans‌ferSyntheticTokenAbc890123456",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "credential-05",
+      "group": "credential",
+      "text": "sk-TransferSyntheticTokenAbc890⁠0123456",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "credential-06",
+      "group": "credential",
+      "text": "sk-TransferSyntheticTokenAbc890123456﻿",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "credential-07",
+      "group": "credential",
+      "text": "ｇｈｐ＿ＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲＲ",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "credential-08",
+      "group": "credential",
+      "text": "-----BEGIN‍ PRIVATE KEY-----",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "credential-09",
+      "group": "credential",
+      "text": "－－－－－ＢＥＧＩＮ ＲＳＡ ＰＲＩＶＡＴＥ ＫＥＹ－－－－－",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "credential-10",
+      "group": "credential",
+      "text": "sk-ＴｒａｎｓｆｅｒＳｙｎｔｈｅｔｉｃＴｏｋｅｎＡｂｃ８９０１２３４５６",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "credential-11",
+      "group": "credential",
+      "text": "password: invented_custom_password_2026",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "credential-12",
+      "group": "credential",
+      "text": "c2stVHJhbnNmZXJTeW50aGV0aWNUb2tlbkFiYzg5MDEyMzQ1Ng==",
+      "expected_categories": [
+        "credential"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-01",
+      "group": "email",
+      "text": "reader@example.org",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-02",
+      "group": "email",
+      "text": "ｒｅａｄｅｒ＠ｅｘａｍｐｌｅ．ｏｒｇ",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-03",
+      "group": "email",
+      "text": "reader​@example.org",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-04",
+      "group": "email",
+      "text": "read⁠er@example.org",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-05",
+      "group": "email",
+      "text": "reader [at] example [dot] org",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-06",
+      "group": "email",
+      "text": "reader[AT]example[DOT]org",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-07",
+      "group": "email",
+      "text": "first.last+lab [at] sub [dot] example [dot] org",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-08",
+      "group": "email",
+      "text": "reader＠example．org",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-09",
+      "group": "email",
+      "text": "［at］ is syntax; reader [at] example.org",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-10",
+      "group": "email",
+      "text": "reader\t[at]\texample\t[dot]\torg",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-11",
+      "group": "email",
+      "text": "读者@example.org",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "email-12",
+      "group": "email",
+      "text": "reader@例子.测试",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-01",
+      "group": "phone",
+      "text": "电话：13700000029",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-02",
+      "group": "phone",
+      "text": "电话：１３７００００００２９",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-03",
+      "group": "phone",
+      "text": "＋８６ １３７ ００００ ００２９",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-04",
+      "group": "phone",
+      "text": "mobile: 137​0000​0029",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-05",
+      "group": "phone",
+      "text": "mobile: 137‌00000029",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-06",
+      "group": "phone",
+      "text": "tel: 1370000‍0029",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-07",
+      "group": "phone",
+      "text": "phone: 137000000⁠29",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-08",
+      "group": "phone",
+      "text": "phone: 1370000﻿0029",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-09",
+      "group": "phone",
+      "text": "phone:　13700000029",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-10",
+      "group": "phone",
+      "text": "phone: １３７－００００－００２９",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-11",
+      "group": "phone",
+      "text": "Call +1 202-555-0186",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "phone-12",
+      "group": "phone",
+      "text": "13700000029",
+      "expected_categories": [
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-01",
+      "group": "benign",
+      "text": "A normal paragraph without contact information.",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-02",
+      "group": "benign",
+      "text": "计算服务正常运行。",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-03",
+      "group": "benign",
+      "text": "sk-short",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-04",
+      "group": "benign",
+      "text": "ｓｋ－ｓｈｏｒｔ",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-05",
+      "group": "benign",
+      "text": "value [at] index",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-06",
+      "group": "benign",
+      "text": "at and dot are words",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-07",
+      "group": "benign",
+      "text": "[at] [dot]",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-08",
+      "group": "benign",
+      "text": "name [dot] surname",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-09",
+      "group": "benign",
+      "text": "foo [at] example",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-10",
+      "group": "benign",
+      "text": "foo [at] example [dot] x",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-11",
+      "group": "benign",
+      "text": "foo..bar [at] example [dot] org",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-12",
+      "group": "benign",
+      "text": ".foo [at] example [dot] org",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-13",
+      "group": "benign",
+      "text": "foo [at] -example [dot] org",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-14",
+      "group": "benign",
+      "text": "ｆｏｏ＠－ｅｘａｍｐｌｅ．ｏｒｇ",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-15",
+      "group": "benign",
+      "text": "code: １３７００００００２９",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-16",
+      "group": "benign",
+      "text": "phone ticket-１３７００００００２９",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-17",
+      "group": "benign",
+      "text": "phone: １３７００００００２９０",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-18",
+      "group": "benign",
+      "text": "phone value13700000029",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-19",
+      "group": "benign",
+      "text": "short​word",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "benign-20",
+      "group": "benign",
+      "text": "家庭👨‍👩‍👧图标",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "mixed-01",
+      "group": "mixed",
+      "text": "ｓｋ－ＴｒａｎｓｆｅｒＳｙｎｔｈｅｔｉｃＴｏｋｅｎＡｂｃ８９０１２３４５６; reader [at] example [dot] org",
+      "expected_categories": [
+        "credential",
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "mixed-02",
+      "group": "mixed",
+      "text": "phone: １３７００００００２９; reader​@example.org",
+      "expected_categories": [
+        "email",
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "mixed-03",
+      "group": "mixed",
+      "text": "ｓｋ－ＴｒａｎｓｆｅｒＳｙｎｔｈｅｔｉｃＴｏｋｅｎＡｂｃ８９０１２３４５６; phone: 137​0000​0029",
+      "expected_categories": [
+        "credential",
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "mixed-04",
+      "group": "mixed",
+      "text": "reader@example.org; phone: 13700000029; sk-TransferSyntheticTokenAbc890123456",
+      "expected_categories": [
+        "credential",
+        "email",
+        "phone"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "limits-01",
+      "group": "limits",
+      "text": "",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "limits-02",
+      "group": "limits",
+      "text": "user0 [at] example [dot] org user1 [at] example [dot] org user2 [at] example [dot] org user3 [at] example [dot] org user4 [at] example [dot] org user5 [at] example [dot] org user6 [at] example [dot] org user7 [at] example [dot] org user8 [at] example [dot] org user9 [at] example [dot] org user10 [at] example [dot] org user11 [at] example [dot] org user12 [at] example [dot] org user13 [at] example [dot] org user14 [at] example [dot] org user15 [at] example [dot] org user16 [at] example [dot] org user17 [at] example [dot] org user18 [at] example [dot] org user19 [at] example [dot] org user20 [at] example [dot] org user21 [at] example [dot] org user22 [at] example [dot] org user23 [at] example [dot] org user24 [at] example [dot] org user25 [at] example [dot] org user26 [at] example [dot] org user27 [at] example [dot] org user28 [at] example [dot] org user29 [at] example [dot] org user30 [at] example [dot] org user31 [at] example [dot] org user32 [at] example [dot] org user33 [at] example [dot] org user34 [at] example [dot] org user35 [at] example [dot] org user36 [at] example [dot] org user37 [at] example [dot] org user38 [at] example [dot] org user39 [at] example [dot] org",
+      "expected_categories": [
+        "email"
+      ],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "limits-03",
+      "group": "limits",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected_categories": [],
+      "invalid": false,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    },
+    {
+      "id": "limits-04",
+      "group": "limits",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected_categories": [],
+      "invalid": true,
+      "notes": "New authored synthetic transfer case; labels frozen before v2 implementation."
+    }
+  ]
+}

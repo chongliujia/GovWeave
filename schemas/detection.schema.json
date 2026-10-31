@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Version-pinned in-process detector observation",
+  "description": "Technical findings and original-byte evidence from bounded registered detector plugins; no access decision or legal conclusion.",
+  "$ref": "#/$defs/Observation",
+  "$defs": {
+    "Identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+    },
+    "Version": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+    },
+    "Ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/Version"
+        }
+      }
+    },
+    "Descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "risk_type"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "version": {
+          "$ref": "#/$defs/Version"
+        },
+        "risk_type": {
+          "$ref": "#/$defs/Identifier"
+        }
+      }
+    },
+    "UnregisteredDescriptor": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "version",
+            "risk_type"
+          ],
+          "properties": {
+            "id": {
+              "const": ""
+            },
+            "version": {
+              "const": ""
+            },
+            "risk_type": {
+              "const": ""
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "version",
+            "risk_type"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/Identifier"
+            },
+            "version": {
+              "$ref": "#/$defs/Version"
+            },
+            "risk_type": {
+              "const": ""
+            }
+          }
+        }
+      ]
+    },
+    "Evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "representation",
+        "start_byte",
+        "end_byte",
+        "span_scope"
+      ],
+      "properties": {
+        "representation": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "start_byte": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "end_byte": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "span_scope": {
+          "type": "string",
+          "enum": [
+            "raw_fragment",
+            "encoded_candidate",
+            "transformed_region"
+          ]
+        },
+        "transformations": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          }
+        },
+        "normalized": {
+          "type": "boolean"
+        }
+      },
+      "description": "Byte offsets refer to the original valid UTF-8 content. Runtime additionally checks end_byte > start_byte and UTF-8 boundaries; no text is retained."
+    },
+    "Finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "reason",
+        "evidence"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "observed",
+            "not_observed",
+            "unknown"
+          ]
+        },
+        "reason": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "observed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "minItems": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "evidence": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "detector",
+        "state",
+        "reason",
+        "evidence",
+        "evaluated",
+        "elapsed_ns",
+        "input_bytes"
+      ],
+      "properties": {
+        "detector": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Descriptor"
+            },
+            {
+              "$ref": "#/$defs/UnregisteredDescriptor"
+            }
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "observed",
+            "not_observed",
+            "unknown"
+          ]
+        },
+        "reason": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        },
+        "evaluated": {
+          "type": "boolean"
+        },
+        "elapsed_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "input_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "observed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "minItems": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "evidence": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evaluated": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "unknown"
+              }
+            }
+          },
+          "else": {
+            "required": [
+              "content_sha256"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "detector": {
+                "properties": {
+                  "risk_type": {
+                    "const": ""
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "unknown"
+              },
+              "reason": {
+                "const": "detector_not_registered"
+              },
+              "evaluated": {
+                "const": false
+              }
+            },
+            "not": {
+              "required": [
+                "content_sha256"
+              ]
+            }
+          }
+        }
+      ],
+      "description": "A bounded technical observation. Evaluated records entry into plugin code, including errors or late results. Content hashes are absent when rejected before hashing. Input byte count includes oversized rejected input; it is not limited to the 8192-byte evaluation envelope."
+    }
+  }
+}

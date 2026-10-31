@@ -1,0 +1,1103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Bounded knowledge Agent comparison with metadata-only traces",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "state",
+    "created_at",
+    "repetitions_per_case_condition",
+    "model_mode",
+    "model",
+    "corpus_id",
+    "corpus_sha256",
+    "selected_cases",
+    "model_call_budget",
+    "remaining_model_call_budget",
+    "max_tool_calls_per_task",
+    "source_sha256",
+    "binary_sha256",
+    "metrics",
+    "trajectories",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "enum": [
+        "knowledge-agent-evaluation-v1",
+        "knowledge-agent-evaluation-v2"
+      ]
+    },
+    "state": {
+      "enum": [
+        "completed",
+        "incomplete"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "repetitions_per_case_condition": {
+      "const": 1
+    },
+    "model_mode": {
+      "enum": [
+        "scripted_local",
+        "moonshot"
+      ]
+    },
+    "model": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "corpus_id": {
+      "enum": [
+        "knowledge-agent-validation-v1",
+        "knowledge-agent-validation-v2",
+        "knowledge-agent-validation-v3"
+      ]
+    },
+    "corpus_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "selected_cases": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "model_call_budget": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 128
+    },
+    "remaining_model_call_budget": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "max_tool_calls_per_task": {
+      "const": 3
+    },
+    "source_sha256": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "binary_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "development/permissive",
+        "development/protected",
+        "evaluation/permissive",
+        "evaluation/protected"
+      ],
+      "properties": {
+        "development/permissive": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "trajectories",
+            "attack_cases",
+            "attack_successes",
+            "attack_unknown",
+            "benign_cases",
+            "benign_completed",
+            "benign_unknown",
+            "benign_blocked",
+            "benign_intervened",
+            "model_requests",
+            "tool_requests",
+            "model_upstream_calls",
+            "tool_upstream_calls",
+            "attack_success_rate_lower",
+            "attack_success_rate_upper",
+            "benign_completion_rate",
+            "benign_block_rate",
+            "benign_intervention_rate",
+            "task_unknown_rate",
+            "task_latency_p50_ms",
+            "task_latency_p95_ms",
+            "p95_is_maximum",
+            "reported_token_usage"
+          ],
+          "properties": {
+            "trajectories": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_cases": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_successes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_unknown": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_cases": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_completed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_unknown": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_blocked": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_intervened": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "model_requests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tool_requests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "model_upstream_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tool_upstream_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_success_rate_lower": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "attack_success_rate_upper": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_completion_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_block_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_intervention_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "task_unknown_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "task_latency_p50_ms": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "task_latency_p95_ms": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "p95_is_maximum": {
+              "type": "boolean"
+            },
+            "reported_token_usage": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens"
+              ],
+              "properties": {
+                "prompt_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "completion_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "total_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        },
+        "development/protected": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "trajectories",
+            "attack_cases",
+            "attack_successes",
+            "attack_unknown",
+            "benign_cases",
+            "benign_completed",
+            "benign_unknown",
+            "benign_blocked",
+            "benign_intervened",
+            "model_requests",
+            "tool_requests",
+            "model_upstream_calls",
+            "tool_upstream_calls",
+            "attack_success_rate_lower",
+            "attack_success_rate_upper",
+            "benign_completion_rate",
+            "benign_block_rate",
+            "benign_intervention_rate",
+            "task_unknown_rate",
+            "task_latency_p50_ms",
+            "task_latency_p95_ms",
+            "p95_is_maximum",
+            "reported_token_usage"
+          ],
+          "properties": {
+            "trajectories": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_cases": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_successes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_unknown": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_cases": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_completed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_unknown": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_blocked": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_intervened": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "model_requests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tool_requests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "model_upstream_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tool_upstream_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_success_rate_lower": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "attack_success_rate_upper": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_completion_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_block_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_intervention_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "task_unknown_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "task_latency_p50_ms": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "task_latency_p95_ms": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "p95_is_maximum": {
+              "type": "boolean"
+            },
+            "reported_token_usage": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens"
+              ],
+              "properties": {
+                "prompt_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "completion_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "total_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        },
+        "evaluation/permissive": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "trajectories",
+            "attack_cases",
+            "attack_successes",
+            "attack_unknown",
+            "benign_cases",
+            "benign_completed",
+            "benign_unknown",
+            "benign_blocked",
+            "benign_intervened",
+            "model_requests",
+            "tool_requests",
+            "model_upstream_calls",
+            "tool_upstream_calls",
+            "attack_success_rate_lower",
+            "attack_success_rate_upper",
+            "benign_completion_rate",
+            "benign_block_rate",
+            "benign_intervention_rate",
+            "task_unknown_rate",
+            "task_latency_p50_ms",
+            "task_latency_p95_ms",
+            "p95_is_maximum",
+            "reported_token_usage"
+          ],
+          "properties": {
+            "trajectories": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_cases": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_successes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_unknown": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_cases": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_completed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_unknown": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_blocked": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_intervened": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "model_requests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tool_requests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "model_upstream_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tool_upstream_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_success_rate_lower": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "attack_success_rate_upper": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_completion_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_block_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_intervention_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "task_unknown_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "task_latency_p50_ms": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "task_latency_p95_ms": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "p95_is_maximum": {
+              "type": "boolean"
+            },
+            "reported_token_usage": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens"
+              ],
+              "properties": {
+                "prompt_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "completion_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "total_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        },
+        "evaluation/protected": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "trajectories",
+            "attack_cases",
+            "attack_successes",
+            "attack_unknown",
+            "benign_cases",
+            "benign_completed",
+            "benign_unknown",
+            "benign_blocked",
+            "benign_intervened",
+            "model_requests",
+            "tool_requests",
+            "model_upstream_calls",
+            "tool_upstream_calls",
+            "attack_success_rate_lower",
+            "attack_success_rate_upper",
+            "benign_completion_rate",
+            "benign_block_rate",
+            "benign_intervention_rate",
+            "task_unknown_rate",
+            "task_latency_p50_ms",
+            "task_latency_p95_ms",
+            "p95_is_maximum",
+            "reported_token_usage"
+          ],
+          "properties": {
+            "trajectories": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_cases": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_successes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_unknown": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_cases": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_completed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_unknown": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_blocked": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "benign_intervened": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "model_requests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tool_requests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "model_upstream_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "tool_upstream_calls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "attack_success_rate_lower": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "attack_success_rate_upper": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_completion_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_block_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "benign_intervention_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "task_unknown_rate": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "task_latency_p50_ms": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "task_latency_p95_ms": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0
+            },
+            "p95_is_maximum": {
+              "type": "boolean"
+            },
+            "reported_token_usage": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "prompt_tokens",
+                "completion_tokens",
+                "total_tokens"
+              ],
+              "properties": {
+                "prompt_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "completion_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "total_tokens": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "trajectories": {
+      "type": "array",
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "trace_id",
+          "case_id",
+          "split",
+          "label",
+          "mode",
+          "status",
+          "reason",
+          "events",
+          "elapsed_ms",
+          "usage",
+          "audit_complete",
+          "attack_success",
+          "task_completed",
+          "intervention"
+        ],
+        "properties": {
+          "trace_id": {
+            "type": "string",
+            "pattern": "^trace_[a-f0-9]{32}$"
+          },
+          "case_id": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "split": {
+            "enum": [
+              "development",
+              "evaluation"
+            ]
+          },
+          "label": {
+            "enum": [
+              "benign",
+              "attack"
+            ]
+          },
+          "mode": {
+            "enum": [
+              "permissive",
+              "protected"
+            ]
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "blocked",
+              "limited",
+              "error"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "events": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 13,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "step",
+                "round_trip_ms"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "model",
+                    "tool"
+                  ]
+                },
+                "step": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 7
+                },
+                "request_id": {
+                  "type": "string",
+                  "pattern": "^req_[A-Za-z0-9_-]{22}$"
+                },
+                "http_status": {
+                  "type": "integer",
+                  "minimum": 100,
+                  "maximum": 599
+                },
+                "round_trip_ms": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "output_policy_revision": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "output_action": {
+                  "const": "redacted"
+                },
+                "tool_revision": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "authorization": {
+                  "enum": [
+                    "allowed",
+                    "denied",
+                    "unknown"
+                  ]
+                },
+                "decision": {
+                  "enum": [
+                    "allow",
+                    "observe",
+                    "redact",
+                    "block"
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                "audit": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "operation",
+                    "outcome",
+                    "duration_ms",
+                    "policy_revision"
+                  ],
+                  "properties": {
+                    "operation": {
+                      "enum": [
+                        "chat.completions",
+                        "tools.invoke"
+                      ]
+                    },
+                    "outcome": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "upstream_attempted": {
+                      "type": "boolean"
+                    },
+                    "duration_ms": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "policy_revision": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "output_policy": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "revision",
+                        "result"
+                      ],
+                      "properties": {
+                        "revision": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "result": {
+                          "type": "string",
+                          "maxLength": 200
+                        },
+                        "tool_call_version": {
+                          "const": "read-tool-call-v1"
+                        },
+                        "public_email_exceptions": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 32
+                        }
+                      }
+                    },
+                    "instruction_policy": {
+                      "$ref": "tools.schema.json#/$defs/InstructionAssessment"
+                    },
+                    "tool_revision": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "tool_snapshot_sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "elapsed_ms": {
+            "type": "number",
+            "minimum": 0
+          },
+          "usage": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+              "prompt_tokens",
+              "completion_tokens",
+              "total_tokens"
+            ],
+            "properties": {
+              "prompt_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "completion_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "total_tokens": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "audit_complete": {
+            "type": "boolean"
+          },
+          "attack_success": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "task_completed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "intervention": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "maxLength": 1000
+      }
+    },
+    "controls": {
+      "enum": [
+        "baseline",
+        "instructions-v1",
+        "instructions-v2",
+        "instructions-v2-reviewed"
+      ]
+    },
+    "request_profile": {
+      "enum": [
+        "generic-v1",
+        "moonshot-k2.6-instant-v1"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "id": {
+            "const": "knowledge-agent-evaluation-v2"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "controls"
+        ]
+      }
+    }
+  ]
+}

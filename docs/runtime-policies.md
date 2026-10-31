@@ -111,7 +111,9 @@ Authenticated management endpoints:
 | Method and path | Purpose |
 | --- | --- |
 | `GET /api/v1/policies/credential-egress` | Read the current policy, revision, and rule-set version |
-| `PUT /api/v1/policies/credential-egress` | Validate and atomically save a replacement configuration |
+| `PUT /api/v1/policies/credential-egress` | Validate, append an immutable snapshot, and atomically activate it |
+| `GET /api/v1/policies/credential-egress/history` | Read retained snapshots, newest first, with revision-based pagination |
+| `GET /api/v1/policies/credential-egress/revisions/{revision}` | Read the configuration used by a retained credential policy revision |
 
 Use an administrator session, `Content-Type: application/json`, and `X-GovWeave-Request: console` for writes. Browser requests must pass origin checks. Application keys cannot manage policies. See the [OpenAPI contract](../api/openapi.yaml) for the complete schema and authentication flow.
 
@@ -129,6 +131,18 @@ An illustrative update body for a fresh policy is:
 
 Read the current revision before each update; `0` is only the initial revision. The server returns the saved configuration with an incremented revision. A stale revision returns `409`; invalid modes, rules, or scope IDs return `400`. On persistence failure, the existing policy stays active.
 
-The latest configuration is saved in `policies.json` with private permissions. Corrupt or unsupported state prevents startup. A missing file initializes the disabled default, so disabling a policy should be an explicit saved configuration, not file deletion. Include the file in [instance backups](deployment.md#persistent-data-and-backups).
+The active configuration and its history are saved together in `policies.json` with private permissions. Corrupt or unsupported state prevents startup. A missing file initializes the disabled default, so disabling a policy should be an explicit saved configuration, not file deletion. Include the file in [instance backups](deployment.md#persistent-data-and-backups).
 
-Each request uses one immutable policy snapshot. Changes affect new evaluations; already checked requests retain the revision they used. Only the latest configuration is retained: historical policy reconstruction, complete change attribution, approval workflows, multiple separately scoped policies, and legal-control mappings are future work.
+Each request uses one immutable policy snapshot. Changes affect new evaluations; already checked requests retain the revision they used. Complete change attribution, connection/application configuration history, approval workflows, multiple separately scoped policies, and legal-control mappings remain future work.
+
+## Policy history and migration
+
+Every successful save retains the exact mode, enabled rules, scope IDs, rule-set version, revision, and save time. Historical snapshots are read-only through the API. In **Request logs**, open a request and select **View policy snapshot** to inspect `content_policy.revision`, even after later policy changes. Scope IDs remain the saved IDs; current display names do not reconstruct old application names or grants.
+
+List history with `GET /api/v1/policies/credential-egress/history?limit=20`. `limit` accepts 1–100 (default 20). The response contains `snapshots` (newest first), `total` (all retained snapshots), and optional `next_before_revision`. Pass that cursor as `before_revision` to request older snapshots; the cursor is exclusive and remains stable when new revisions are added. Invalid query values return `400`. Read a snapshot with `GET /api/v1/policies/credential-egress/revisions/2`; missing revisions return `404`, never the current policy as a substitute. All history endpoints require an administrator session.
+
+New instances retain the disabled default as revision `0` when first saved. A legacy schema-1 file is loaded without changing enforcement or rewriting it. Its current revision becomes the history baseline; earlier revisions were not stored and cannot be reconstructed. The next successful save atomically migrates the file to schema 2, preserving that baseline and the new revision. Failed saves preserve both active policy and history.
+
+The schema-2 file stores snapshots oldest first, with consecutive increasing revisions; the last snapshot is active. Invalid snapshots, unsupported versions, missing sequence entries, or insecure file permissions prevent startup. The limit is **1024 snapshots including the baseline, or 8 MiB**. Capacity exhaustion returns `409 policy_history_full` without removing history or changing the active policy. Automatic pruning, history deletion, rollback, and restoring old detector implementations are not provided.
+
+Back up `policies.json` with the rest of the instance before upgrading. Older binaries that only support schema 1 cannot read a migrated file; a downgrade requires a consistent pre-upgrade backup. Runtime immutability is not tamper evidence: an operator with file access can alter the data. Snapshots contain configuration only, never request text or matched credentials.

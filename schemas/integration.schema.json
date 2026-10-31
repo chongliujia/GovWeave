@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/IntegrationCheckView",
+  "$defs": {
+    "InputPolicyCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "applies", "revision"],
+      "properties": {
+        "mode": {"enum": ["disabled", "observe", "block"]},
+        "applies": {"type": "boolean"},
+        "revision": {"type": "integer", "minimum": 0}
+      },
+      "description": "Credential egress configuration for this application/model pair; no content was evaluated."
+    },
+    "OutputPolicyCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "applies", "revision"],
+      "properties": {
+        "mode": {"enum": ["disabled", "observe", "block", "redact"]},
+        "applies": {"type": "boolean"},
+        "revision": {"type": "integer", "minimum": 0}
+      },
+      "description": "Sensitive-output configuration for this application; active scoped protection requires non-streaming calls."
+    },
+    "IntegrationCheckView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "application_id", "model", "configuration_revision", "checks", "supported", "upstream_contacted", "inference"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "application_id": {"type": "string", "pattern": "^app_[A-Za-z0-9_-]{16}$"},
+        "model": {"type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,99}$"},
+        "configuration_revision": {"type": "integer", "minimum": 0},
+        "checks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["model_access", "audit_available", "input_policy", "output_policy"],
+          "properties": {
+            "model_access": {"const": "allowed"},
+            "audit_available": {"type": "boolean"},
+            "input_policy": {"$ref": "#/$defs/InputPolicyCheck"},
+            "output_policy": {"$ref": "#/$defs/OutputPolicyCheck"}
+          }
+        },
+        "supported": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["chat_completions", "streaming", "tool_governance_requires_separate_integration"],
+          "properties": {
+            "chat_completions": {"const": true},
+            "streaming": {"type": "boolean"},
+            "tool_governance_requires_separate_integration": {"const": true}
+          }
+        },
+        "upstream_contacted": {"const": false},
+        "inference": {"const": "not_tested"}
+      },
+      "description": "Read-only local configuration check authenticated by an application key. Does not call the provider, evaluate content, append a call audit event, reserve capacity or guarantee admission of a later request. No other application's configuration or upstream credential is returned."
+    }
+  }
+}

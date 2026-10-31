@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "id": "sensitive-output-governance",
+  "version": "1.1.0",
+  "name": "Sensitive-output technical controls",
+  "description": "Runtime output controls plus current-plan sensitive-output probes before deployment and during operation.",
+  "limitations": [
+    "Draft internal technical policy, not a law, regulatory mapping, certification or legal compliance conclusion.",
+    "Pattern observations do not prove ownership, confidentiality or a violation; missed or unsupported sensitive content can remain.",
+    "Samples use the last 100 global audit records filtered to bound applications and model/tool operations, not a time window or complete history.",
+    "At least one inspected current-policy output is required; this does not validate detector accuracy or every application, category, model, tool or route.",
+    "Unknown or incomplete checks are evidence gaps, not proof that content was disclosed. Unchecked releases include legacy, disabled, out-of-scope and partial-category checks.",
+    "Only calls routed through GovWeave are observed. Standalone content evaluations and active assessment calls do not count as production execution evidence.",
+    "Active probes cover only the model target in the current test plan, not every bound application, tool, route or model. Four synthetic cases do not estimate detector accuracy.",
+    "Missing, stale, interrupted or inconclusive latest probes remain unknown; evidence never falls back to an older success. A policy or plan revision requires new tests."
+  ],
+  "framework_kind": "internal_policy",
+  "sources": [
+    {
+      "title": "GovWeave bounded sensitive-output configuration and metadata evidence policy (not a law or certification)",
+      "version": "1.1.0"
+    }
+  ],
+  "review": {
+    "status": "draft"
+  },
+  "controls": [
+    {
+      "id": "OUTPUT-APPLICATIONS-ACTIVE",
+      "title": "Every bound application exists and is active",
+      "citation": "SENSITIVE-OUTPUT-001",
+      "severity": "high",
+      "requirement": {
+        "fact": "runtime.applications_active",
+        "operator": "eq",
+        "value": true,
+        "source": "runtime"
+      },
+      "remediation": "Restore or replace inactive application bindings."
+    },
+    {
+      "id": "OUTPUT-PROTECTIVE-MODE",
+      "title": "Sensitive output uses blocking or redaction",
+      "citation": "SENSITIVE-OUTPUT-002",
+      "severity": "high",
+      "requirement": {
+        "fact": "runtime.output_policy_mode",
+        "operator": "in",
+        "value": [
+          "block",
+          "redact"
+        ],
+        "source": "runtime"
+      },
+      "remediation": "Select block or redact after validating the detector on representative application data."
+    },
+    {
+      "id": "OUTPUT-SCOPE-COVERAGE",
+      "title": "The enabled output policy covers every bound application",
+      "citation": "SENSITIVE-OUTPUT-003",
+      "severity": "high",
+      "requirement": {
+        "fact": "runtime.output_policy_covers_product",
+        "operator": "eq",
+        "value": true,
+        "source": "runtime"
+      },
+      "remediation": "Include every bound application in the enabled output policy scope."
+    },
+    {
+      "id": "OUTPUT-CATEGORY-COVERAGE",
+      "title": "Credential, email and Mainland China mobile checks are all selected",
+      "citation": "SENSITIVE-OUTPUT-004",
+      "severity": "high",
+      "requirement": {
+        "all": [
+          {
+            "fact": "runtime.output_credential_enabled",
+            "operator": "eq",
+            "value": true,
+            "source": "runtime"
+          },
+          {
+            "fact": "runtime.output_email_enabled",
+            "operator": "eq",
+            "value": true,
+            "source": "runtime"
+          },
+          {
+            "fact": "runtime.output_phone_enabled",
+            "operator": "eq",
+            "value": true,
+            "source": "runtime"
+          }
+        ]
+      },
+      "remediation": "Select all three categories required by this internal policy."
+    },
+    {
+      "id": "OUTPUT-AUDIT-AVAILABLE",
+      "title": "Durable audit writing and reservation capacity are available",
+      "citation": "SENSITIVE-OUTPUT-005",
+      "severity": "high",
+      "requirement": {
+        "fact": "runtime.audit_available",
+        "operator": "eq",
+        "value": true,
+        "source": "runtime"
+      },
+      "remediation": "Restore durable audit writing and capacity before serving protected output."
+    },
+    {
+      "id": "OUTPUT-CURRENT-EVIDENCE",
+      "title": "The bounded sample contains inspected output under the current policy revision",
+      "citation": "SENSITIVE-OUTPUT-006",
+      "severity": "medium",
+      "requirement": {
+        "fact": "runtime.sample.output_current_checked_count",
+        "operator": "gt",
+        "value": 0,
+        "source": "runtime"
+      },
+      "remediation": "Exercise the current policy with authorized model or tool calls; standalone text evaluations do not establish execution evidence."
+    },
+    {
+      "id": "OUTPUT-SAMPLE-RELEASES",
+      "title": "The bounded sample has no observed releases or releases without all three category checks",
+      "citation": "SENSITIVE-OUTPUT-007",
+      "severity": "high",
+      "requirement": {
+        "all": [
+          {
+            "fact": "runtime.sample.output_observed_release_count",
+            "operator": "eq",
+            "value": 0,
+            "source": "runtime"
+          },
+          {
+            "fact": "runtime.sample.output_unchecked_release_count",
+            "operator": "eq",
+            "value": 0,
+            "source": "runtime"
+          }
+        ]
+      },
+      "remediation": "Investigate observed releases and missing checks; restoring configuration does not erase historical evidence."
+    },
+    {
+      "id": "OUTPUT-SAMPLE-COMPLETENESS",
+      "title": "The bounded sample has no unknown output assessments or recovered incomplete calls",
+      "citation": "SENSITIVE-OUTPUT-008",
+      "severity": "high",
+      "requirement": {
+        "all": [
+          {
+            "fact": "runtime.sample.output_unknown_count",
+            "operator": "eq",
+            "value": 0,
+            "source": "runtime"
+          },
+          {
+            "fact": "runtime.sample.output_incomplete_count",
+            "operator": "eq",
+            "value": 0,
+            "source": "runtime"
+          }
+        ]
+      },
+      "remediation": "Investigate unsupported output, failed checks and recovered incomplete calls; withhold unverified output."
+    },
+    {
+      "id": "OUTPUT-TEST-PRE-DEPLOYMENT",
+      "title": "The planned model target passes current pre deployment output-protection probes",
+      "citation": "SENSITIVE-OUTPUT-009",
+      "severity": "high",
+      "requirement": {
+        "fact": "testing.output.pre_deployment.passed",
+        "operator": "eq",
+        "value": true,
+        "source": "assessment"
+      },
+      "remediation": "Run the current sensitive-output suite for this phase. Require credential, email, phone and benign controls; investigate failed or inconclusive cases."
+    },
+    {
+      "id": "OUTPUT-TEST-OPERATION",
+      "title": "The planned model target passes current operation output-protection probes",
+      "citation": "SENSITIVE-OUTPUT-010",
+      "severity": "high",
+      "requirement": {
+        "fact": "testing.output.operation.passed",
+        "operator": "eq",
+        "value": true,
+        "source": "assessment"
+      },
+      "remediation": "Run the current sensitive-output suite for this phase. Require credential, email, phone and benign controls; investigate failed or inconclusive cases."
+    }
+  ]
+}

@@ -1,0 +1,2110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GovWeave scoped risk evidence and runtime fact references",
+  "$ref": "#/$defs/EvidenceDetail",
+  "$defs": {
+    "EvidenceID": {
+      "type": "string",
+      "pattern": "^ev_[A-Za-z0-9_-]{22}$"
+    },
+    "RequestID": {
+      "type": "string",
+      "pattern": "^req_[A-Za-z0-9_-]{22}$"
+    },
+    "ApplicationID": {
+      "type": "string",
+      "pattern": "^app_[A-Za-z0-9_-]{16}$"
+    },
+    "ObjectID": {
+      "type": "string",
+      "pattern": "^ev_[A-Za-z0-9_-]{22}:(request|upstream_request|upstream_output|released_output)$"
+    },
+    "EvidenceConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "revision",
+        "mode",
+        "application_ids",
+        "retention_days",
+        "max_content_bytes"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "enum": [
+            "disabled",
+            "metadata",
+            "full"
+          ]
+        },
+        "application_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApplicationID"
+          },
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 30
+        },
+        "max_content_bytes": {
+          "type": "integer",
+          "minimum": 4096,
+          "maximum": 1048576,
+          "default": 65536
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "enum": [
+                  "metadata",
+                  "full"
+                ]
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "application_ids": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ],
+      "description": "Disabled by default. Metadata/full require an explicit nonempty list of existing application IDs; an empty list never means all applications. PUT uses the current revision; success increments it. Capture freezes the admitted configuration and expiry is measured from capture time."
+    },
+    "CallRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "phase",
+        "started_at",
+        "timestamp",
+        "operation",
+        "application_id",
+        "policy_revision",
+        "decision",
+        "outcome",
+        "http_status",
+        "upstream_attempted",
+        "streaming",
+        "duration_ms"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^req_[A-Za-z0-9_-]{22}$"
+        },
+        "phase": {
+          "enum": [
+            "started",
+            "finished"
+          ]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "operation": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "application_id": {
+          "type": "string",
+          "pattern": "^app_[A-Za-z0-9_-]{16}$"
+        },
+        "connection_id": {
+          "type": "string",
+          "pattern": "^conn_[A-Za-z0-9_-]{16}$"
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "policy_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "decision": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "outcome": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "http_status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 599
+        },
+        "upstream_status": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599
+        },
+        "upstream_attempted": {
+          "type": "boolean"
+        },
+        "streaming": {
+          "type": "boolean"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "first_byte_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "error_code": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "content_policy": {
+          "$ref": "traces.schema.json#/$defs/PolicyAssessment"
+        },
+        "tool_governance": {
+          "$ref": "tools.schema.json#/$defs/Governance"
+        },
+        "output_policy": {
+          "$ref": "content.schema.json#/$defs/OutputAssessment"
+        },
+        "trace": {
+          "$ref": "traces.schema.json#/$defs/TraceContext"
+        }
+      },
+      "description": "Application-scoped copy of the ordinary metadata-only call record. Trace is optional; neither retained evidence nor runtime reports require trace headers."
+    },
+    "EvidenceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "request_id",
+        "application_id",
+        "operation",
+        "created_at",
+        "expires_at",
+        "capture_revision",
+        "mode",
+        "audit_committed",
+        "delivery_state",
+        "object_count",
+        "retained_bytes",
+        "max_content_bytes"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "$ref": "#/$defs/EvidenceID"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestID"
+        },
+        "application_id": {
+          "$ref": "#/$defs/ApplicationID"
+        },
+        "operation": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "capture_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "enum": [
+            "metadata",
+            "full"
+          ]
+        },
+        "audit_committed": {
+          "type": "boolean"
+        },
+        "delivery_state": {
+          "enum": [
+            "not_observed",
+            "withheld",
+            "release_prepared",
+            "write_completed",
+            "write_failed",
+            "stream_incomplete"
+          ],
+          "description": "Gateway-side observation only. stream_incomplete means a started stream ended unsuccessfully without a write/flush failure; write_failed identifies an actual write/flush failure. Even write_completed does not prove client receipt or consumption."
+        },
+        "object_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "retained_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4194304
+        },
+        "trace_id": {
+          "$ref": "traces.schema.json#/$defs/TraceID"
+        },
+        "max_content_bytes": {
+          "type": "integer",
+          "minimum": 4096,
+          "maximum": 1048576,
+          "description": "Per-object retention limit frozen for this capture; later configuration changes do not alter it."
+        }
+      }
+    },
+    "EvidenceStreamFrame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "offset",
+        "bytes",
+        "elapsed_ms",
+        "kind"
+      ],
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128,
+          "description": "One-based frame sequence in this stream stage; the manifest retains the first 128."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 67108864,
+          "description": "Zero-based byte offset in the concatenation of fully validated frames for this stage, not an upstream transport offset."
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 67108864
+        },
+        "elapsed_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Gateway observation time relative to request start. Read batching affects this value; it is not token timing or a trusted provider timestamp."
+        },
+        "kind": {
+          "enum": [
+            "data",
+            "done",
+            "other"
+          ]
+        }
+      }
+    },
+    "EvidenceStream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "scope",
+        "end_state",
+        "frame_count",
+        "done_seen",
+        "frames_truncated",
+        "written_bytes",
+        "frames"
+      ],
+      "properties": {
+        "version": {
+          "const": "sse-evidence-v1"
+        },
+        "scope": {
+          "enum": [
+            "validated_frames",
+            "write_attempted_frames"
+          ]
+        },
+        "end_state": {
+          "enum": [
+            "completed",
+            "incomplete_stream",
+            "invalid_upstream_stream",
+            "upstream_error",
+            "response_too_large",
+            "upstream_timeout",
+            "upstream_unreachable",
+            "client_cancelled",
+            "write_failed",
+            "flush_failed"
+          ]
+        },
+        "frame_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 67108864
+        },
+        "done_seen": {
+          "type": "boolean",
+          "description": "A valid [DONE] frame was observed or attempted in this stage. This alone does not establish EOF, successful writes or client receipt."
+        },
+        "frames_truncated": {
+          "type": "boolean",
+          "description": "More than 128 frames were observed in this stage; only the first 128 metadata entries are retained. The byte count and fingerprint still cover all observed stage frames."
+        },
+        "written_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 67108864,
+          "description": "Zero for upstream validated frames; for client output, the sum of bytes reported by Write. Not proof of flush success or remote client receipt."
+        },
+        "frames": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/EvidenceStreamFrame"
+          }
+        }
+      },
+      "description": "Bounded SSE metadata over complete validated frames, excluding malformed/error frame content and incomplete trailing bytes. Upstream frames and downstream write attempts are separate scopes. Completed requires [DONE], EOF, no pending bytes and successful writes/flushes; error states preserve a partial observation.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "validated_frames"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "written_bytes": {
+                "const": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "end_state": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "done_seen": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "frame_count": {
+                "minimum": 129
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "frames_truncated": {
+                "const": true
+              },
+              "frames": {
+                "minItems": 128
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "frames_truncated": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "frame_count": {
+                "const": 0
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "done_seen": {
+                "const": false
+              },
+              "frames": {
+                "maxItems": 0
+              },
+              "written_bytes": {
+                "const": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "EvidenceObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "media_type",
+        "content_state",
+        "bytes"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/ObjectID"
+        },
+        "kind": {
+          "enum": [
+            "request",
+            "upstream_request",
+            "upstream_output",
+            "released_output"
+          ]
+        },
+        "media_type": {
+          "enum": [
+            "application/json",
+            "text/plain",
+            "text/event-stream"
+          ]
+        },
+        "content_state": {
+          "enum": [
+            "retained",
+            "metadata_only",
+            "omitted_size",
+            "not_observed",
+            "streaming_not_captured",
+            "unsupported_encoding"
+          ]
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 67108864,
+          "description": "Observed bytes, up to 64 MiB for stream metadata or 8 MiB otherwise; retained content is separately bounded by the capture max_content_bytes."
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Application-scoped HMAC of observed bytes. For SSE it covers the concatenation of this stage’s complete validated frames, not raw transport bytes; no public content hash or inferred data-flow proof."
+        },
+        "stream": {
+          "$ref": "#/$defs/EvidenceStream"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "stream"
+            ]
+          },
+          "then": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "upstream_output",
+                  "released_output"
+                ]
+              },
+              "media_type": {
+                "const": "text/event-stream"
+              },
+              "content_state": {
+                "enum": [
+                  "retained",
+                  "metadata_only",
+                  "omitted_size",
+                  "unsupported_encoding"
+                ]
+              }
+            },
+            "required": [
+              "fingerprint"
+            ]
+          },
+          "else": {
+            "properties": {
+              "bytes": {
+                "maximum": 8388608
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "stream"
+            ],
+            "properties": {
+              "kind": {
+                "const": "upstream_output"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "stream": {
+                "properties": {
+                  "scope": {
+                    "const": "validated_frames"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "stream"
+            ],
+            "properties": {
+              "kind": {
+                "const": "released_output"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "stream": {
+                "properties": {
+                  "scope": {
+                    "const": "write_attempted_frames"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "media_type": {
+                "const": "text/event-stream"
+              },
+              "content_state": {
+                "not": {
+                  "const": "streaming_not_captured"
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "stream"
+            ]
+          }
+        }
+      ],
+      "description": "Object metadata. Optional stream describes SSE stage observations; older streaming_not_captured objects remain readable without it. Full mode retains all observed bytes of an eligible stage within the frozen cap, including incomplete streams; exceeding the cap omits the entire body rather than keeping a prefix."
+    },
+    "ToolPolicyProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "snapshot_sha256",
+        "output_mode",
+        "ruleset_version",
+        "data_sensitivity"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "output_mode": {
+          "enum": [
+            "observe",
+            "block"
+          ]
+        },
+        "ruleset_version": {
+          "const": "credentials-v1"
+        },
+        "data_sensitivity": {
+          "enum": [
+            "public",
+            "internal",
+            "restricted"
+          ]
+        },
+        "instruction_policy": {
+          "$ref": "tools.schema.json#/$defs/InstructionPolicy"
+        },
+        "instruction_review": {
+          "$ref": "tools.schema.json#/$defs/InstructionReview"
+        }
+      }
+    },
+    "EvidencePolicySnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "id",
+        "revision",
+        "snapshot"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "input",
+            "output",
+            "tool"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "snapshot": {
+          "type": "object"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "input"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "snapshot": {
+                "$ref": "policies.schema.json#/$defs/snapshot"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "output"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "snapshot": {
+                "$ref": "content.schema.json#/$defs/OutputPolicySnapshot"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "tool"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "snapshot": {
+                "$ref": "#/$defs/ToolPolicyProjection"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "EvidenceFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "control",
+        "category",
+        "result",
+        "reason",
+        "source",
+        "policy_revision"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 300,
+          "pattern": "^ev_[A-Za-z0-9_-]{22}:finding:[a-z_]+:[A-Za-z0-9_.-]+$",
+          "description": "Stable identity derived from the capture, control and category rather than array position."
+        },
+        "control": {
+          "enum": [
+            "authorization",
+            "credential_egress",
+            "sensitive_output",
+            "tool_credentials",
+            "tool_instruction"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "result": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "source": {
+          "enum": [
+            "gateway_observation",
+            "detector_observation"
+          ]
+        },
+        "detector_version": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "policy_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "object_id": {
+          "$ref": "#/$defs/ObjectID"
+        }
+      },
+      "description": "Projection of a retained control observation, not a newly executed detector, calibrated risk probability or legal finding. Independent content.evaluate observations do not themselves enforce an action."
+    },
+    "EvidenceBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "request_id",
+        "application_id",
+        "operation",
+        "created_at",
+        "expires_at",
+        "capture_revision",
+        "mode",
+        "audit_committed",
+        "delivery_state",
+        "object_count",
+        "retained_bytes",
+        "record",
+        "objects",
+        "policies",
+        "integrity",
+        "max_content_bytes"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "$ref": "#/$defs/EvidenceID"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestID"
+        },
+        "application_id": {
+          "$ref": "#/$defs/ApplicationID"
+        },
+        "operation": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "capture_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "enum": [
+            "metadata",
+            "full"
+          ]
+        },
+        "audit_committed": {
+          "type": "boolean"
+        },
+        "delivery_state": {
+          "enum": [
+            "not_observed",
+            "withheld",
+            "release_prepared",
+            "write_completed",
+            "write_failed",
+            "stream_incomplete"
+          ],
+          "description": "Gateway-side observation only. stream_incomplete means a started stream ended unsuccessfully without a write/flush failure; write_failed identifies an actual write/flush failure. Even write_completed does not prove client receipt or consumption."
+        },
+        "object_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "retained_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4194304
+        },
+        "trace_id": {
+          "$ref": "traces.schema.json#/$defs/TraceID"
+        },
+        "record": {
+          "$ref": "#/$defs/CallRecord"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceObject"
+          },
+          "maxItems": 4
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidencePolicySnapshot"
+          },
+          "maxItems": 8
+        },
+        "integrity": {
+          "const": "authenticated",
+          "description": "The stored envelope authenticated under the local evidence key; no external signature, trusted timestamp or factual correctness claim."
+        },
+        "max_content_bytes": {
+          "type": "integer",
+          "minimum": 4096,
+          "maximum": 1048576,
+          "description": "Per-object retention limit frozen for this capture; later configuration changes do not alter it."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "contains": {
+                  "required": [
+                    "stream"
+                  ]
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "record": {
+                "properties": {
+                  "streaming": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "EvidenceDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "request_id",
+        "application_id",
+        "operation",
+        "created_at",
+        "expires_at",
+        "capture_revision",
+        "mode",
+        "audit_committed",
+        "delivery_state",
+        "object_count",
+        "retained_bytes",
+        "record",
+        "objects",
+        "policies",
+        "integrity",
+        "findings",
+        "max_content_bytes"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "$ref": "#/$defs/EvidenceID"
+        },
+        "request_id": {
+          "$ref": "#/$defs/RequestID"
+        },
+        "application_id": {
+          "$ref": "#/$defs/ApplicationID"
+        },
+        "operation": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "capture_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "enum": [
+            "metadata",
+            "full"
+          ]
+        },
+        "audit_committed": {
+          "type": "boolean"
+        },
+        "delivery_state": {
+          "enum": [
+            "not_observed",
+            "withheld",
+            "release_prepared",
+            "write_completed",
+            "write_failed",
+            "stream_incomplete"
+          ],
+          "description": "Gateway-side observation only. stream_incomplete means a started stream ended unsuccessfully without a write/flush failure; write_failed identifies an actual write/flush failure. Even write_completed does not prove client receipt or consumption."
+        },
+        "object_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "retained_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4194304
+        },
+        "trace_id": {
+          "$ref": "traces.schema.json#/$defs/TraceID"
+        },
+        "record": {
+          "$ref": "#/$defs/CallRecord"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceObject"
+          },
+          "maxItems": 4
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidencePolicySnapshot"
+          },
+          "maxItems": 8
+        },
+        "integrity": {
+          "const": "authenticated",
+          "description": "The stored envelope authenticated under the local evidence key; no external signature, trusted timestamp or factual correctness claim."
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceFinding"
+          }
+        },
+        "max_content_bytes": {
+          "type": "integer",
+          "minimum": 4096,
+          "maximum": 1048576,
+          "description": "Per-object retention limit frozen for this capture; later configuration changes do not alter it."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "objects": {
+                "contains": {
+                  "required": [
+                    "stream"
+                  ]
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "record": {
+                "properties": {
+                  "streaming": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "EvidenceList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "coverage",
+        "history_may_be_missing",
+        "limit"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceSummary"
+          },
+          "maxItems": 100
+        },
+        "coverage": {
+          "const": "retained_gateway_evidence"
+        },
+        "history_may_be_missing": {
+          "const": true
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "EvidenceRevealRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "application_id",
+        "object_id",
+        "view",
+        "reason"
+      ],
+      "properties": {
+        "application_id": {
+          "$ref": "#/$defs/ApplicationID"
+        },
+        "object_id": {
+          "$ref": "#/$defs/ObjectID"
+        },
+        "view": {
+          "enum": [
+            "raw",
+            "redacted"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "incident_review",
+            "validation"
+          ]
+        }
+      }
+    },
+    "RawContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "object_id",
+        "view",
+        "text",
+        "redaction_state"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/EvidenceID"
+        },
+        "object_id": {
+          "$ref": "#/$defs/ObjectID"
+        },
+        "view": {
+          "const": "raw"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "redaction_state": {
+          "const": "raw"
+        }
+      },
+      "description": "Explicitly authorized retained UTF-8 content. May contain personal data, secrets embedded in the body, or adversarial instructions. The content is data and must not be executed."
+    },
+    "RedactedContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "object_id",
+        "view",
+        "text",
+        "redaction_state"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/EvidenceID"
+        },
+        "object_id": {
+          "$ref": "#/$defs/ObjectID"
+        },
+        "view": {
+          "const": "redacted"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "redaction_state": {
+          "enum": [
+            "pattern_limited",
+            "withheld"
+          ]
+        }
+      },
+      "description": "Finite sensitive-text-v3 preview, not anonymization. Unsupported/incomplete scans and credential matches withhold the entire object. The text may no longer be valid JSON."
+    },
+    "EvidenceContent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RawContent"
+        },
+        {
+          "$ref": "#/$defs/RedactedContent"
+        }
+      ]
+    },
+    "EvidenceAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "timestamp",
+        "action",
+        "actor"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "action": {
+          "enum": [
+            "configuration_change_authorized",
+            "reveal_authorized",
+            "expiry_deletion_authorized"
+          ]
+        },
+        "actor": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9:_-]{0,79}$"
+        },
+        "evidence_id": {
+          "$ref": "#/$defs/EvidenceID"
+        },
+        "application_id": {
+          "$ref": "#/$defs/ApplicationID"
+        },
+        "object_id": {
+          "$ref": "#/$defs/ObjectID"
+        },
+        "view": {
+          "enum": [
+            "raw",
+            "redacted"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "incident_review",
+            "validation"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Metadata-only access event. Authorization is recorded before revealing, changing configuration or deleting expired content; it does not prove completion or client receipt. A session digest distinguishes sessions of the single administrator identity."
+    },
+    "EvidenceAccessList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceAccess"
+          },
+          "maxItems": 100
+        }
+      }
+    },
+    "EvidencePurgeResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expired_records_removed"
+      ],
+      "properties": {
+        "expired_records_removed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2048
+        }
+      }
+    },
+    "EvidenceGraphNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "type": {
+          "enum": [
+            "call",
+            "object",
+            "policy",
+            "finding",
+            "reference"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "evidence_id": {
+          "$ref": "#/$defs/EvidenceID"
+        },
+        "object_id": {
+          "$ref": "#/$defs/ObjectID"
+        }
+      }
+    },
+    "EvidenceGraphEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "target",
+        "relation",
+        "provenance",
+        "resolution"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "target": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "relation": {
+          "enum": [
+            "observed_input",
+            "prepared_upstream_input",
+            "observed_output",
+            "prepared_client_output",
+            "content_gap",
+            "policy_snapshot",
+            "recorded_finding",
+            "assessed_object",
+            "parent",
+            "link",
+            "retry_of"
+          ]
+        },
+        "provenance": {
+          "enum": [
+            "gateway_capture",
+            "gateway_snapshot",
+            "gateway_observation",
+            "detector_observation",
+            "caller_declared"
+          ]
+        },
+        "resolution": {
+          "enum": [
+            "observed",
+            "unresolved",
+            "ambiguous"
+          ]
+        }
+      }
+    },
+    "EvidenceGraph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "root_evidence_id",
+        "application_id",
+        "scope",
+        "coverage",
+        "history_may_be_missing",
+        "graph_complete",
+        "result_truncated",
+        "unavailable_records",
+        "nodes",
+        "edges"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "root_evidence_id": {
+          "$ref": "#/$defs/EvidenceID"
+        },
+        "application_id": {
+          "$ref": "#/$defs/ApplicationID"
+        },
+        "scope": {
+          "const": "same_application"
+        },
+        "coverage": {
+          "const": "retained_gateway_evidence"
+        },
+        "history_may_be_missing": {
+          "const": true
+        },
+        "graph_complete": {
+          "const": false
+        },
+        "result_truncated": {
+          "type": "boolean"
+        },
+        "unavailable_records": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceGraphNode"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceGraphEdge"
+          }
+        }
+      },
+      "description": "Metadata only, at most 32 retained captures in the root application and trace. Parent/link/retry relationships remain caller-declared even when their target is observed. No inferred content-transfer edge or complete task causality."
+    },
+    "RuntimeFactEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fact",
+        "evidence_id",
+        "value",
+        "source_request_ids",
+        "matched_request_ids"
+      ],
+      "properties": {
+        "fact": {
+          "type": "string",
+          "pattern": "^runtime\\.(sample|tools\\.sample)\\.[A-Za-z0-9_]+$"
+        },
+        "evidence_id": {
+          "type": "string",
+          "pattern": "^audit-bytes-[0-9]+(-output-[0-9]+)?$"
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "source_request_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RequestID"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "matched_request_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RequestID"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        }
+      },
+      "description": "Exact application-scoped records considered for this numeric fact and the subset contributing to its value. evidence_id is a runtime source stamp, not an ev_ vault identifier."
+    },
+    "RuntimeEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "selection",
+        "coverage",
+        "audit_bytes",
+        "global_sample_size",
+        "history_may_be_missing",
+        "records",
+        "facts"
+      ],
+      "properties": {
+        "version": {
+          "const": "runtime-evidence-v1"
+        },
+        "selection": {
+          "const": "product_applications_from_global_recent_100"
+        },
+        "coverage": {
+          "const": "gateway_observed_sample"
+        },
+        "audit_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 134217728
+        },
+        "global_sample_size": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "history_may_be_missing": {
+          "const": true
+        },
+        "records": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CallRecord"
+          },
+          "maxItems": 100
+        },
+        "facts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RuntimeFactEvidence"
+          },
+          "maxItems": 32
+        }
+      },
+      "description": "Exact metadata sample used by numeric runtime facts. Product applications are selected from the shared global latest 100 audit entries, not 100 per application. Included in new reports when audit is available and retained in explicit report archives, independently of optional content capture. Omitted by older reports or unavailable audit; no body content is included."
+    },
+    "EvidenceTraceCall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "application_id",
+        "record_source",
+        "evidence_state",
+        "findings"
+      ],
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/RequestID"
+        },
+        "application_id": {
+          "$ref": "#/$defs/ApplicationID"
+        },
+        "record_source": {
+          "enum": [
+            "retained_evidence",
+            "recent_audit",
+            "evidence_index"
+          ]
+        },
+        "record": {
+          "$ref": "#/$defs/CallRecord"
+        },
+        "evidence_id": {
+          "$ref": "#/$defs/EvidenceID"
+        },
+        "evidence_state": {
+          "enum": [
+            "retained",
+            "not_found",
+            "unavailable",
+            "not_loaded"
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceFinding"
+          }
+        }
+      },
+      "description": "Metadata-only call node. Findings describe successfully read retained captures only. Empty findings outside retained state do not mean no risk. An evidence ID is a reference, not proof of availability.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "evidence_state": {
+                "const": "retained"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "record",
+              "evidence_id"
+            ],
+            "properties": {
+              "record_source": {
+                "const": "retained_evidence"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "findings": {
+                "maxItems": 0
+              },
+              "record_source": {
+                "enum": [
+                  "recent_audit",
+                  "evidence_index"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_state": {
+                "const": "not_found"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "record"
+            ],
+            "not": {
+              "required": [
+                "evidence_id"
+              ]
+            },
+            "properties": {
+              "record_source": {
+                "const": "recent_audit"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_state": {
+                "const": "not_loaded"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "record",
+              "evidence_id"
+            ],
+            "properties": {
+              "record_source": {
+                "const": "recent_audit"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "evidence_state": {
+                "const": "unavailable"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "evidence_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "record_source": {
+                "const": "evidence_index"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "record"
+              ]
+            },
+            "properties": {
+              "evidence_state": {
+                "const": "unavailable"
+              }
+            }
+          },
+          "else": {
+            "required": [
+              "record"
+            ]
+          }
+        }
+      ]
+    },
+    "EvidenceTraceEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_request_id",
+        "target_span_id",
+        "relation",
+        "provenance",
+        "resolution"
+      ],
+      "properties": {
+        "source_request_id": {
+          "$ref": "#/$defs/RequestID"
+        },
+        "target_request_id": {
+          "$ref": "#/$defs/RequestID"
+        },
+        "target_span_id": {
+          "type": "string",
+          "pattern": "^(?!0{16}$)[0-9a-f]{16}$"
+        },
+        "relation": {
+          "enum": [
+            "parent",
+            "link",
+            "retry_of"
+          ]
+        },
+        "provenance": {
+          "const": "caller_declared"
+        },
+        "resolution": {
+          "enum": [
+            "observed",
+            "unresolved",
+            "ambiguous"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "resolution": {
+                "const": "observed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "target_request_id"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "target_request_id"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "EvidenceTraceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "calls",
+        "retained",
+        "not_found",
+        "unavailable",
+        "not_loaded",
+        "retained_findings"
+      ],
+      "properties": {
+        "calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "retained": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "not_found": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "unavailable": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "not_loaded": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "retained_findings": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "EvidenceTraceView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "trace_id",
+        "application_ids",
+        "scope",
+        "coverage",
+        "finding_coverage",
+        "task_completion",
+        "history_may_be_missing",
+        "graph_complete",
+        "result_truncated",
+        "audit_available",
+        "audit_window_saturated",
+        "audit_result_truncated",
+        "evidence_result_truncated",
+        "call_limit",
+        "evidence_limit",
+        "summary",
+        "calls",
+        "edges",
+        "view_sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "trace_id": {
+          "type": "string",
+          "pattern": "^(?!0{32}$)[0-9a-f]{32}$"
+        },
+        "application_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ApplicationID"
+          }
+        },
+        "scope": {
+          "const": "selected_applications"
+        },
+        "coverage": {
+          "const": "retained_evidence_and_recent_audit"
+        },
+        "finding_coverage": {
+          "const": "retained_evidence_only"
+        },
+        "task_completion": {
+          "const": "not_determined"
+        },
+        "history_may_be_missing": {
+          "const": true
+        },
+        "graph_complete": {
+          "const": false
+        },
+        "result_truncated": {
+          "type": "boolean"
+        },
+        "audit_available": {
+          "type": "boolean"
+        },
+        "audit_window_saturated": {
+          "type": "boolean"
+        },
+        "audit_result_truncated": {
+          "type": "boolean"
+        },
+        "evidence_result_truncated": {
+          "type": "boolean"
+        },
+        "call_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "evidence_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "summary": {
+          "$ref": "#/$defs/EvidenceTraceSummary"
+        },
+        "calls": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/EvidenceTraceCall"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "maxItems": 768,
+          "items": {
+            "$ref": "#/$defs/EvidenceTraceEdge"
+          }
+        },
+        "view_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of Go compact JSON for this view with view_sha256 omitted; optimistic concurrency token, not authentication."
+        }
+      },
+      "description": "Administrator-selected live task graph: calls are nodes, edges resolve only against returned records. Reads the latest min(32,limit) unexpired captures across selected apps, then fills remaining slots from the global latest-1000 audit index (at most128 matching audit records). Ordering uses record timestamps, with capture creation as fallback for unavailable records. Independent non-atomic windows, not a report archive, content lineage or task completion proof. Missing captures remain unknown; no text or policy snapshot bodies are returned."
+    },
+    "TaskSnapshotID": {
+      "type": "string",
+      "pattern": "^tsk_[A-Za-z0-9_-]{22}$"
+    },
+    "TaskSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "created_at",
+        "created_by",
+        "view"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "$ref": "#/$defs/TaskSnapshotID"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "created_by": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9][a-zA-Z0-9:_-]{0,79}$"
+        },
+        "view": {
+          "$ref": "#/$defs/EvidenceTraceView"
+        }
+      },
+      "description": "Metadata-only historical observation; evidence states describe save time. Does not retain body content or extend capture expiry. created_by identifies an administrator session, not a separate human identity."
+    },
+    "TaskSnapshotSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "created_at",
+        "trace_id",
+        "application_ids",
+        "calls",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/TaskSnapshotID"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "trace_id": {
+          "type": "string",
+          "pattern": "^(?!0{32}$)[0-9a-f]{32}$"
+        },
+        "application_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ApplicationID"
+          }
+        },
+        "calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2097152
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "description": "bytes and sha256 cover the exact JSON export bytes, including its final newline. Summary listing is an index; open/export revalidates the stored file."
+    },
+    "ArchivedTaskEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "snapshot",
+        "integrity"
+      ],
+      "properties": {
+        "summary": {
+          "$ref": "#/$defs/TaskSnapshotSummary"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/TaskSnapshot"
+        },
+        "integrity": {
+          "const": "authenticated_local"
+        }
+      },
+      "description": "Private metadata snapshot authenticated with a purpose-derived local evidence key. No external attestation or authenticated complete inventory; whole-file loss before restart can be undetected."
+    },
+    "TaskSnapshotCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_view_sha256"
+      ],
+      "properties": {
+        "expected_view_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "TaskSnapshotList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "scope",
+        "max_items"
+      ],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/TaskSnapshotSummary"
+          }
+        },
+        "scope": {
+          "const": "exact_trace_and_applications"
+        },
+        "max_items": {
+          "const": 256
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "pack_id": "demo-ai-governance",
+  "pack_version": "1.0.0",
+  "product_id": "sample-assistant",
+  "product_version": "1.0.0",
+  "facts": {
+    "product.user_facing": {
+      "value": true,
+      "evidence_id": "profile-001",
+      "source": "declared",
+      "observed_at": "2026-01-01T00:00:00Z"
+    },
+    "runtime.credential_policy_mode": {
+      "value": "block",
+      "evidence_id": "runtime-config-001",
+      "source": "runtime",
+      "observed_at": "2026-01-01T00:00:00Z"
+    },
+    "runtime.credential_policy_covers_product": {
+      "value": true,
+      "evidence_id": "runtime-scope-001",
+      "source": "runtime",
+      "observed_at": "2026-01-01T00:00:00Z"
+    }
+  }
+}

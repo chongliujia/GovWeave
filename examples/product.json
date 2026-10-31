@@ -1,0 +1,18 @@
+{
+  "revision": 0,
+  "name": "Example AI assistant",
+  "version": "1.0.0",
+  "application_ids": [
+    "app_replace-with-created-application-id"
+  ],
+  "pack_id": "demo-ai-governance",
+  "pack_version": "1.0.0",
+  "facts": {
+    "product.user_facing": {
+      "value": true,
+      "evidence_id": "profile-001",
+      "source": "declared",
+      "observed_at": "2026-01-01T00:00:00Z"
+    }
+  }
+}

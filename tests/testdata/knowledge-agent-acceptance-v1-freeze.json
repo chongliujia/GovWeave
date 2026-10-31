@@ -1,0 +1,5 @@
+{
+  "corpus_sha256": "8b3d5d7bbd51fdc73ef5e063ff28a01df7644b1fc1574f7f6a191c11d0d89c42",
+  "frozen_at": "2026-10-29T08:02:13.145630+00:00",
+  "protocol": "Authored before acceptance-runner implementation. No detector changes in this iteration."
+}

@@ -10,8 +10,10 @@ import (
 	"strings"
 
 	"govweave/internal/auth"
+	"govweave/internal/compliance"
 	"govweave/internal/config"
 	"govweave/internal/gateway"
+	"govweave/internal/governance"
 	"govweave/internal/instance"
 )
 
@@ -21,13 +23,15 @@ const Version = "0.2.0-dev"
 var assets embed.FS
 
 type Server struct {
-	store   *instance.Store
-	admin   *auth.Manager
-	gateway *gateway.Engine
+	store      *instance.Store
+	admin      *auth.Manager
+	gateway    *gateway.Engine
+	compliance *compliance.Engine
+	governance *governance.Service
 }
 
-func New(store *instance.Store, admin *auth.Manager, engine *gateway.Engine) http.Handler {
-	s := &Server{store: store, admin: admin, gateway: engine}
+func New(store *instance.Store, admin *auth.Manager, engine *gateway.Engine, evaluator *compliance.Engine, products *governance.Service) http.Handler {
+	s := &Server{store: store, admin: admin, gateway: engine, compliance: evaluator, governance: products}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]string{"status": "ok", "service": "govweave", "version": Version})
@@ -36,8 +40,13 @@ func New(store *instance.Store, admin *auth.Manager, engine *gateway.Engine) htt
 	mux.HandleFunc("PUT /api/v1/instance", s.authorize(s.updateInstance))
 	s.registerAuth(mux)
 	s.registerGateway(mux)
+	s.registerTools(mux)
+	s.registerOutputPolicy(mux)
+	s.registerCompliance(mux)
+	s.registerTesting(mux)
+	s.registerEvidence(mux)
 	reserved := func(w http.ResponseWriter, r *http.Request) {
-		apiError(w, 501, "not_implemented", "This endpoint is not implemented. Only Chat Completions and model listing are currently supported.")
+		apiError(w, 501, "not_implemented", "This endpoint is not implemented. Supported gateway endpoints are Chat Completions, model listing and configured read-tool invocation.")
 	}
 	mux.HandleFunc("/v1", reserved)
 	mux.HandleFunc("/v1/", reserved)
@@ -51,7 +60,7 @@ func New(store *instance.Store, admin *auth.Manager, engine *gateway.Engine) htt
 			return
 		}
 		switch r.URL.Path {
-		case "/", "/app.js", "/gateway.js", "/policies.js", "/i18n.js", "/style.css", "/logo.svg":
+		case "/", "/app.js", "/gateway.js", "/integration.js", "/evidence.js", "/policies.js", "/i18n.js", "/style.css", "/logo.svg":
 			files.ServeHTTP(w, r)
 		default:
 			apiError(w, 404, "not_found", "Endpoint or page not found.")

@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-28T23:51:49.743812+00:00",
+  "corpus_sha256": "a81027500c2793291288b514a7f0357fc4ebcd17a070f34b451c55c4003c3a48",
+  "cases": 64,
+  "v1_detector_sha256": "67533b31af969288af055e6aa7b46057e88f2d1e51ef688d6b01e4a36ca3134f",
+  "protocol": "Authored by the same development process after v1 error review, before v2 implementation. Not blind or externally independent. Do not tune source or labels after first measurement."
+}

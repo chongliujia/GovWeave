@@ -1,0 +1,11 @@
+{
+  "revision": 0,
+  "name": "Example actively assessed output application",
+  "version": "1.0.0",
+  "application_ids": [
+    "app_replace-with-created-application-id"
+  ],
+  "pack_id": "sensitive-output-governance",
+  "pack_version": "1.1.0",
+  "facts": {}
+}

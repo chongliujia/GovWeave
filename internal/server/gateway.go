@@ -13,9 +13,46 @@ import (
 func (s *Server) registerGateway(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/chat/completions", s.gateway.Chat)
 	mux.HandleFunc("GET /v1/models", s.gateway.Models)
+	mux.HandleFunc("GET /v1/integration/check", s.gateway.IntegrationCheck)
+	mux.HandleFunc("GET /v1/traces/{trace_id}", s.gateway.GetTrace)
+	mux.HandleFunc("GET /api/v1/traces/{trace_id}", s.authorize(s.gateway.GetAdminTrace))
 	mux.HandleFunc("GET /api/v1/gateway", s.authorize(func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, s.gateway.Store.Snapshot()) }))
 	mux.HandleFunc("GET /api/v1/policies/credential-egress", s.authorize(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, s.gateway.Policies.Snapshot())
+	}))
+	mux.HandleFunc("GET /api/v1/policies/credential-egress/history", s.authorize(func(w http.ResponseWriter, r *http.Request) {
+		limit := 20
+		if raw, ok := r.URL.Query()["limit"]; ok {
+			value, err := strconv.Atoi(raw[0])
+			if err != nil || value < 1 || value > 100 {
+				apiError(w, 400, "invalid_history_query", "History limit must be between 1 and 100.")
+				return
+			}
+			limit = value
+		}
+		var before *uint64
+		if raw, ok := r.URL.Query()["before_revision"]; ok {
+			value, err := strconv.ParseUint(raw[0], 10, 64)
+			if err != nil {
+				apiError(w, 400, "invalid_history_query", "Provide a non-negative policy revision.")
+				return
+			}
+			before = &value
+		}
+		writeJSON(w, 200, s.gateway.Policies.History(limit, before))
+	}))
+	mux.HandleFunc("GET /api/v1/policies/credential-egress/revisions/{revision}", s.authorize(func(w http.ResponseWriter, r *http.Request) {
+		revision, err := strconv.ParseUint(r.PathValue("revision"), 10, 64)
+		if err != nil {
+			apiError(w, 400, "invalid_history_query", "Provide a non-negative policy revision.")
+			return
+		}
+		policy, err := s.gateway.Policies.Revision(revision)
+		if err != nil {
+			gatewayError(w, err)
+			return
+		}
+		writeJSON(w, 200, policy)
 	}))
 	mux.HandleFunc("PUT /api/v1/policies/credential-egress", s.authorize(func(w http.ResponseWriter, r *http.Request) {
 		var input gateway.PolicyInput
@@ -28,6 +65,7 @@ func (s *Server) registerGateway(mux *http.ServeMux) {
 			return
 		}
 		writeJSON(w, 200, policy)
+		s.gateway.NotifyChange()
 	}))
 	mux.HandleFunc("GET /api/v1/requests", s.authorize(func(w http.ResponseWriter, r *http.Request) {
 		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -66,6 +104,7 @@ func (s *Server) registerGateway(mux *http.ServeMux) {
 				return
 			}
 			writeJSON(w, 200, applicationResponse{Application: app, APIKey: key})
+			s.gateway.NotifyChange()
 		}))
 	}
 }
@@ -101,6 +140,8 @@ func gatewayError(w http.ResponseWriter, err error) {
 		apiError(w, 404, "not_found", err.Error())
 	case errors.Is(err, gateway.ErrPersistence):
 		apiError(w, 500, "persistence_failed", err.Error())
+	case errors.Is(err, gateway.ErrPolicyHistoryFull):
+		apiError(w, 409, "policy_history_full", err.Error())
 	case errors.Is(err, gateway.ErrAuditUnavailable):
 		apiError(w, 503, "audit_unavailable", "Could not save request records. Check disk space and log capacity.")
 	case errors.Is(err, gateway.ErrBusy):
@@ -121,6 +162,7 @@ func (s *Server) saveConnection(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, connection)
+	s.gateway.NotifyChange()
 }
 
 type applicationResponse struct {
@@ -139,4 +181,5 @@ func (s *Server) saveApplication(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, applicationResponse{Application: app, APIKey: key})
+	s.gateway.NotifyChange()
 }

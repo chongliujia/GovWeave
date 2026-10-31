@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-29T06:01:15.647151+00:00",
+  "detector_version": "tool-instructions-v2",
+  "source_sha256": {
+    "internal/instruction/detector.go": "492da9d5bf61846b732fbb30814eaab9b77200a7d09826b8ab1aa080b2524db3",
+    "internal/instruction/v2.go": "86cf9c9076d407222cf0ee77b05eeedd62985aa1d8f4627a3c52523413f8b2dc"
+  },
+  "protocol": "Recorded after unit/boundary tests, before first Agent v3 measurement. Corpus v3 was fixed before implementation. Internally authored visible cases; no independent blind validation."
+}

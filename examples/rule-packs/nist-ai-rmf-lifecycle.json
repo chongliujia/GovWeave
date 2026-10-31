@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "id": "nist-ai-rmf-lifecycle",
+  "version": "0.1.0",
+  "name": "NIST AI RMF lifecycle testing support (draft)",
+  "description": "Partial technical evidence mapping for selected AI RMF 1.0 lifecycle testing outcomes. Test success does not establish framework-wide satisfaction.",
+  "framework_kind": "voluntary_framework",
+  "review": {"status": "draft"},
+  "sources": [{"title": "NIST AI RMF 1.0, Core", "url": "https://airc.nist.gov/airmf-resources/airmf/5-sec-core/", "version": "1.0 (2023)", "checked_on": "2026-10-28"}],
+  "limitations": [
+    "This is a narrow unreviewed mapping, not certification or complete coverage of GOVERN, MAP, MEASURE and MANAGE.",
+    "The technical checks record outcomes of the selected test suite; they do not establish appropriate metrics, representative testing or deployment approval.",
+    "Periodic synthetic probes complement production monitoring; they do not provide complete traffic coverage, stakeholder feedback or incident response.",
+    "Only matching product, plan, suite, connection, gateway and policy versions share lifecycle evidence. Failed or incomplete requests are not model compliance conclusions."
+  ],
+  "controls": [
+    {
+      "id": "NIST-TEST-RECORD",
+      "title": "A versioned test set and runner record is retained",
+      "citation": "MEASURE 2.1 (partial technical support)",
+      "severity": "medium",
+      "assessment_method": "evidence",
+      "basis": "supporting_practice",
+      "remediation": "Retain the test set, runner version, metrics and measurement limits; have their adequacy reviewed.",
+      "requirement": {"fact": "testing.test_set_documented", "operator": "eq", "value": true, "source": "assessment"}
+    },
+    {
+      "id": "NIST-PREDEPLOYMENT-TEST",
+      "title": "The selected pre-deployment test suite passed",
+      "citation": "MEASURE introductory lifecycle guidance (partial technical support)",
+      "severity": "high",
+      "assessment_method": "evidence",
+      "basis": "supporting_practice",
+      "remediation": "Run the selected tests for this product and target version before a human deployment decision.",
+      "requirement": {"fact": "testing.pre_deployment.passed", "operator": "eq", "value": true, "source": "assessment", "max_age_seconds": 2592000}
+    },
+    {
+      "id": "NIST-OPERATION-TEST",
+      "title": "The selected operation test suite passed recently",
+      "citation": "MEASURE 2.4, 3.1 (partial technical support)",
+      "severity": "high",
+      "assessment_method": "evidence",
+      "basis": "supporting_practice",
+      "remediation": "Run operation tests at the documented interval and investigate failures; retain separate real-use monitoring evidence.",
+      "requirement": {"fact": "testing.operation.passed", "operator": "eq", "value": true, "source": "assessment"}
+    },
+    {
+      "id": "NIST-CONTEXT-REVIEW",
+      "title": "Intended use and risk context require review",
+      "citation": "MAP 1.1",
+      "severity": "high",
+      "assessment_method": "manual",
+      "basis": "supporting_practice",
+      "remediation": "Review intended use, users, risk context and target boundaries with relevant stakeholders.",
+      "requirement": {"fact": "governance.context_reviewed", "operator": "eq", "value": true, "source": "document"}
+    },
+    {
+      "id": "NIST-METRICS-REVIEW",
+      "title": "Test metrics and unmeasured risks require review",
+      "citation": "MEASURE 1.1, 1.2",
+      "severity": "high",
+      "assessment_method": "manual",
+      "basis": "supporting_practice",
+      "remediation": "Review metric suitability, measurement uncertainty, unmeasured risks and the need for repeated samples.",
+      "requirement": {"fact": "governance.metrics_reviewed", "operator": "eq", "value": true, "source": "document"}
+    },
+    {
+      "id": "NIST-INDEPENDENT-REVIEW",
+      "title": "Independent assessment requires human evidence",
+      "citation": "MEASURE 1.3",
+      "severity": "medium",
+      "assessment_method": "manual",
+      "basis": "supporting_practice",
+      "remediation": "Retain review by suitable experts who are independent of front-line development.",
+      "requirement": {"fact": "governance.independent_review_recorded", "operator": "eq", "value": true, "source": "document"}
+    },
+    {
+      "id": "NIST-REPRESENTATIVENESS-REVIEW",
+      "title": "Deployment-context representativeness requires review",
+      "citation": "MEASURE 2.3",
+      "severity": "high",
+      "assessment_method": "manual",
+      "basis": "supporting_practice",
+      "remediation": "Review whether tests represent intended deployment conditions, users and important failure modes.",
+      "requirement": {"fact": "governance.representativeness_reviewed", "operator": "eq", "value": true, "source": "document"}
+    },
+    {
+      "id": "NIST-MONITORING-RESPONSE-REVIEW",
+      "title": "Monitoring and response arrangements require review",
+      "citation": "MANAGE 4.1",
+      "severity": "high",
+      "assessment_method": "manual",
+      "basis": "supporting_practice",
+      "remediation": "Review production monitoring, responsible owners, user feedback and incident/change response arrangements.",
+      "requirement": {"fact": "governance.monitoring_response_reviewed", "operator": "eq", "value": true, "source": "document"}
+    }
+  ]
+}

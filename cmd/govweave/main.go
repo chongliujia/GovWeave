@@ -9,12 +9,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
 	"govweave/internal/auth"
+	"govweave/internal/compliance"
 	"govweave/internal/config"
 	"govweave/internal/gateway"
+	"govweave/internal/governance"
 	"govweave/internal/instance"
 	"govweave/internal/server"
 )
@@ -64,7 +67,16 @@ func main() {
 		log.Fatalf("open gateway: %v", err)
 	}
 	defer engine.Close()
-	httpServer := &http.Server{Handler: server.New(store, administrator, engine), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
+	evaluator, err := compliance.Open(filepath.Join(d.DataDir, "rule-packs"))
+	if err != nil {
+		log.Fatalf("load compliance rule packs: %v", err)
+	}
+	products, err := governance.Open(d.DataDir, engine, evaluator)
+	if err != nil {
+		log.Fatalf("load product registry: %v", err)
+	}
+	defer products.Close()
+	httpServer := &http.Server{Handler: server.New(store, administrator, engine, evaluator, products), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 * 1024}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	finished := make(chan struct{})

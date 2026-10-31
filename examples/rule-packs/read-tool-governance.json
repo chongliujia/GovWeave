@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "id": "read-tool-governance",
+  "version": "1.0.0",
+  "name": "Bounded read-tool technical controls",
+  "framework_kind": "internal_policy",
+  "sources": [
+    {
+      "title": "GovWeave read-tool configuration and bounded metadata evidence policy (not a law or certification)",
+      "version": "1.0.0"
+    }
+  ],
+  "review": {
+    "status": "draft"
+  },
+  "controls": [
+    {
+      "id": "TOOL-APPLICATIONS-ACTIVE",
+      "title": "Every bound application exists and is active",
+      "citation": "READ-TOOL-001",
+      "severity": "high",
+      "requirement": {
+        "fact": "runtime.applications_active",
+        "operator": "eq",
+        "value": true,
+        "source": "runtime"
+      }
+    },
+    {
+      "id": "TOOL-GRANT-COVERAGE",
+      "title": "Every bound application has an enabled read-tool resource grant",
+      "citation": "READ-TOOL-002",
+      "severity": "high",
+      "requirement": {
+        "fact": "runtime.tools.applications_covered",
+        "operator": "eq",
+        "value": true,
+        "source": "runtime"
+      }
+    },
+    {
+      "id": "TOOL-OUTPUT-BLOCKING",
+      "title": "All enabled tools granted to the product use output blocking",
+      "citation": "READ-TOOL-003",
+      "severity": "high",
+      "requirement": {
+        "fact": "runtime.tools.output_blocking_covers_product",
+        "operator": "eq",
+        "value": true,
+        "source": "runtime"
+      }
+    },
+    {
+      "id": "TOOL-AUDIT-AVAILABLE",
+      "title": "Durable audit writing and reservation capacity are available",
+      "citation": "READ-TOOL-004",
+      "severity": "high",
+      "requirement": {
+        "fact": "runtime.audit_available",
+        "operator": "eq",
+        "value": true,
+        "source": "runtime"
+      }
+    },
+    {
+      "id": "TOOL-OUTPUT-EVIDENCE",
+      "title": "The bounded sample contains at least one inspected tool output",
+      "citation": "READ-TOOL-005",
+      "severity": "medium",
+      "requirement": {
+        "fact": "runtime.tools.sample.output_checked_count",
+        "operator": "gt",
+        "value": 0,
+        "source": "runtime"
+      }
+    },
+    {
+      "id": "TOOL-SAMPLE-RELEASES",
+      "title": "The bounded sample has no observed credential releases, unknown outputs or incomplete calls",
+      "citation": "READ-TOOL-006",
+      "severity": "high",
+      "requirement": {
+        "all": [
+          {
+            "fact": "runtime.tools.sample.observed_release_count",
+            "operator": "eq",
+            "value": 0,
+            "source": "runtime"
+          },
+          {
+            "fact": "runtime.tools.sample.unknown_output_count",
+            "operator": "eq",
+            "value": 0,
+            "source": "runtime"
+          },
+          {
+            "fact": "runtime.tools.sample.incomplete_count",
+            "operator": "eq",
+            "value": 0,
+            "source": "runtime"
+          }
+        ]
+      }
+    }
+  ]
+}

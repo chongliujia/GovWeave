@@ -1,0 +1,327 @@
+{
+  "schema_version": 1,
+  "id": "eu-ai-act-chatbot-transparency",
+  "version": "0.1.0",
+  "name": "EU AI Act: customer-support interaction transparency (draft)",
+  "description": "Narrow source-backed draft mapping for provider-side customer-support interaction notices. Evidence predicates do not independently inspect a UI or establish legal compliance.",
+  "framework_kind": "law",
+  "review": {
+    "status": "draft"
+  },
+  "effective_from": "2026-08-02T00:00:00Z",
+  "sources": [
+    {
+      "title": "Regulation (EU) 2024/1689, Article 50, official AI Act Service Desk",
+      "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50",
+      "version": "Consolidated text as at 2026-07-27",
+      "checked_on": "2026-10-28"
+    },
+    {
+      "title": "Regulation (EU) 2024/1689, territorial scope and exceptions",
+      "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-2",
+      "version": "Consolidated text as at 2026-07-27",
+      "checked_on": "2026-10-28"
+    },
+    {
+      "title": "Regulation (EU) 2024/1689, definitions",
+      "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-3",
+      "version": "Consolidated text as at 2026-07-27",
+      "checked_on": "2026-10-28"
+    },
+    {
+      "title": "Regulation (EU) 2024/1689, application dates",
+      "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-113",
+      "version": "Consolidated text as at 2026-07-27",
+      "checked_on": "2026-10-28"
+    },
+    {
+      "title": "European Commission Article 50 transparency FAQ",
+      "url": "https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act",
+      "version": "Page updated 2026-07-24; checked 2026-10-28",
+      "checked_on": "2026-10-28"
+    }
+  ],
+  "limitations": [
+    "Draft mapping requiring qualified human review; no reviewer approval or certification is claimed.",
+    "Market, role and use-case fields are routing assertions, not an automatic legal classification.",
+    "Scope and exemptions, notice clarity and applicable accessibility requirements remain manual review items.",
+    "Evidence booleans are supplied administrative assessment claims; GovWeave does not inspect or verify the customer interface.",
+    "Covers selected aspects of Articles 50(1) and 50(5), not the entire AI Act or product compliance.",
+    "Does not cover Article 50(2) synthetic-output marking, Article 50(3)/(4), high-risk/GPAI duties, GDPR or other consumer/accessibility law.",
+    "The release-evidence control is supporting assurance practice, not an additional statutory obligation."
+  ],
+  "controls": [
+    {
+      "id": "EU50-SCOPE",
+      "title": "Scope, role and exception review",
+      "citation": "Arts. 2, 3(3), 50(1); assurance mapping",
+      "severity": "medium",
+      "assessment_method": "manual",
+      "basis": "supporting_practice",
+      "requirement": {
+        "fact": "scope.review_document_present",
+        "operator": "exists",
+        "source": "document"
+      },
+      "remediation": "Have a qualified reviewer establish territorial scope, provider status, direct interaction and any Article 50(1) exception; retain the rationale. An exception claim is not automatically accepted."
+    },
+    {
+      "id": "EU50-NOTICE",
+      "title": "Evidence of an AI-interaction notice",
+      "citation": "Art. 50(1)",
+      "severity": "medium",
+      "assessment_method": "evidence",
+      "basis": "legal_obligation",
+      "requirement": {
+        "all": [
+          {
+            "fact": "transparency.notice_present",
+            "operator": "eq",
+            "value": true,
+            "source": "assessment"
+          },
+          {
+            "fact": "transparency.notice_identifies_ai",
+            "operator": "eq",
+            "value": true,
+            "source": "assessment"
+          }
+        ]
+      },
+      "remediation": "Provide current interface-test or assessment evidence that the interaction notice exists and identifies the AI interaction; do not infer this from a gateway response alone.",
+      "applies_when": {
+        "all": [
+          {
+            "fact": "product.market",
+            "operator": "eq",
+            "value": "eu"
+          },
+          {
+            "fact": "product.operator_role",
+            "operator": "eq",
+            "value": "provider"
+          },
+          {
+            "fact": "product.use_case",
+            "operator": "eq",
+            "value": "customer_support"
+          },
+          {
+            "fact": "product.is_ai_system",
+            "operator": "eq",
+            "value": true
+          },
+          {
+            "fact": "product.direct_interaction",
+            "operator": "eq",
+            "value": true
+          },
+          {
+            "fact": "scope.article50_1_exception_claimed",
+            "operator": "eq",
+            "value": false,
+            "source": "assessment"
+          }
+        ]
+      }
+    },
+    {
+      "id": "EU50-TIMING",
+      "title": "Evidence of first-interaction notice timing",
+      "citation": "Art. 50(5), read with 50(1)",
+      "severity": "medium",
+      "assessment_method": "evidence",
+      "basis": "legal_obligation",
+      "requirement": {
+        "fact": "transparency.notice_at_first_interaction",
+        "operator": "eq",
+        "value": true,
+        "source": "assessment"
+      },
+      "remediation": "Test the initial user journey and retain evidence of notice timing at or before the first interaction; reassess the current release.",
+      "applies_when": {
+        "all": [
+          {
+            "fact": "product.market",
+            "operator": "eq",
+            "value": "eu"
+          },
+          {
+            "fact": "product.operator_role",
+            "operator": "eq",
+            "value": "provider"
+          },
+          {
+            "fact": "product.use_case",
+            "operator": "eq",
+            "value": "customer_support"
+          },
+          {
+            "fact": "product.is_ai_system",
+            "operator": "eq",
+            "value": true
+          },
+          {
+            "fact": "product.direct_interaction",
+            "operator": "eq",
+            "value": true
+          },
+          {
+            "fact": "scope.article50_1_exception_claimed",
+            "operator": "eq",
+            "value": false,
+            "source": "assessment"
+          }
+        ]
+      }
+    },
+    {
+      "id": "EU50-CLARITY",
+      "title": "Clear and distinguishable disclosure review",
+      "citation": "Art. 50(5)",
+      "severity": "medium",
+      "assessment_method": "manual",
+      "basis": "legal_obligation",
+      "requirement": {
+        "fact": "transparency.clarity_review_recorded",
+        "operator": "exists",
+        "source": "assessment"
+      },
+      "remediation": "Review the actual notice wording, presentation and user context for clarity and distinguishability; retain human findings. A presence boolean cannot establish this judgement.",
+      "applies_when": {
+        "all": [
+          {
+            "fact": "product.market",
+            "operator": "eq",
+            "value": "eu"
+          },
+          {
+            "fact": "product.operator_role",
+            "operator": "eq",
+            "value": "provider"
+          },
+          {
+            "fact": "product.use_case",
+            "operator": "eq",
+            "value": "customer_support"
+          },
+          {
+            "fact": "product.is_ai_system",
+            "operator": "eq",
+            "value": true
+          },
+          {
+            "fact": "product.direct_interaction",
+            "operator": "eq",
+            "value": true
+          },
+          {
+            "fact": "scope.article50_1_exception_claimed",
+            "operator": "eq",
+            "value": false,
+            "source": "assessment"
+          }
+        ]
+      }
+    },
+    {
+      "id": "EU50-ACCESSIBILITY",
+      "title": "Applicable accessibility review",
+      "citation": "Art. 50(5)",
+      "severity": "medium",
+      "assessment_method": "manual",
+      "basis": "legal_obligation",
+      "requirement": {
+        "fact": "transparency.accessibility_review_recorded",
+        "operator": "exists",
+        "source": "assessment"
+      },
+      "remediation": "Determine which accessibility requirements apply to the notice and review supporting tests and user journeys; retain the applicable basis and human findings.",
+      "applies_when": {
+        "all": [
+          {
+            "fact": "product.market",
+            "operator": "eq",
+            "value": "eu"
+          },
+          {
+            "fact": "product.operator_role",
+            "operator": "eq",
+            "value": "provider"
+          },
+          {
+            "fact": "product.use_case",
+            "operator": "eq",
+            "value": "customer_support"
+          },
+          {
+            "fact": "product.is_ai_system",
+            "operator": "eq",
+            "value": true
+          },
+          {
+            "fact": "product.direct_interaction",
+            "operator": "eq",
+            "value": true
+          },
+          {
+            "fact": "scope.article50_1_exception_claimed",
+            "operator": "eq",
+            "value": false,
+            "source": "assessment"
+          }
+        ]
+      }
+    },
+    {
+      "id": "EU50-RELEASE-EVIDENCE",
+      "title": "Current-release verification evidence",
+      "citation": "Supporting assurance for Arts. 50(1), 50(5)",
+      "severity": "medium",
+      "assessment_method": "evidence",
+      "basis": "supporting_practice",
+      "requirement": {
+        "fact": "assurance.ui_evidence_current",
+        "operator": "eq",
+        "value": true,
+        "source": "assessment"
+      },
+      "remediation": "Retain evidence tied to the assessed product release and repeat verification after relevant interface changes. This is supporting practice, not a separate statutory deadline.",
+      "applies_when": {
+        "all": [
+          {
+            "fact": "product.market",
+            "operator": "eq",
+            "value": "eu"
+          },
+          {
+            "fact": "product.operator_role",
+            "operator": "eq",
+            "value": "provider"
+          },
+          {
+            "fact": "product.use_case",
+            "operator": "eq",
+            "value": "customer_support"
+          },
+          {
+            "fact": "product.is_ai_system",
+            "operator": "eq",
+            "value": true
+          },
+          {
+            "fact": "product.direct_interaction",
+            "operator": "eq",
+            "value": true
+          },
+          {
+            "fact": "scope.article50_1_exception_claimed",
+            "operator": "eq",
+            "value": false,
+            "source": "assessment"
+          }
+        ]
+      }
+    }
+  ]
+}

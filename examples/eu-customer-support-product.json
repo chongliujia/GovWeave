@@ -1,0 +1,48 @@
+{
+  "revision": 0,
+  "name": "EU customer-support assistant example",
+  "version": "1.0.0",
+  "application_ids": [
+    "app_replace-with-created-application-id"
+  ],
+  "pack_id": "eu-ai-act-chatbot-transparency",
+  "pack_version": "0.1.0",
+  "facts": {
+    "product.market": {
+      "value": "eu",
+      "evidence_id": "scope-profile-001",
+      "source": "declared",
+      "observed_at": "2026-10-28T00:00:00Z"
+    },
+    "product.operator_role": {
+      "value": "provider",
+      "evidence_id": "scope-profile-001",
+      "source": "declared",
+      "observed_at": "2026-10-28T00:00:00Z"
+    },
+    "product.use_case": {
+      "value": "customer_support",
+      "evidence_id": "scope-profile-001",
+      "source": "declared",
+      "observed_at": "2026-10-28T00:00:00Z"
+    },
+    "product.is_ai_system": {
+      "value": true,
+      "evidence_id": "scope-profile-001",
+      "source": "declared",
+      "observed_at": "2026-10-28T00:00:00Z"
+    },
+    "product.direct_interaction": {
+      "value": true,
+      "evidence_id": "scope-profile-001",
+      "source": "declared",
+      "observed_at": "2026-10-28T00:00:00Z"
+    },
+    "scope.article50_1_exception_claimed": {
+      "value": false,
+      "evidence_id": "scope-assessment-001",
+      "source": "assessment",
+      "observed_at": "2026-10-28T00:00:00Z"
+    }
+  }
+}

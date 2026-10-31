@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-29T13:42:46.364375+00:00",
+  "grader_version": "task-facts-v1",
+  "source_sha256": {
+    "scripts/task_grading.py": "ed765cd2bec29dc749ab8e02530146eb68369db92a0b64beaa7dc816cc568d01"
+  },
+  "protocol": "Frozen after development/boundary unit checks, before first validation-partition measurement and live run. No retroactive rescoring of historical answers."
+}

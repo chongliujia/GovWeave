@@ -39,6 +39,9 @@ type CallRecord struct {
 	FirstByteMS       *int64            `json:"first_byte_ms,omitempty"`
 	ErrorCode         string            `json:"error_code,omitempty"`
 	ContentPolicy     *PolicyAssessment `json:"content_policy,omitempty"`
+	ToolGovernance    *ToolGovernance   `json:"tool_governance,omitempty"`
+	OutputPolicy      *OutputAssessment `json:"output_policy,omitempty"`
+	Trace             *TraceContext     `json:"trace,omitempty"`
 }
 
 type Audit struct {
@@ -78,7 +81,7 @@ func OpenAudit(dir string) (*Audit, error) {
 	scanner.Buffer(make([]byte, 4096), int(maxAuditEventBytes))
 	for scanner.Scan() {
 		var record CallRecord
-		if err := json.Unmarshal(scanner.Bytes(), &record); err != nil || record.SchemaVersion != 1 || record.RequestID == "" || (record.Phase != "started" && record.Phase != "finished") {
+		if err := json.Unmarshal(scanner.Bytes(), &record); err != nil || record.SchemaVersion != 1 || record.RequestID == "" || (record.Phase != "started" && record.Phase != "finished") || !validTrace(record.Trace) || record.Trace != nil && record.ApplicationID == "" {
 			f.Close()
 			return nil, errors.New("invalid audit log; restore or repair it before starting")
 		}
@@ -111,7 +114,40 @@ func (a *Audit) Close() error {
 	return a.file.Close()
 }
 
+func cloneCallRecord(record CallRecord) CallRecord {
+	if record.Trace != nil {
+		trace := *record.Trace
+		trace.Links = append([]string(nil), trace.Links...)
+		record.Trace = &trace
+	}
+	record.OutputPolicy = cloneOutputAssessment(record.OutputPolicy)
+	if record.ContentPolicy != nil {
+		policy := *record.ContentPolicy
+		policy.MatchedRules = append([]string{}, policy.MatchedRules...)
+		record.ContentPolicy = &policy
+	}
+	if record.ToolGovernance != nil {
+		assessment := *record.ToolGovernance
+		if assessment.InstructionPolicy != nil {
+			value := *assessment.InstructionPolicy
+			value.RuleIDs = append([]string{}, value.RuleIDs...)
+			if value.Review != nil {
+				review := *value.Review
+				review.ExemptedRuleIDs = append([]string{}, review.ExemptedRuleIDs...)
+				value.Review = &review
+			}
+			assessment.InstructionPolicy = &value
+		}
+		assessment.Content.RuleIDs = append([]string{}, assessment.Content.RuleIDs...)
+		assessment.Reasons = append([]string{}, assessment.Reasons...)
+		assessment.OutputPolicy = cloneOutputAssessment(assessment.OutputPolicy)
+		record.ToolGovernance = &assessment
+	}
+	return record
+}
+
 func (a *Audit) remember(record CallRecord) {
+	record = cloneCallRecord(record)
 	for i := len(a.recent) - 1; i >= 0; i-- {
 		if a.recent[i].RequestID == record.RequestID {
 			a.recent[i] = record
@@ -126,7 +162,7 @@ func (a *Audit) remember(record CallRecord) {
 }
 
 func (a *Audit) append(record CallRecord) error {
-	if a.failed {
+	if a.failed || !validTrace(record.Trace) || record.Trace != nil && record.ApplicationID == "" {
 		return ErrAuditUnavailable
 	}
 	record.SchemaVersion = 1
@@ -190,7 +226,7 @@ func (a *Audit) View(limit int, applicationID string) AuditView {
 	v := AuditView{Available: !a.failed && a.size+a.reserved+2*maxAuditEventBytes <= AuditMaxBytes, Bytes: a.size, MaxBytes: AuditMaxBytes, Records: []CallRecord{}}
 	for i := len(a.recent) - 1; i >= 0 && len(v.Records) < limit; i-- {
 		if applicationID == "" || a.recent[i].ApplicationID == applicationID {
-			v.Records = append(v.Records, a.recent[i])
+			v.Records = append(v.Records, cloneCallRecord(a.recent[i]))
 		}
 	}
 	return v

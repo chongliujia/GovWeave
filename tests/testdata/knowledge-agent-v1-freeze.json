@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-29T02:31:04.272148+00:00",
+  "corpus_sha256": "065101db5af79bd34fabfafa9129c14764bf367b2b273c41fbb0acd95ff369f7",
+  "cases": 12,
+  "protocol": "Authored internally and frozen before agent evaluation harness measurements. Development and evaluation results reported separately; not externally blind."
+}

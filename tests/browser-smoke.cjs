@@ -272,6 +272,7 @@ async function main() {
     const invokeSecret = async (stream = false) => fetch(`${origin}/v1/chat/completions`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${rotated}` }, body: JSON.stringify({ model: 'internal-assistant', messages: [{ role: 'user', content: syntheticCredential }], stream }) });
     const beforePolicy = upstreamCalls;
     const observed = await invokeSecret();
+    const observedID = observed.headers.get('x-request-id');
     assert.equal(observed.status, 200);
     assert.equal(upstreamCalls, beforePolicy + 1);
     await page.locator('.tabs [data-tab="requests"]').click();
@@ -301,11 +302,24 @@ async function main() {
     await page.locator('#request-detail-fields').getByText('API key patterns', { exact: true }).waitFor();
     await page.locator('#request-detail-fields').getByText('No upstream request', { exact: true }).waitFor();
     await page.locator('#request-detail-fields').getByText('credential-egress / 2 / credentials-v1', { exact: true }).waitFor();
+    await page.locator('#load-request-policy').click();
+    await page.locator('#request-policy-fields').getByText('Block', { exact: true }).waitFor();
     assert.ok(!(await page.locator('#request-detail').textContent()).includes(syntheticCredential));
     await page.locator('#request-detail-language').selectOption('zh-CN');
     await page.locator('#request-detail-fields').getByText('策略已阻断', { exact: true }).waitFor();
+    await page.locator('#request-policy-fields').getByText('阻断', { exact: true }).waitFor();
     await page.locator('#request-detail-language').selectOption('en');
     await page.screenshot({ path: path.join(output, 'policy-blocked.png'), fullPage: true, animations: 'disabled' });
+    await page.locator('#request-detail').press('Escape');
+    // An old call must show the revision it used, even after enforcement changed.
+    await page.locator(`[data-request-id="${observedID}"] .request-open`).click();
+    await page.route('**/policies/credential-egress/revisions/1', route => route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: { code: 'not_found', message: 'not found' } }) }));
+    await page.locator('#load-request-policy').click();
+    await page.locator('#request-policy-status').getByText('This revision was not retained. Configurations from before the history baseline cannot be reconstructed.', { exact: true }).waitFor();
+    await page.unroute('**/policies/credential-egress/revisions/1');
+    await page.locator('#load-request-policy').click();
+    await page.locator('#request-policy-fields').getByText('credential-egress / 1 / credentials-v1', { exact: true }).waitFor();
+    await page.locator('#request-policy-fields').getByText('Observe', { exact: true }).waitFor();
     await page.locator('#request-detail').press('Escape');
     const callsLog = await fs.readFile(path.join(dataDir, 'calls.jsonl'), 'utf8');
     assert.ok(!callsLog.includes(syntheticCredential));

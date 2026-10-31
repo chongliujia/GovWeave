@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-29T05:46:03.313702+00:00",
+  "detector_version": "tool-instructions-v1",
+  "source_sha256": {
+    "internal/instruction/detector.go": "492da9d5bf61846b732fbb30814eaab9b77200a7d09826b8ab1aa080b2524db3"
+  },
+  "protocol": "Source recorded after the first local v2 comparison. v2 corpus was fixed before implementation. No rule changes after measurement; internal authored cases, not independent validation."
+}

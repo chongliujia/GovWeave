@@ -77,7 +77,8 @@ go run ./cmd/govweave -config examples/deployment.json -check-config
 - 配置保存到 `instance.json`，临时文件写入并同步后原子替换，权限 `0600`。使用 revision 拒绝过期页面覆盖新版本。损坏或未知版本的状态文件导致启动失败，避免静默重置。
 - `.instance.lock` 是操作系统持有的进程锁。退出或崩溃自动释放；不要通过删除锁文件绕开正在运行的实例。不要让多个进程、容器或网络文件系统共享这个目录。
 - `gateway.json` 保存连接与应用；上游凭证加密，应用密钥保存哈希，其他配置未加密。`gateway.key` 是解密所需的本地密钥，必须共同备份，丢失后无法恢复上游凭证。密钥与数据同机，不能替代磁盘加密或 KMS。
-- `calls.jsonl` 保存调用元数据，权限 0600；不包含提示词、回答或密钥。达到容量限制或无法持久写入时停止新的上游调用。归档与错误恢复见 [模型接入与运行边界](model-gateway.md)。
+- `tools.json` 保存只读工具配置、加密凭证及不可变历史，最多 32 个工具、128 个历史版本、4 MiB；与 `gateway.key` 一同备份。历史版本包含加密的旧凭证，整个备份都须受保护。见[工具治理](tool-governance.md)。
+- `calls.jsonl` 保存调用元数据及显式开启的有界追踪标识，权限 0600；不包含提示词、回答或密钥。达到容量限制或无法持久写入时停止新的上游调用。归档与错误恢复见 [模型接入与运行边界](model-gateway.md)；追踪只查询全局最近 1,000 条请求索引，见[异构 Agent 追踪](agent-tracing.md)。
 - 备份数据目录和部署参数时按企业秘密管理；备份应在服务停止后进行，确保配置、密钥和记录一致。没有防篡改审计、自动备份或断电恢复保证。
 
 ## 从令牌版迁移
@@ -140,7 +141,7 @@ docker compose up -d --no-build --pull never
 
 ## 运行时策略配置
 
-凭证外发策略在控制台 Runtime policies 中配置，默认关闭。保存后写入数据目录的 `policies.json`（0600）；与 `gateway.json`、`gateway.key`、`instance.json`、密码文件和调用记录一同备份。它不需要新增环境变量或外部服务。升级前保留数据目录，旧调用记录仍可读；策略文件损坏时拒绝启动，避免静默取消保护。不要删除该文件来修改策略。检测范围、观察模式外发行为和局限见[运行时策略文档](runtime-policies.md)。
+凭证外发策略在控制台 Runtime policies 中配置，默认关闭。每次保存将历史快照与最新版本一起原子写入数据目录的 `policies.json`（0600，schema 2，最多 1024 个快照／8 MiB）；与 `gateway.json`、`gateway.key`、`instance.json`、密码文件和调用记录一同备份。它不需要新增环境变量或外部服务。升级前保留数据目录，旧调用记录仍可读；策略文件损坏时拒绝启动，避免静默取消保护。不要删除该文件来修改策略。检测范围、观察模式外发行为和局限见[运行时策略文档](runtime-policies.md)。可选声明式规则包放在数据目录的 `rule-packs/` 中，启动时加载，也应纳入备份；安装与评估 API 见[通用合规引擎](compliance-engine.md)。产品登记保存到私有 `products.json`（最大 4 MiB），应一同备份；自动最新结果仅保留在内存，重启后重算，详见[产品持续评估](product-assessments.md)。显式保存的报告位于私有 `assessment-reports/`，包含结构化治理事实值，最多 256 份／64 MiB，应一同备份；详见[报告快照](eu-transparency-reports.md)。 风险正文证据使用独立的 `evidence.key` 和 `evidence/`；任务元数据快照存于 `task-evidence/`，是通过该密钥独立派生 HMAC 认证的私有明文元数据，最多 256 份、每份 2 MiB、合计 64 MiB，没有自动到期或驱逐。三者应一起备份；详见[风险证据及任务快照](risk-evidence.md)。
 
 ## 常见问题
 
@@ -161,3 +162,7 @@ docker compose up -d --no-build --pull never
 二进制包不包含源码；文档中的源码编译和测试命令须在源码仓库执行。归档包含英文及中文文档。Compose 命名卷与源码启动的 `./data` 是不同实例数据目录。不要把 `docker compose down -v` 当作普通重启，它会删除命名卷。
 
 切换监听端口不会自动更新已保存公开地址。服务端组织／地址的优先级为环境变量、部署文件、控制台保存值；监听地址和数据目录只有环境变量、部署文件及默认值。部署 JSON 上限为 64 KiB，`GOVWEAVE_BASE_URL` / `GOVWEAVE_API_KEY` 是客户端约定，不配置服务端。
+
+主动测评增加私有 `test-plans.json`、`test-runs/` 和已安装的 `test-suites/`，应一起纳入停机备份。明确开启的定时计划会在重启后恢复模型调用，恢复到可访问提供者的环境前应检查计划。容量与正文留存限制见[主动测评](active-assessments.md)。
+
+敏感输出策略通过管理 API 配置，默认关闭，保存到私有 `output-policies.json`：初始关闭版本加最多 127 次更新，总上限 2 MiB，原子写入且启动时验证。请一同备份；删除此文件会使该策略恢复默认关闭，不能作为修改策略的方法。启用后仅支持非流式文本模型回答，详见[敏感输出保护](sensitive-output.md)。

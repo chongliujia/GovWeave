@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GovWeave retained advisory assessment report",
+  "$ref": "#/$defs/Snapshot",
+  "$defs": {
+    "Snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "created_at",
+        "product",
+        "rule_pack",
+        "input",
+        "report"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^rpt_[A-Za-z0-9_-]{22}$"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "product": {
+          "$ref": "products.schema.json#/$defs/Product"
+        },
+        "rule_pack": {
+          "$ref": "compliance.schema.json#/$defs/Pack"
+        },
+        "input": {
+          "$ref": "compliance.schema.json#/$defs/EvaluationInput"
+        },
+        "report": {
+          "$ref": "products.schema.json#/$defs/Report"
+        }
+      }
+    },
+    "Summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "created_at",
+        "product_id",
+        "product_version",
+        "product_revision",
+        "pack_id",
+        "pack_version",
+        "pack_sha256",
+        "status",
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^rpt_[A-Za-z0-9_-]{22}$"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "product_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "product_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "product_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pack_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "pack_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "pack_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "status": {
+          "enum": [
+            "satisfied",
+            "gaps_detected",
+            "insufficient_evidence",
+            "not_applicable"
+          ]
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "ArchivedReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "snapshot"
+      ],
+      "properties": {
+        "summary": {
+          "$ref": "#/$defs/Summary"
+        },
+        "snapshot": {
+          "$ref": "#/$defs/Snapshot"
+        }
+      }
+    },
+    "ReportList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reports"
+      ],
+      "properties": {
+        "reports": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {
+            "$ref": "#/$defs/Summary"
+          }
+        }
+      }
+    },
+    "Replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_id",
+        "matches",
+        "evaluation"
+      ],
+      "properties": {
+        "report_id": {
+          "type": "string",
+          "pattern": "^rpt_[A-Za-z0-9_-]{22}$"
+        },
+        "matches": {
+          "type": "boolean"
+        },
+        "evaluation": {
+          "$ref": "compliance.schema.json#/$defs/Evaluation"
+        }
+      }
+    }
+  }
+}

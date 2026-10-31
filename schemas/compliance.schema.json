@@ -1,0 +1,881 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GovWeave declarative compliance rule pack and evaluation contracts",
+  "$ref": "#/$defs/Pack",
+  "$defs": {
+    "Pack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "name",
+        "framework_kind",
+        "sources",
+        "review",
+        "controls"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "framework_kind": {
+          "enum": [
+            "internal_policy",
+            "law",
+            "regulation",
+            "standard",
+            "voluntary_framework"
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/Source"
+          }
+        },
+        "review": {
+          "$ref": "#/$defs/Review"
+        },
+        "effective_from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "effective_to": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "controls": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/Control"
+          }
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "limitations": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "framework_kind": {
+                "not": {
+                  "const": "internal_policy"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "sources": {
+                "items": {
+                  "required": [
+                    "url"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "version"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2048,
+          "pattern": "^https://"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "checked_on": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "Review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "draft",
+            "reviewed"
+          ]
+        },
+        "reviewer": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "reviewed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "reviewer",
+              "reviewed_at"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "reviewer"
+                  ]
+                },
+                {
+                  "required": [
+                    "reviewed_at"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "Scalar": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "string",
+          "maxLength": 512
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "description": "Numbers have at most 64 characters in JSON and an exponent between -100 and 100; comparisons use exact rational arithmetic."
+    },
+    "Control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "citation",
+        "severity",
+        "requirement"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "citation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "applies_when": {
+          "$ref": "#/$defs/Expression"
+        },
+        "requirement": {
+          "$ref": "#/$defs/Expression"
+        },
+        "assessment_method": {
+          "enum": [
+            "evidence",
+            "manual"
+          ]
+        },
+        "basis": {
+          "enum": [
+            "legal_obligation",
+            "supporting_practice"
+          ]
+        },
+        "remediation": {
+          "type": "string",
+          "maxLength": 1000
+        }
+      }
+    },
+    "Expression": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "all"
+          ],
+          "properties": {
+            "all": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "$ref": "#/$defs/Expression"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "any"
+          ],
+          "properties": {
+            "any": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "$ref": "#/$defs/Expression"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "not"
+          ],
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/Expression"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "fact",
+            "operator"
+          ],
+          "properties": {
+            "fact": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+            },
+            "operator": {
+              "enum": [
+                "exists",
+                "eq",
+                "neq",
+                "in",
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "value": {},
+            "source": {
+              "enum": [
+                "declared",
+                "runtime",
+                "document",
+                "assessment"
+              ]
+            },
+            "max_age_seconds": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 31536000
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "operator": {
+                    "const": "exists"
+                  }
+                }
+              },
+              "then": {
+                "not": {
+                  "required": [
+                    "value"
+                  ]
+                }
+              },
+              "else": {
+                "required": [
+                  "value"
+                ]
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "operator": {
+                    "const": "in"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 32,
+                    "items": {
+                      "$ref": "#/$defs/Scalar"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "operator": {
+                    "enum": [
+                      "eq",
+                      "neq"
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "$ref": "#/$defs/Scalar"
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "operator": {
+                    "enum": [
+                      "gt",
+                      "gte",
+                      "lt",
+                      "lte"
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "type": "number"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "Fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "evidence_id",
+        "source",
+        "observed_at"
+      ],
+      "properties": {
+        "value": {
+          "$ref": "#/$defs/Scalar"
+        },
+        "evidence_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "source": {
+          "enum": [
+            "declared",
+            "runtime",
+            "document",
+            "assessment"
+          ]
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "EvaluationInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pack_id",
+        "pack_version",
+        "product_id",
+        "product_version",
+        "facts"
+      ],
+      "properties": {
+        "pack_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "pack_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "product_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "product_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "facts": {
+          "type": "object",
+          "maxProperties": 160,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Fact"
+          }
+        }
+      }
+    },
+    "Evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "product_id",
+        "product_version",
+        "pack_id",
+        "pack_version",
+        "pack_sha256",
+        "pack_review_status",
+        "evaluated_at",
+        "evaluation_only",
+        "legal_compliance",
+        "status",
+        "controls",
+        "engine_version",
+        "findings"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "product_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "product_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "pack_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "pack_version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "pack_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "pack_review_status": {
+          "enum": [
+            "draft",
+            "reviewed"
+          ]
+        },
+        "evaluated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "evaluation_only": {
+          "const": true
+        },
+        "legal_compliance": {
+          "const": "not_determined"
+        },
+        "status": {
+          "enum": [
+            "satisfied",
+            "gaps_detected",
+            "insufficient_evidence",
+            "not_applicable"
+          ]
+        },
+        "controls": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/ControlResult"
+          }
+        },
+        "reevaluate_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Earliest known future clock boundary for this fixed input; earlier input changes can invalidate it."
+        },
+        "engine_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "findings": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/Finding"
+          }
+        }
+      }
+    },
+    "ControlResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "citation",
+        "severity",
+        "status",
+        "reason",
+        "evidence",
+        "issues",
+        "title",
+        "assessment_method"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "citation": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "fail",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "outside_effective_window",
+            "outside_scope",
+            "applicability_unknown",
+            "requirement_satisfied",
+            "requirement_not_satisfied",
+            "insufficient_evidence",
+            "manual_review_required"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvidenceReference"
+          }
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Issue"
+          }
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "assessment_method": {
+          "enum": [
+            "evidence",
+            "manual"
+          ]
+        },
+        "basis": {
+          "enum": [
+            "legal_obligation",
+            "supporting_practice"
+          ]
+        }
+      }
+    },
+    "EvidenceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fact",
+        "evidence_id",
+        "source",
+        "observed_at"
+      ],
+      "properties": {
+        "fact": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "evidence_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "source": {
+          "enum": [
+            "declared",
+            "runtime",
+            "document",
+            "assessment"
+          ]
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "Issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fact",
+        "code"
+      ],
+      "properties": {
+        "fact": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "code": {
+          "enum": [
+            "missing_evidence",
+            "expired_evidence",
+            "future_evidence",
+            "stale_evidence",
+            "source_mismatch",
+            "type_mismatch"
+          ]
+        }
+      }
+    },
+    "Descriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "name",
+        "framework_kind",
+        "review_status",
+        "sha256",
+        "control_count"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "framework_kind": {
+          "enum": [
+            "internal_policy",
+            "law",
+            "regulation",
+            "standard",
+            "voluntary_framework"
+          ]
+        },
+        "review_status": {
+          "enum": [
+            "draft",
+            "reviewed"
+          ]
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "control_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        }
+      }
+    },
+    "Catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packs"
+      ],
+      "properties": {
+        "packs": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/Descriptor"
+          }
+        }
+      }
+    },
+    "Finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "control_id",
+        "citation",
+        "category",
+        "severity",
+        "action",
+        "evidence_facts"
+      ],
+      "properties": {
+        "control_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+        },
+        "citation": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "basis": {
+          "enum": [
+            "legal_obligation",
+            "supporting_practice"
+          ]
+        },
+        "category": {
+          "enum": [
+            "control_gap",
+            "evidence_gap",
+            "manual_review"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "evidence_facts": {
+          "type": "array",
+          "maxItems": 512,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$"
+          }
+        }
+      }
+    }
+  }
+}

@@ -8,6 +8,21 @@ const hints = {
   observe: "Record matching rule IDs and forward the original request, including any matched credentials.",
   block: "Reject matching requests with HTTP 403 before contacting the model provider.",
 };
+export function renderPolicySnapshot(target, snapshot) {
+  target.replaceChildren();
+  const values = [
+    [t("Policy revision"), `${snapshot.id} / ${snapshot.revision} / ${snapshot.ruleset_version}`],
+    [t("Policy mode"), t(modes[snapshot.mode])],
+    [t("Detection rules"), snapshot.rules.map(rule => t(policyRules[rule] || rule)).join(", ")],
+    [t("Applications"), snapshot.application_ids.length ? snapshot.application_ids.join(", ") : t("All applications, including future ones")],
+    [t("Model connections"), snapshot.connection_ids.length ? snapshot.connection_ids.join(", ") : t("All model connections, including future ones")],
+    [t("Saved at"), snapshot.updated_at ? formatDateTime(snapshot.updated_at) : t("Initial default")],
+  ];
+  for (const [label, value] of values) {
+    const row = document.createElement("div"), term = document.createElement("dt"), detail = document.createElement("dd");
+    term.textContent = label; detail.textContent = value; row.append(term, detail); target.append(row);
+  }
+}
 export function createPolicyConsole({ request, notice }) {
   let saved = null, resources = { applications: [], connections: [] }, busy = false;
   const selected = kind => [...el(`policy-${kind}-options`).querySelectorAll("input:checked")].map(input => input.value);

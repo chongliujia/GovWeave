@@ -6,9 +6,13 @@ This guide describes the current repository. The original Chinese product and ar
 
 ## Current scope
 
-Build a self-hosted AI gateway for model access, local request credential checks, and metadata-only call records. The implementation is a single Go process with embedded HTML/CSS/JavaScript and private file storage. It has no existing GRC backend, Python runtime service, standalone GovWeave SDK, MCP executor, or regulatory enforcement catalog.
+Build a self-hosted AI gateway for model access, controlled read-tool calls, local credential checks, optional bounded sensitive model/tool output protection and retrieved-instruction checks, metadata-only call records, and an independent declarative technical-control evaluator. See [Sensitive output](docs/sensitive-output.md) for the shared detector, application evaluation endpoint, policy history, and frozen validation boundaries. See [Read-tool governance](docs/tool-governance.md) for the application/Agent platform API, resource grants, output checks and execution boundaries. See [Compliance engine](docs/compliance-engine.md) and [Product assessments](docs/product-assessments.md) for runtime evidence. See [EU draft and report snapshots](docs/eu-transparency-reports.md) for the unreviewed narrow mapping, retained inputs and replay boundaries. See [Active assessment](docs/active-assessments.md) for bounded test execution, opt-in operation scheduling, private test evidence and partial NIST AI RMF lifecycle support. See [Canary validation](docs/canary-validation.md) for the narrowly scoped detector, frozen authored corpus, measured misses and evidence limits. The implementation is a single Go process with embedded HTML/CSS/JavaScript and private file storage. It has no existing GRC backend, Python runtime service, standalone GovWeave SDK, MCP executor, or regulatory enforcement catalog.
 
 Use the [README](README.md), [development guide](docs/development.md), [OpenAPI contract](api/openapi.yaml), and accepted ADRs as the current references. Describe future features as planned rather than implemented.
+
+[Heterogeneous Agent tracing](docs/agent-tracing.md) adds explicit bounded correlation to gateway calls. Application scope is authenticated; Agent labels and relationships remain caller declarations. Trace access must preserve application isolation, metadata-only storage and incomplete-history reporting.
+
+[Risk evidence](docs/risk-evidence.md) separately supports explicit, application-scoped encrypted content capture. Keep original and prepared output distinct, preserve capture and detector versions, record privileged content access before release, and never copy vault content into ordinary audit records, graphs, reports or diagnostics. Capture is supplementary; unavailable content must remain unknown. Application-declared links and matching fingerprints are not independent causal proof.
 
 ## Working principles
 

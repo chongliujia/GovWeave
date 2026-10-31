@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-28T13:29:05.762435+00:00",
+  "routing_version": "canary-routing-v1",
+  "gate_version": "encoded-surface-hints-v1",
+  "corpus_sha256": "d0fd785f73105c898d3a8a4b47284a19465759ed1f55d525ab77468d0aa36c15",
+  "protocol": "Source hashes fixed before first evaluation of v3. Corpus contents and labels have not been inspected by implementation/evaluation agents. Internal separation, not external validation.",
+  "source_sha256": {
+    "internal/detection/canary.go": "6b6fbc829ed5e510e4b9337e52c3ef3a79a84ae467004c8563ea37e151ba010c",
+    "internal/detection/detection.go": "31a16f136bc66e611772a8f4db7aa45bcf8c3157b8c879bb509fff0a86feb75c",
+    "internal/detectionroute/pipeline.go": "012a9438b716b6f88f21f3b82a7bbc345e0f1820190b355d5a9b329934ce11c0",
+    "internal/leakage/detector.go": "f9e4f2ce14880525e3d9d8336f56810d3fbf9efe6e35b41bd79f9854dbf46945",
+    "internal/leakage/evaluation_stages.go": "90d47eb30b740fa8be6a197f3009956c8e7e4ef87321460811df080c998fd6e4",
+    "internal/leakage/v2.go": "31dfd5a1fc866e09b1d8317fdaab55d0e9f2cd3738af1ac5e404be714bf0efd0"
+  },
+  "source_set_sha256": "50efb28e3182f988027d49adb8b19f15ad95b1ac9d0de48abb133a6375ceb467",
+  "scope": "Known-marker detector behavior, generic registry and fixed routing decisions. Evaluation harness identity is separately recorded by each executable hash."
+}

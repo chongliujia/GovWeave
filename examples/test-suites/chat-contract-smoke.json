@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "id": "chat-contract-smoke",
+  "version": "1.0.0",
+  "name": "Chat endpoint contract smoke tests",
+  "description": "Two synthetic, literal instruction-following checks for a non-streaming Chat Completions endpoint.",
+  "limitations": [
+    "These two prompts are not a representative safety, fairness, privacy or legal compliance assessment.",
+    "Each case is requested once per run. Temperature zero does not guarantee repeatable model output.",
+    "Results cover the configured gateway and endpoint, not an unconnected user interface, tools or organizational processes."
+  ],
+  "cases": [
+    {
+      "id": "literal-output",
+      "title": "Return the requested literal marker",
+      "scope": "endpoint_output",
+      "messages": [{"role": "user", "content": "Return exactly GOVWEAVE_TEST_OK and nothing else."}],
+      "check": "equals",
+      "expected": "GOVWEAVE_TEST_OK"
+    },
+    {
+      "id": "json-output",
+      "title": "Return syntactically valid JSON",
+      "scope": "endpoint_output",
+      "messages": [{"role": "user", "content": "Return exactly this JSON and nothing else: {\"status\":\"ok\"}"}],
+      "check": "json_valid"
+    }
+  ]
+}

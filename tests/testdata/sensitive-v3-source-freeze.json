@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-29T10:00:46.990302+00:00",
+  "detector_version": "sensitive-text-v3",
+  "source_sha256": {
+    "internal/sensitive/detector.go": "67533b31af969288af055e6aa7b46057e88f2d1e51ef688d6b01e4a36ca3134f",
+    "internal/sensitive/normalized.go": "df498dd4d9918f182bb9e782d9af7af5f8e4371f6e6e8197d851b8c2a21c555e",
+    "internal/sensitive/v3.go": "d5534faba7cdcaba22a3e96bdbd44f1722854b393fb7ab49efd4caaf58f9b237"
+  },
+  "protocol": "Recorded after unit, integration, race and short fuzz checks, before corpus measurement and live retest. Visible internally authored corpus was frozen before implementation. Legacy sources remain byte-identical."
+}

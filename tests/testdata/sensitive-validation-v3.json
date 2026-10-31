@@ -1,0 +1,432 @@
+{
+  "schema_version": 1,
+  "id": "sensitive-validation-v3",
+  "description": "Authored visible transfer set for Markdown email boundaries and single-layer Base64; after live v2 failure inspection, frozen before v3 implementation. Not an independent blind benchmark.",
+  "cases": [
+    {
+      "id": "format-1",
+      "text": "release@product.example",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "format-2",
+      "text": "**release@product.example**",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "format-3",
+      "text": "`release@product.example`",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "format-4",
+      "text": "__release@product.example__",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "format-5",
+      "text": "Contact: **release@product.example**.",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "format-6",
+      "text": "[release@product.example](mailto:release@product.example)",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "format-7",
+      "text": "**release@product.example.attacker.test**",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "format-8",
+      "text": "**RELEASE@product.example**",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "format-9",
+      "text": "**private.person@example.test**",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "format-10",
+      "text": "unpaired **private.person@example.test",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "format-11",
+      "text": "prefix**private.person@example.test**",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "format-12",
+      "text": "`private [at] example [dot] test`",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "format",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-1",
+      "text": "cHJpdmF0ZS5wZXJzb25AZXhhbXBsZS50ZXN0",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-2",
+      "text": "c2Vjb25kQHNlcnZpY2UuZXhhbXBsZQ==",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-3",
+      "text": "cGVyc29uIFthdF0gZXhhbXBsZSBbZG90XSBuZXQ=",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-4",
+      "text": "cHJpdmF0ZeKAiy5wZXJzb25AZXhhbXBsZS50ZXN0",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-5",
+      "text": "772Q772F772S772T772P772O77yg772F772Y772B772N772Q772M772F77yO772U772F772T772U",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-6",
+      "text": "cGhvbmU6IDEzODAwMDAwMDM1",
+      "expected_categories": [
+        "phone"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-7",
+      "text": "55S16K+d77ya77yR77yT77yY77yQ77yQ77yQ77yQ77yQ77yQ77yT77yV",
+      "expected_categories": [
+        "phone"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-8",
+      "text": "c2stU3ludGhldGljRW5jb2RlZENyZWRlbnRpYWwwMDAwMTIzNDU2",
+      "expected_categories": [
+        "credential"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-9",
+      "text": "LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t",
+      "expected_categories": [
+        "credential"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-10",
+      "text": "Y29udGFjdDogcGVyc29uQGV4YW1wbGUudGVzdDsgcGhvbmU6IDEzODAwMDAwMDM1",
+      "expected_categories": [
+        "email",
+        "phone"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-11",
+      "text": "KipwZXJzb25AZXhhbXBsZS50ZXN0Kio=",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "unpadded-1",
+      "text": "cmFyZUBkb21haW4uZXhhbXBsZQ",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "unpadded-2",
+      "text": "cHJpdmF0ZS51c2VyQGV4YW1wbGUudGVzdA",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "unpadded-3",
+      "text": "cGhvbmU6IDEzOTAwMDAwMDQ1",
+      "expected_categories": [
+        "phone"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-context",
+      "text": "Encoded contact: cGVyc29uQGNvbnRleHQuZXhhbXBsZQ==.",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "encoded-mixed",
+      "text": "release@product.example aGlkZGVuQHNlY3JldC5leGFtcGxl",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "encoded",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "negative-1",
+      "text": "Ordinary project documentation.",
+      "expected_categories": [],
+      "group": "negative",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "negative-2",
+      "text": "**Release Notes**",
+      "expected_categories": [],
+      "group": "negative",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "negative-3",
+      "text": "`get_account()`",
+      "expected_categories": [],
+      "group": "negative",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "negative-4",
+      "text": "__Project status__",
+      "expected_categories": [],
+      "group": "negative",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "negative-5",
+      "text": "Tm8gcGVyc29uYWwgaW5mb3JtYXRpb24gaGVyZS4=",
+      "expected_categories": [],
+      "group": "negative",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "negative-6",
+      "text": "YnVpbGQgYXJ0aWZhY3QgdmVyc2lvbiA3",
+      "expected_categories": [],
+      "group": "negative",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "negative-7",
+      "text": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "expected_categories": [],
+      "group": "negative",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "negative-8",
+      "text": "SGVsbG8====",
+      "expected_categories": [],
+      "group": "negative",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "negative-9",
+      "text": "12345678901234567890",
+      "expected_categories": [],
+      "group": "negative",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "negative-10",
+      "text": "mail is not an address",
+      "expected_categories": [],
+      "group": "negative",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "negative-11",
+      "text": "Account safety training without personal values.",
+      "expected_categories": [],
+      "group": "negative",
+      "invalid": false,
+      "notes": "Authored visible transfer case; frozen before v3 implementation."
+    },
+    {
+      "id": "unsupported-nested",
+      "text": "Ym1WemRHVmtRR2hwWkdSbGJpNWxlR0Z0Y0d4bA==",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "unsupported",
+      "invalid": false,
+      "notes": "Unsupported positive form retained; do not relabel after measuring."
+    },
+    {
+      "id": "unsupported-hex",
+      "text": "6e65737465644068696464656e2e6578616d706c65",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "unsupported",
+      "invalid": false,
+      "notes": "Unsupported positive form retained; do not relabel after measuring."
+    },
+    {
+      "id": "unsupported-split",
+      "text": "c3BsaXRAaGlk\nZGVuLmV4YW1wbGU=",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "unsupported",
+      "invalid": false,
+      "notes": "Unsupported positive form retained; do not relabel after measuring."
+    },
+    {
+      "id": "encoded-token-limit",
+      "text": "YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYSBwZXJzb25AZXhhbXBsZS50ZXN0",
+      "expected_categories": [
+        "email"
+      ],
+      "group": "bounds",
+      "invalid": false,
+      "notes": "Oversized encoded token must remain unknown, not partially scanned."
+    },
+    {
+      "id": "encoded-view-limit",
+      "text": "b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl b3JkaW5hcnkgc2FtcGxl",
+      "expected_categories": [],
+      "group": "bounds",
+      "invalid": false,
+      "notes": "Decodable-view budget exhaustion must remain unknown."
+    },
+    {
+      "id": "input-limit",
+      "text": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected_categories": [],
+      "group": "bounds",
+      "invalid": true,
+      "notes": "Invalid input excluded from category denominators."
+    }
+  ]
+}

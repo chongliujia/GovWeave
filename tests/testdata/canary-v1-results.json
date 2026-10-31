@@ -1,0 +1,576 @@
+{
+  "corpus_sha256": "1430feccbc31f8cd321ad108848a0a814af645892e3aded9436a99e1684c830c",
+  "detector_version": "synthetic-canary-v1",
+  "results": {
+    "case-001": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "02c82ebcb3589b7a8ea0d5ffa30c8e5c2d232103b97c564313b4c3f6dde95f0e",
+      "input_bytes": 60,
+      "scanned_bytes": 60,
+      "matches": [
+        {
+          "representation": "exact",
+          "start_byte": 18,
+          "end_byte": 60,
+          "span_scope": "raw_fragment"
+        }
+      ]
+    },
+    "case-002": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "f69672a0dc290a4220be3c462e0c9e307c98bdf4b2dabfaeff892ad24cd1df16",
+      "input_bytes": 78,
+      "scanned_bytes": 78,
+      "matches": [
+        {
+          "representation": "exact",
+          "start_byte": 18,
+          "end_byte": 60,
+          "span_scope": "raw_fragment"
+        }
+      ]
+    },
+    "case-003": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "8831dccbca6d29088c33ecb2ee9baf61a2ced2fc209778f02c4555cc2addb2bb",
+      "input_bytes": 42,
+      "scanned_bytes": 42,
+      "matches": [
+        {
+          "representation": "normalized",
+          "start_byte": 0,
+          "end_byte": 42,
+          "span_scope": "raw_fragment"
+        }
+      ]
+    },
+    "case-004": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "90aacf50b405670eb136ad0086bbf82f887c9026713eb93d0629acfa2255fa33",
+      "input_bytes": 42,
+      "scanned_bytes": 42,
+      "matches": [
+        {
+          "representation": "normalized",
+          "start_byte": 0,
+          "end_byte": 42,
+          "span_scope": "raw_fragment"
+        }
+      ]
+    },
+    "case-005": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "879b76c2cc3206d4ce9cba45846ffccd6b520608aff1c421980dbf0fb1e6236a",
+      "input_bytes": 83,
+      "scanned_bytes": 83,
+      "matches": [
+        {
+          "representation": "normalized",
+          "start_byte": 0,
+          "end_byte": 83,
+          "span_scope": "raw_fragment"
+        }
+      ]
+    },
+    "case-006": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "acb762e1584ae9831c008efaf74625f0addf54257947269d3ee9876b69d1ada8",
+      "input_bytes": 44,
+      "scanned_bytes": 44,
+      "matches": [
+        {
+          "representation": "normalized",
+          "start_byte": 0,
+          "end_byte": 44,
+          "span_scope": "raw_fragment"
+        }
+      ]
+    },
+    "case-007": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "7bfd519cf167aca7c6df33406dc4545e7239ea3ddc81c77e3dbe5babf5b6a9e0",
+      "input_bytes": 165,
+      "scanned_bytes": 165,
+      "matches": [
+        {
+          "representation": "normalized",
+          "start_byte": 0,
+          "end_byte": 165,
+          "span_scope": "raw_fragment"
+        }
+      ]
+    },
+    "case-008": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "e260bba6a005e3898571c968e1700304f76d0a738710e09cb19f5b9e5041d587",
+      "input_bytes": 126,
+      "scanned_bytes": 126,
+      "matches": [
+        {
+          "representation": "normalized",
+          "start_byte": 0,
+          "end_byte": 126,
+          "span_scope": "raw_fragment"
+        }
+      ]
+    },
+    "case-009": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "1969c676e893e2906a488a1ff6953aedd4f74cd5395fb178f1b32ab91d945073",
+      "input_bytes": 83,
+      "scanned_bytes": 83,
+      "matches": [
+        {
+          "representation": "normalized",
+          "start_byte": 0,
+          "end_byte": 83,
+          "span_scope": "raw_fragment"
+        }
+      ]
+    },
+    "case-010": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "cbb3f15a2ec46090dadd7a30c103f08efbbc05566934c26c064993412e688121",
+      "input_bytes": 56,
+      "scanned_bytes": 56,
+      "matches": [
+        {
+          "representation": "base64",
+          "start_byte": 0,
+          "end_byte": 56,
+          "span_scope": "encoded_candidate"
+        }
+      ]
+    },
+    "case-011": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "6dd4e0822834563d87bea5ddd45399836b5294aa32324e132095ad2172db59d7",
+      "input_bytes": 56,
+      "scanned_bytes": 56,
+      "matches": [
+        {
+          "representation": "base64",
+          "start_byte": 0,
+          "end_byte": 56,
+          "span_scope": "encoded_candidate"
+        }
+      ]
+    },
+    "case-012": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "523877cd8b62440fe86ff7e879d4bf4ca57658b3c7351d3c9ea234cbf0ad7bf5",
+      "input_bytes": 56,
+      "scanned_bytes": 56,
+      "matches": [
+        {
+          "representation": "base64",
+          "start_byte": 0,
+          "end_byte": 56,
+          "span_scope": "encoded_candidate"
+        }
+      ]
+    },
+    "case-013": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "59a67e478b98f77d48f9c4ad90b1277cb368e7720215dab043e4c0d05ef4d827",
+      "input_bytes": 84,
+      "scanned_bytes": 84,
+      "matches": [
+        {
+          "representation": "hex",
+          "start_byte": 0,
+          "end_byte": 84,
+          "span_scope": "encoded_candidate"
+        }
+      ]
+    },
+    "case-014": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "7781835cb1339111798639fa0327b9a7a0cd33853ace322e3dca3874b2e5dd6a",
+      "input_bytes": 84,
+      "scanned_bytes": 84,
+      "matches": [
+        {
+          "representation": "hex",
+          "start_byte": 0,
+          "end_byte": 84,
+          "span_scope": "encoded_candidate"
+        }
+      ]
+    },
+    "case-015": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "eb1c2ba1b281dfc9d5f7b14ad1456f3a71cfd8161d9b5c5c7fee4f88537d7fa5",
+      "input_bytes": 126,
+      "scanned_bytes": 126,
+      "matches": [
+        {
+          "representation": "percent",
+          "start_byte": 0,
+          "end_byte": 126,
+          "span_scope": "encoded_candidate"
+        }
+      ]
+    },
+    "case-016": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "36948ef49528d62b91aa98ba31c576c432e19fc20f7f9c005314cb83dd7050db",
+      "input_bytes": 252,
+      "scanned_bytes": 252,
+      "matches": [
+        {
+          "representation": "json_escape",
+          "start_byte": 0,
+          "end_byte": 252,
+          "span_scope": "encoded_candidate"
+        }
+      ]
+    },
+    "case-017": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "cb05df42f5b4c5f8f22f6abec3050fbaa7cd49d0b51506f90d55e452f7fbf0d2",
+      "input_bytes": 265,
+      "scanned_bytes": 265,
+      "matches": [
+        {
+          "representation": "json_escape",
+          "start_byte": 11,
+          "end_byte": 263,
+          "span_scope": "encoded_candidate"
+        }
+      ]
+    },
+    "case-018": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "1a978582fc28ac242c1dc336e4ac214f52481c03fe4608e149369b647461e181",
+      "input_bytes": 72,
+      "scanned_bytes": 72,
+      "matches": [
+        {
+          "representation": "base64",
+          "start_byte": 15,
+          "end_byte": 71,
+          "span_scope": "encoded_candidate"
+        }
+      ]
+    },
+    "case-019": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "8de92dc7942d1a3ab62011d3304c21cd9652fd8d8f4e212983e2f85dc4a9704e",
+      "input_bytes": 144,
+      "scanned_bytes": 144,
+      "matches": [
+        {
+          "representation": "percent",
+          "start_byte": 18,
+          "end_byte": 144,
+          "span_scope": "encoded_candidate"
+        }
+      ]
+    },
+    "case-020": {
+      "version": "synthetic-canary-v1",
+      "state": "observed",
+      "reason": "full_marker_observed",
+      "marker_sha256": "e5f2641b1855f3bf86bad0a7d85c625acf766364167fe8f50d181f15e6cdec07",
+      "input_bytes": 42,
+      "scanned_bytes": 42,
+      "matches": [
+        {
+          "representation": "normalized",
+          "start_byte": 0,
+          "end_byte": 42,
+          "span_scope": "raw_fragment"
+        }
+      ]
+    },
+    "case-021": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "a1212417eb1d804dc621301bc068dea39e06325cc375bc4e4012d774f2267018",
+      "input_bytes": 48,
+      "scanned_bytes": 48,
+      "matches": []
+    },
+    "case-022": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "6bb3cfe1a81c6f45f8e976b7b33e3c89e929eba7fd2d0787d38dfd68c5d18013",
+      "input_bytes": 0,
+      "scanned_bytes": 0,
+      "matches": []
+    },
+    "case-023": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "d772bdd85f03dd2cf3b87a925827e4ecee6fc9b71a09b1476b2456d9cdfcb900",
+      "input_bytes": 42,
+      "scanned_bytes": 42,
+      "matches": []
+    },
+    "case-024": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "5a26b65f130c8587e2845105f1a32cbd8d146a5c7972d105c3f6919f35c09159",
+      "input_bytes": 20,
+      "scanned_bytes": 20,
+      "matches": []
+    },
+    "case-025": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "bf04d80126b02e106fccd45a958a1af95685603efa2c8be43f814408c1873c30",
+      "input_bytes": 27,
+      "scanned_bytes": 27,
+      "matches": []
+    },
+    "case-026": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "0c4f0dce989ad5c3b6d6577014f058c2a3fd7ccbf6d8c9349561b3243dec616e",
+      "input_bytes": 42,
+      "scanned_bytes": 42,
+      "matches": []
+    },
+    "case-027": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "ad82ceda10e9f78067dbe1217ac2a6b9043a5e4c82096b692f03597ce27234a1",
+      "input_bytes": 60,
+      "scanned_bytes": 60,
+      "matches": []
+    },
+    "case-028": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "6e1ee0b9d17ecc2d23637f1ab2b4b85ee6fb42708db297a798c24db58e7e57c7",
+      "input_bytes": 86,
+      "scanned_bytes": 86,
+      "matches": []
+    },
+    "case-029": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "6727de75885d36240af10e3d97d4765015e0be757898456c1adb89289eb3af52",
+      "input_bytes": 33,
+      "scanned_bytes": 33,
+      "matches": []
+    },
+    "case-030": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "fd855ab73d7f08f874eeddfd1a2fd00b066f68f0e31528fcd43c9c187be801e1",
+      "input_bytes": 3840,
+      "scanned_bytes": 3840,
+      "matches": []
+    },
+    "case-031": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "0ad91d4755a8c1da6615ed784ce8dd102d15d188f74f93bdec053f6a5adcada4",
+      "input_bytes": 58,
+      "scanned_bytes": 58,
+      "matches": []
+    },
+    "case-032": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "ef9cdfbdb9f15762cf3a3a5382f35f1d5022ef757b3315b36e448a7e9ea6f982",
+      "input_bytes": 62,
+      "scanned_bytes": 62,
+      "matches": []
+    },
+    "case-033": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "5a5f673d17963c92d175662af0594e1a3a6dbb3c57fece2f9c451fcb4242cedc",
+      "input_bytes": 42,
+      "scanned_bytes": 42,
+      "matches": []
+    },
+    "case-034": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "464990a56afa5db56870abf03579978d2c6c615dcab3ba9599eb35d26d2b5082",
+      "input_bytes": 126,
+      "scanned_bytes": 126,
+      "matches": []
+    },
+    "case-035": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "2157b6fc871a74859ad5f59d6af38d1ea6444a227818a2f7e481e1a7bddd190c",
+      "input_bytes": 41,
+      "scanned_bytes": 41,
+      "matches": []
+    },
+    "case-036": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "9f8b277572517fcf4557b26da877d4cb26b9150793affcc37fdb2dabd160c2f0",
+      "input_bytes": 46,
+      "scanned_bytes": 46,
+      "matches": []
+    },
+    "case-037": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "5486b03d99ac76b8cab20da7264d788f87fcf36ab55f5b9e4829a9329b9e611d",
+      "input_bytes": 208,
+      "scanned_bytes": 208,
+      "matches": []
+    },
+    "case-038": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "b0b6af93f98a78d36a232ae88e0cbe4d7ab2e05d239a465d1633b05579850847",
+      "input_bytes": 57,
+      "scanned_bytes": 57,
+      "matches": []
+    },
+    "case-039": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "080a8378b1e2f4c1ebe10c45e6f2d9f262c37dd73512b51c5ab5d175f35c5309",
+      "input_bytes": 35,
+      "scanned_bytes": 35,
+      "matches": []
+    },
+    "case-040": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "ecd3a61afc66636f0c44cf9f06469c28f6a094d7340f4d311d4fd0d873763fa5",
+      "input_bytes": 54,
+      "scanned_bytes": 54,
+      "matches": []
+    },
+    "case-041": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "e655d2f431e4de3b2fd8770d677a1ed2ef2a467383a9caff55c7ffbeae565485",
+      "input_bytes": 42,
+      "scanned_bytes": 42,
+      "matches": []
+    },
+    "case-042": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "510c28cf265f79b9a1cc7e3b96806e17e0e5d923aa0c84c10775e3a15cbed269",
+      "input_bytes": 42,
+      "scanned_bytes": 42,
+      "matches": []
+    },
+    "case-043": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "9165ec1e6e721503a176ed0dda938c20969011b77a07f3db0c7839defdcd75be",
+      "input_bytes": 130,
+      "scanned_bytes": 130,
+      "matches": []
+    },
+    "case-044": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "23679ca34ca003fe02ff5e3326d1180438aa7d56dd6da626caca623595dfa596",
+      "input_bytes": 76,
+      "scanned_bytes": 76,
+      "matches": []
+    },
+    "case-045": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "2ab90308f35a8a44e5fd5880dda01229c5964e23c8dfa6cf5f108db35e30b8b5",
+      "input_bytes": 112,
+      "scanned_bytes": 112,
+      "matches": []
+    },
+    "case-046": {
+      "version": "synthetic-canary-v1",
+      "state": "not_observed",
+      "reason": "full_marker_not_observed",
+      "marker_sha256": "a1af85f4f2a667029452375ad9d4d7a9dbcd5ec355a0cb8873b0de244184afbc",
+      "input_bytes": 94,
+      "scanned_bytes": 94,
+      "matches": []
+    },
+    "case-047": {
+      "version": "synthetic-canary-v1",
+      "state": "unknown",
+      "reason": "response_limit",
+      "input_bytes": 8193,
+      "scanned_bytes": 0,
+      "matches": []
+    },
+    "case-048": {
+      "version": "synthetic-canary-v1",
+      "state": "unknown",
+      "reason": "invalid_marker",
+      "input_bytes": 15,
+      "scanned_bytes": 0,
+      "matches": []
+    }
+  }
+}

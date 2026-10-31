@@ -37,7 +37,10 @@ async function request(path, options = {}) {
     if (path !== "/healthz" && generation !== sessionGeneration) throw new Error(t("Your session has ended. Please sign in again."));
     if (!response.ok) {
       if (response.status === 401 && !path.startsWith("/api/v1/auth/")) resetSession();
-      throw new Error(t(data.error?.message) || t("Request failed ({status})", { status: response.status }));
+      const error = new Error(t(data.error?.message) || t("Request failed ({status})", { status: response.status }));
+      error.status = response.status;
+      error.code = data.error?.code;
+      throw error;
     }
     return data;
   } catch (error) {

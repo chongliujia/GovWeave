@@ -1,0 +1,577 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GovWeave sensitive text observations and output policy",
+  "description": "Bounded syntactic credential, email and Mainland China mobile-number candidates; no identity verification, legal verdict or general semantic safety claim. Findings return offsets only. Audit records use OutputAssessment without spans or text.",
+  "$ref": "#/$defs/ContentEvaluationResponse",
+  "$defs": {
+    "Category": {
+      "enum": [
+        "credential",
+        "email",
+        "phone"
+      ]
+    },
+    "OutputPolicyInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "categories"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "enum": [
+            "disabled",
+            "observe",
+            "block",
+            "redact"
+          ]
+        },
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Category"
+          }
+        },
+        "application_ids": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Empty, omitted or null means every application, including future applications. Specified IDs must exist."
+        },
+        "detector_version": {
+          "enum": [
+            "sensitive-text-v1",
+            "sensitive-text-v2",
+            "sensitive-text-v3"
+          ],
+          "description": "Optional. Omission preserves the current detector generation; initially sensitive-text-v1. Explicit selection creates a new immutable policy revision."
+        },
+        "public_emails": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 254
+          },
+          "description": "Exact ASCII public email addresses declared by the operator for this application scope. No wildcard/domain/case-folding/normalized matching. Never exempts credentials or incomplete checks. Omitted/null/empty clears permissions on PUT; old snapshots retain their behavior. V3 additionally permits the exact address inside supported paired inline-code/strong-markup boundaries. Encoded findings are never exempt."
+        }
+      }
+    },
+    "OutputPolicySnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "mode",
+        "categories",
+        "application_ids",
+        "schema_version",
+        "id",
+        "detector_version"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mode": {
+          "enum": [
+            "disabled",
+            "observe",
+            "block",
+            "redact"
+          ]
+        },
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Category"
+          }
+        },
+        "application_ids": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Empty means every application, including future applications. Specified IDs must exist."
+        },
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "const": "sensitive-output"
+        },
+        "detector_version": {
+          "enum": [
+            "sensitive-text-v1",
+            "sensitive-text-v2",
+            "sensitive-text-v3"
+          ]
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "redaction_version": {
+          "const": "sensitive-redaction-v1",
+          "description": "Server-pinned transformation generation, present only for redact mode."
+        },
+        "public_emails": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 254
+          },
+          "description": "Exact ASCII public email addresses declared by the operator for this application scope. No wildcard/domain/case-folding/normalized matching. Never exempts credentials or incomplete checks. Omitted/null/empty clears permissions on PUT; old snapshots retain their behavior. V3 additionally permits the exact address inside supported paired inline-code/strong-markup boundaries. Encoded findings are never exempt."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "redact"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "redaction_version"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "redaction_version"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "OutputPolicyHistory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "snapshots",
+        "total"
+      ],
+      "properties": {
+        "snapshots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/OutputPolicySnapshot"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        }
+      }
+    },
+    "OutputPolicyFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "snapshots"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "snapshots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/OutputPolicySnapshot"
+          }
+        }
+      }
+    },
+    "OutputAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "detector_version",
+        "mode",
+        "result",
+        "state",
+        "reason",
+        "categories",
+        "matched_categories",
+        "matched_rules",
+        "check_duration_us"
+      ],
+      "properties": {
+        "id": {
+          "const": "sensitive-output"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "detector_version": {
+          "enum": [
+            "sensitive-text-v1",
+            "sensitive-text-v2",
+            "sensitive-text-v3"
+          ]
+        },
+        "mode": {
+          "enum": [
+            "disabled",
+            "observe",
+            "block",
+            "redact"
+          ]
+        },
+        "result": {
+          "enum": [
+            "pending",
+            "disabled",
+            "not_applicable",
+            "allow",
+            "observe",
+            "block",
+            "error",
+            "redact",
+            "redacted"
+          ]
+        },
+        "state": {
+          "enum": [
+            "unknown",
+            "observed",
+            "not_observed"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "output_check_pending",
+            "output_unavailable",
+            "stream_unsupported",
+            "input_limit",
+            "invalid_utf8",
+            "finding_limit",
+            "patterns_not_observed",
+            "patterns_observed",
+            "redaction_unavailable",
+            "encoding_limit"
+          ]
+        },
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Category"
+          }
+        },
+        "matched_categories": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Category"
+          }
+        },
+        "matched_rules": {
+          "type": "array",
+          "maxItems": 18,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/RuleID"
+          }
+        },
+        "check_duration_us": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "redaction": {
+          "$ref": "#/$defs/RedactionEvidence"
+        },
+        "tool_call_version": {
+          "const": "read-tool-call-v1",
+          "description": "Present only for a canonical single read_resource proposal. This is not permission to execute; sensitive arguments are withheld rather than rewritten in redact mode."
+        },
+        "public_email_exceptions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32,
+          "description": "Exact public-email findings excepted from action; original detection remains observed. Values are never retained in audit metadata."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result": {
+                "const": "redacted"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "redaction"
+            ],
+            "properties": {
+              "mode": {
+                "const": "redact"
+              },
+              "state": {
+                "const": "observed"
+              },
+              "reason": {
+                "const": "patterns_observed"
+              },
+              "matched_categories": {
+                "minItems": 1
+              },
+              "matched_rules": {
+                "minItems": 1
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "redaction"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "Finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "rule_id",
+        "start_byte",
+        "end_byte"
+      ],
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/Category"
+        },
+        "rule_id": {
+          "$ref": "#/$defs/RuleID"
+        },
+        "start_byte": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8191
+        },
+        "end_byte": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        }
+      }
+    },
+    "Detection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "detector_version",
+        "state",
+        "reason",
+        "findings",
+        "truncated",
+        "input_bytes",
+        "duration_us"
+      ],
+      "properties": {
+        "detector_version": {
+          "enum": [
+            "sensitive-text-v1",
+            "sensitive-text-v2",
+            "sensitive-text-v3"
+          ]
+        },
+        "state": {
+          "enum": [
+            "unknown",
+            "observed",
+            "not_observed"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "input_limit",
+            "invalid_utf8",
+            "finding_limit",
+            "patterns_not_observed",
+            "patterns_observed",
+            "encoding_limit"
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/Finding"
+          }
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "input_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_us": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "ContentEvaluationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 8192,
+          "description": "At most 8192 UTF-8 bytes, within a 64 KiB JSON envelope. Empty text is permitted. No identity or policy fields."
+        }
+      }
+    },
+    "ContentEvaluationResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "detection",
+        "policy"
+      ],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detection": {
+          "$ref": "#/$defs/Detection"
+        },
+        "policy": {
+          "$ref": "#/$defs/OutputAssessment"
+        }
+      }
+    },
+    "RuleID": {
+      "enum": [
+        "private_key",
+        "api_key",
+        "email_address",
+        "cn_mobile_phone",
+        "normalized_private_key",
+        "normalized_api_key",
+        "normalized_email_address",
+        "normalized_cn_mobile_phone",
+        "formatted_email_address",
+        "base64_private_key",
+        "base64_api_key",
+        "base64_email_address",
+        "base64_cn_mobile_phone",
+        "base64_normalized_private_key",
+        "base64_normalized_api_key",
+        "base64_normalized_email_address",
+        "base64_normalized_cn_mobile_phone",
+        "base64_formatted_email_address"
+      ]
+    },
+    "RedactionEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "scope",
+        "replacements",
+        "check_duration_us"
+      ],
+      "properties": {
+        "version": {
+          "const": "sensitive-redaction-v1"
+        },
+        "scope": {
+          "enum": [
+            "matched_spans",
+            "full_output"
+          ]
+        },
+        "replacements": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        },
+        "check_duration_us": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Completed transformation and recheck only. Full output is replaced when a selected credential is observed; otherwise merged original byte spans are replaced. No original values, offsets or content hashes are retained.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "full_output"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "replacements": {
+                "const": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

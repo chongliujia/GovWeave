@@ -1,13 +1,437 @@
 openapi: 3.1.0
 info:
-  title: GovWeave model gateway and administration API
+  title: GovWeave model gateway, controlled read tools and administration API
   version: 0.2.0-dev
   description: Single-instance model connections, application authorization, Chat Completions, optional request
-    credential checks and metadata-only call records. MCP and regulatory policy enforcement are not implemented.
+    credential checks, application-scoped read-tool execution with bounded output credential checks,
+    optional sensitive-output policy and standalone content observations,
+    metadata-only call records and advisory evaluations using local declarative rule packs.
+    MCP and regulatory policy enforcement are not implemented.
     All management mutations require application/json and the X-GovWeave-Request header set to console; cross-site
     origins are rejected. Human-readable messages default to English. Use stable error.code values for programmatic
     handling; the console localizes known messages locally.
 paths:
+  /api/v1/evidence-traces/{trace_id}/snapshots:
+    parameters:
+    - $ref: '#/components/parameters/TracePathID'
+    - $ref: '#/components/parameters/TaskSnapshotApplications'
+    post:
+      summary: Save the unchanged task evidence view as a metadata snapshot
+      description: Administrator session and protected mutation required. Rebuilds the bounded server view
+        and compares expected_view_sha256 with its current digest; a mismatch returns 409 without saving.
+        Client-submitted records are never accepted. The digest from the live GET is copied verbatim.
+        The default limit is 100; send the same limit as the viewed query. This is still a non-atomic
+        audit/vault observation. Saves private authenticated metadata only, without body content or
+        additional inference. Maximum 256 snapshots, 2 MiB per stored file, 64 MiB total, four concurrent
+        create/read operations. No automatic eviction or expiry. Unknown/repeated parameters are rejected
+        except distinct application_id values; total query length is capped at 2048 bytes.
+        Repeated successful POSTs create distinct snapshots; inspect the list before retrying an uncertain save.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      - $ref: '#/components/parameters/TraceLimit'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/evidence.schema.json#/$defs/TaskSnapshotCreate'
+      responses:
+        '201':
+          description: Immutable metadata snapshot; evidence states describe save time
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/ArchivedTaskEvidence'
+        '409':
+          description: task_view_changed; reload the live view before saving
+        '429':
+          description: task_snapshot_busy; concurrent snapshot operation limit reached
+        '507':
+          description: evidence_capacity; snapshot count, file size or total byte budget reached
+        default:
+          $ref: '#/components/responses/Error'
+    get:
+      summary: List task snapshots matching the exact trace and application set
+      description: Administrator only. Returns at most 256 indexed summaries, newest first. A subset or
+        superset of an archived application set does not match. No limit or other filters accepted.
+        Valid scopes with no matching snapshots return an empty items array. Listing does not revalidate every file; opening/exporting
+        checks local authentication. Snapshots remain separate from content retention and live audit windows.
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Summaries with exact application-set scope
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/TaskSnapshotList'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/evidence-traces/{trace_id}/snapshots/{snapshot_id}:
+    get:
+      summary: Read a saved task snapshot without re-reading live calls or content
+      description: Administrator only. Requires the exact trace and application set retained in the snapshot.
+        No limit or other filters accepted. Local authentication does not establish external attestation,
+        complete history, actual data flow, task completion or legal compliance. Missing or unsafe files
+        return evidence_unavailable; an unknown ID or mismatched valid scope returns evidence_not_found.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/TracePathID'
+      - $ref: '#/components/parameters/TaskSnapshotApplications'
+      - $ref: '#/components/parameters/TaskSnapshotPathID'
+      responses:
+        '200':
+          description: Historical snapshot and digest of exact JSON export bytes
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/ArchivedTaskEvidence'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/evidence-traces/{trace_id}/snapshots/{snapshot_id}/export/{format}:
+    get:
+      summary: Download a saved task snapshot as JSON or an English Markdown report
+      description: Administrator only; same exact trace/application scope and local authentication checks
+        as snapshot read. No body content or live queries. JSON bytes, including their final newline,
+        match summary.sha256 and summary.bytes. Markdown is a deterministic English presentation of
+        the saved observations with coverage limits and finding versions; its cited digest is for the
+        JSON export, not the Markdown file. No other query filters or language options are accepted.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/TracePathID'
+      - $ref: '#/components/parameters/TaskSnapshotApplications'
+      - $ref: '#/components/parameters/TaskSnapshotPathID'
+      - name: format
+        in: path
+        required: true
+        schema: {type: string, enum: [json, markdown]}
+      responses:
+        '200':
+          description: Download attachment; no-store and nosniff headers apply
+          headers:
+            Content-Disposition:
+              schema: {type: string}
+            X-GovWeave-SHA256:
+              description: Present for JSON only; digest of the exact downloaded bytes
+              schema: {type: string, pattern: '^[0-9a-f]{64}$'}
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/TaskSnapshot'
+            text/markdown:
+              schema: {type: string}
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/evidence-traces/{trace_id}:
+    get:
+      summary: Inspect retained evidence and recent calls across explicitly selected applications
+      description: Administrator session only. Select 1-16 existing applications; no implicit all-applications
+        scope. Calls are graph nodes and parent/link/retry edges remain caller declarations, resolved only
+        against returned records. The view reads the newest min(32,limit) unexpired captures across the scope,
+        then fills remaining call slots from the latest 128 matching records in the global recent-1000 audit
+        index. Audit and vault snapshots are not atomic and the result is not archived. Missing, unreadable,
+        or budget-excluded captures have distinct states; findings come only from successfully read captures.
+        No body content is returned and capture settings are unchanged. Valid empty queries return 200 with
+        empty calls; this does not prove safety or absence of activity. Query strings are capped at 2048 bytes;
+        only application_id may repeat, with distinct values. Application keys cannot use this endpoint.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/TracePathID'
+      - $ref: '#/components/parameters/TraceLimit'
+      - name: application_id
+        in: query
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: array
+          minItems: 1
+          maxItems: 16
+          uniqueItems: true
+          items:
+            $ref: '../schemas/evidence.schema.json#/$defs/ApplicationID'
+      responses:
+        '200':
+          description: Bounded metadata task graph with explicit scope, evidence states and coverage limits
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/EvidenceTraceView'
+        '400':
+          description: invalid_trace_query; missing or unknown scope, duplicate application IDs, repeated limit or malformed filter
+        '503':
+          description: evidence_unavailable; evidence or audit service is unavailable
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/evidence/config:
+    get:
+      summary: Read the optional evidence capture configuration
+      description: Capture starts disabled. Enabled metadata/full modes require explicit existing application
+        IDs; an empty list never means all applications. No query parameters are accepted. This endpoint
+        returns configuration, not evidence coverage or detector effectiveness.
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Current capture configuration
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/EvidenceConfig'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Explicitly configure application-scoped evidence retention
+      description: Requires the current revision. Saves a new revision after recording configuration-change
+        authorization in the separate metadata access journal. Modes are disabled, metadata and full;
+        retention is 1-365 days and max_content_bytes is 4096-1048576 per object. Full mode can retain
+        sensitive body content in a separately encrypted vault. Settings are frozen for each admitted
+        capture; later changes do not retroactively erase or change existing captures. Ordinary call logs
+        remain metadata only. Supplementary capture failure does not alter admitted inference or existing
+        policy/audit gates. At most 2048 sealed bundles and 256 MiB of sealed-file bytes are retained.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/evidence.schema.json#/$defs/EvidenceConfig'
+      responses:
+        '200':
+          description: Saved configuration with incremented revision
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/EvidenceConfig'
+        '409':
+          description: revision_conflict; refresh the current configuration
+        '503':
+          description: evidence_unavailable; configuration or access journal could not be written or verified
+        '507':
+          description: evidence_capacity; the bounded access journal cannot record authorization
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/evidence:
+    get:
+      summary: List retained evidence metadata in one explicit application
+      description: Returns newest unexpired captures first, without body text or a pagination cursor.
+        The optional request_id selects one capture and returns an empty items list if absent or expired.
+        Empty results do not prove that a call was safe or never occurred. This is retained-capture scope,
+        not the ordinary recent-call window. Query strings are limited to 512 bytes; repeated, empty and
+        unsupported parameters are rejected. Authentication uses the administrator session, not an application key.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/EvidenceApplication'
+      - $ref: '#/components/parameters/EvidenceLimit'
+      - name: request_id
+        in: query
+        schema:
+          $ref: '../schemas/evidence.schema.json#/$defs/RequestID'
+      responses:
+        '200':
+          description: Bounded metadata list; history_may_be_missing is always true
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/EvidenceList'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/evidence/access:
+    get:
+      summary: Read recent metadata-only evidence access events
+      description: Returns newest events first from the retained 128-event memory window. The private
+        journal is authenticated and capped at 8 MiB; no automatic rollover is implemented. Events describe
+        authorization to change configuration, reveal content or delete expired files, not completion or
+        client receipt. Actors distinguish sessions of the single administrator identity. Only limit is accepted.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/EvidenceLimit'
+      responses:
+        '200':
+          description: Verified recent access metadata without captured body text
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/EvidenceAccessList'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/evidence/purge:
+    post:
+      summary: Delete expired evidence captures
+      description: Records deletion authorization before removing each expired sealed file. Returns the
+        number removed on success. Expiry already denies direct access; purge also runs at startup and
+        during an applicable capture. Does not delete unexpired records, ordinary call logs, archived
+        report metadata, backups or previously revealed copies. Does not guarantee physical secure erasure.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200':
+          description: Number of expired files removed
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/EvidencePurgeResult'
+        '503':
+          description: evidence_unavailable; authorization recording or deletion failed
+        '507':
+          description: evidence_capacity; no access-journal space to authorize deletion
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/evidence/{id}:
+    get:
+      summary: Inspect an authenticated evidence bundle without revealing body content
+      description: Returns the retained call record, object metadata, available policy snapshots and
+        findings projected from existing control observations. Trace is optional. Findings are not new
+        detector runs, calibrated risk probabilities or legal conclusions. A released_output object is
+        prepared client output; even write_completed does not prove remote receipt. Expired captures are
+        inaccessible before physical purge. SSE objects may include sse-evidence-v1 metadata for validated
+        upstream frames or downstream write-attempted frames, with at most 128 manifest entries and explicit
+        end state. Stream bytes/fingerprints cover complete accepted stage frames, not all transport bytes;
+        a retained incomplete stream is not a successful completion. Only application_id is accepted in the query.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/EvidencePathID'
+      - $ref: '#/components/parameters/EvidenceApplication'
+      responses:
+        '200':
+          description: Authenticated retained metadata and recorded findings
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/EvidenceDetail'
+        '404':
+          description: evidence_not_found; no capture exists in the selected application
+        '410':
+          description: evidence_expired; retention ended
+        '503':
+          description: evidence_unavailable; retained ciphertext or metadata could not be verified
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/evidence/{id}/graph:
+    get:
+      summary: Read metadata relationships for up to 32 retained captures
+      description: Always restricted to the root application's scope. If the root has a trace ID,
+        includes related retained captures with that trace, bounded to 32 total. Links connect calls,
+        objects, snapshots and recorded findings. Parent/link/retry relationships remain caller_declared;
+        matching targets do not prove causality. Missing and duplicate targets are unresolved or ambiguous.
+        Fingerprints do not create inferred content-transfer edges. No body text is returned.
+        history_may_be_missing remains true and graph_complete remains false. Only application_id is accepted.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/EvidencePathID'
+      - $ref: '#/components/parameters/EvidenceApplication'
+      responses:
+        '200':
+          description: Partial retained-evidence graph with explicit truncation and unavailable-record counts
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/EvidenceGraph'
+        '404':
+          description: evidence_not_found; root capture is absent from the selected application
+        '410':
+          description: evidence_expired; root capture retention ended
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/evidence/{id}/reveal:
+    post:
+      summary: Explicitly reveal a retained object's raw or pattern-limited content
+      description: Requires administrator authentication, the selected application/object, a raw or redacted
+        view and incident_review or validation as the reason. Both views record reveal_authorized durably
+        before returning text; an unavailable/full access journal prevents disclosure. The redacted view
+        uses finite sensitive-text-v3 patterns, not anonymization. Incomplete scans (including content
+        beyond its 8 KiB scan limit) and credential matches withhold the whole object; other supported
+        spans are replaced. Unrecognized personal data may remain and preview text need not be valid JSON.
+        The response is untrusted sensitive data. No additional model call or detector-based policy action
+        is performed. Authorization does not prove the client received the content.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/EvidencePathID'
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/evidence.schema.json#/$defs/EvidenceRevealRequest'
+      responses:
+        '200':
+          description: Explicit raw text or finite-pattern preview, possibly entirely withheld
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/evidence.schema.json#/$defs/EvidenceContent'
+        '404':
+          description: evidence_not_found; no capture exists in the selected application
+        '409':
+          description: evidence_content_unavailable; this object has no retained text
+        '410':
+          description: evidence_expired; content access is denied
+        '503':
+          description: evidence_unavailable; stored evidence or the access journal cannot be verified or written
+        '507':
+          description: evidence_capacity; access journal has reached its bound
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/integration/check:
+    get:
+      summary: Check the supplied application's model configuration without contacting a provider
+      description: Authenticates an application key and resolves its requested model grant. Returns only
+        that application's identifier and advisory input/output policy applicability, audit admission
+        availability and supported call mode. Does not contact an upstream, perform inference, reserve
+        audit capacity or append a call record. This snapshot does not guarantee provider reachability,
+        inference success, detector effectiveness or authorization of a later request. Administrator
+        sessions are not accepted. The console compares application_id before an explicitly requested
+        synthetic inference through the normal Chat Completions endpoint.
+      security:
+      - applicationKey: []
+      parameters:
+      - name: model
+        in: query
+        required: true
+        description: One enabled model alias granted to this application. No other query parameters are accepted.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,99}$'
+      responses:
+        '200':
+          description: Application configuration snapshot; inference remains not_tested even when audit is available
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/integration.schema.json#/$defs/IntegrationCheckView'
+        '400':
+          description: Missing, repeated, malformed or unsupported query parameters (invalid_integration_query)
+        '401':
+          description: Missing, invalid, repeated or revoked application authorization
+        '403':
+          description: Model access denied or the connection is disabled
+        '503':
+          description: Configured upstream credential could not be decrypted; no upstream was contacted
+        default:
+          $ref: '#/components/responses/Error'
   /healthz:
     get:
       summary: Process liveness (not model readiness)
@@ -140,9 +564,31 @@ paths:
         aborts the response stream and records failure; HTTP 200 alone does not imply completion. Enabled in-scope
         credential policies inspect JSON string tokens before upstream I/O. A blocked match returns HTTP 403
         with error.code policy_blocked, including for stream=true; no SSE stream starts. Audit unavailable
-        returns 503 even for policy hits.
+        returns 503 even for policy hits. An enabled in-scope sensitive-output policy rejects stream=true
+        with 400 content_stream_unsupported before provider I/O. Its non-streaming path requires one complete
+        assistant text choice with finish_reason stop, or one explicitly declared read_resource function proposal
+        with finish_reason tool_calls and empty assistant content. The tools array must declare exactly this
+        function with one required resource_id string and additionalProperties false. Other declarations or
+        legacy function-call requests return 400 content_tools_unsupported before provider I/O. Tool arguments
+        must decode to exactly one bounded resource ID; parallel calls and mixed text/action outputs are withheld.
+        The provider call ID is replaced by a gateway correlation ID. Proposals are not execution grants;
+        the application must use the authorized read-tool endpoint. Limits remain a 64 KiB provider
+        envelope and at most 8192 UTF-8 content bytes. Only checked text and bounded canonical completion fields
+        are returned; unchecked provider extensions are dropped. Matched block-mode output returns 403
+        content_output_blocked; unknown, unsupported or oversized output returns 502 content_output_unavailable.
+        Observe, block and redact all withhold invalid/unknown output. Redact replaces selected contact spans with
+        a fixed marker; any selected credential replaces the whole output. The transformed text is rechecked
+        with the pinned detector before release. Sensitive action arguments are blocked in redact mode with reason
+        tool_arguments_not_redactable, never rewritten. Output audit metadata identifies read-tool-call-v1
+        for structured proposals. Terminal audit is saved before protected text or proposal release.
       security:
       - applicationKey: []
+      parameters:
+      - $ref: '#/components/parameters/TraceID'
+      - $ref: '#/components/parameters/ParentSpanID'
+      - $ref: '#/components/parameters/AgentID'
+      - $ref: '#/components/parameters/SpanLinks'
+      - $ref: '#/components/parameters/RetryOf'
       requestBody:
         required: true
         content:
@@ -168,6 +614,15 @@ paths:
         '200':
           description: Valid JSON completion or SSE events terminated by [DONE]
           headers:
+            X-GovWeave-Trace-ID:
+              description: Present for valid opt-in tracing; correlation alone does not guarantee audit commit.
+              schema: {type: string, pattern: '^[0-9a-f]{32}$'}
+            X-GovWeave-Span-ID:
+              description: New gateway-generated span for this request, including rejected traced calls.
+              schema: {type: string, pattern: '^[0-9a-f]{16}$'}
+            X-GovWeave-Output-Action:
+              schema: {const: redacted}
+              description: Present only after successful protected text redaction and durable audit.
             X-Request-ID:
               schema: &id003
                 type: string
@@ -384,6 +839,62 @@ paths:
       - name: application_id
         in: query
         schema: *id003
+  /v1/traces/{trace_id}:
+    get:
+      summary: Query only the authenticated application's observed task fragment
+      description: Correlation is not authorization or task correctness. Reads the global most-recent
+        1000-request index, returning at most 128 matching records. Missing references stay unresolved
+        without consulting other applications. No visible records returns the same 404 for absent,
+        evicted or inaccessible traces. No prompts, answers, credentials or external agent internals.
+      security:
+      - applicationKey: []
+      parameters:
+      - $ref: '#/components/parameters/TracePathID'
+      - $ref: '#/components/parameters/TraceLimit'
+      responses:
+        '200':
+          description: Bounded observed records, caller-declared edges and policy observations; never task success
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/traces.schema.json#/$defs/TraceView'
+        '404':
+          description: trace_not_found; no visible record in the selected retained window
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/traces/{trace_id}:
+    get:
+      summary: Explicitly aggregate selected applications' task fragments as an administrator
+      description: Requires one to sixteen distinct application_id query parameters. There is no implicit
+        all-applications view. A shared trace ID is only a caller claim and does not establish shared access,
+        causality or task completion. Edges resolve solely against returned records.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/TracePathID'
+      - $ref: '#/components/parameters/TraceLimit'
+      - name: application_id
+        in: query
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: array
+          minItems: 1
+          maxItems: 16
+          uniqueItems: true
+          items: {type: string, maxLength: 100}
+      responses:
+        '200':
+          description: Explicitly scoped bounded aggregation; no full task or compliance determination
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/traces.schema.json#/$defs/TraceView'
+        '404':
+          description: trace_not_found; no visible record in the selected retained window
+        default:
+          $ref: '#/components/responses/Error'
   /v1/models:
     get:
       summary: List only enabled aliases allowed for the authenticated application
@@ -437,9 +948,12 @@ paths:
           $ref: '#/components/responses/Error'
     put:
       summary: Atomically save the credential egress policy with revision checking
-      description: Changes affect new evaluations. Already evaluated requests retain their snapshot. Only one
-        built-in policy is supported; rules run locally on decoded request JSON strings. Observe forwards the
-        unmodified request, including matches. Block rejects before upstream I/O. No legal compliance determination.
+      description: Changes affect new evaluations. Already evaluated requests retain their snapshot. This
+        request policy runs locally on decoded request JSON strings. Observe forwards the
+        unmodified request, including matches. Block rejects before upstream I/O. Saves atomically append an immutable
+        snapshot and activate it. History is limited to 1024 snapshots and 8 MiB; a full history rejects updates
+        with 409 policy_history_full and keeps the current policy. No legal compliance determination. A policy result of redact recommends a transformation; this endpoint never
+        executes it or returns redaction completion evidence.
       security:
       - adminSession: []
       parameters:
@@ -453,7 +967,943 @@ paths:
       responses:
         '200': *id004
         '409':
-          description: Revision conflict; reload before retrying.
+          description: Revision conflict or policy_history_full; the current policy remains active.
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/policies/credential-egress/history:
+    get:
+      summary: List retained credential policy snapshots, newest first
+      description: Read-only history. New instances retain revision 0; upgraded instances start at their last
+        legacy revision. Earlier missing configurations are not reconstructed. The exclusive revision cursor
+        keeps older pages stable when new revisions are saved.
+      security:
+      - adminSession: []
+      parameters:
+      - name: limit
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: before_revision
+        in: query
+        schema:
+          type: integer
+          minimum: 0
+        description: Return only revisions strictly below this value.
+      responses:
+        '200':
+          description: Retained snapshots and optional cursor for the next older page.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialPolicyHistory'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/policies/credential-egress/revisions/{revision}:
+    get:
+      summary: Read the immutable credential policy configuration for a retained revision
+      description: Resolve content_policy.revision from a request record. This does not change the active policy.
+      security:
+      - adminSession: []
+      parameters:
+      - name: revision
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 0
+      responses:
+        '200':
+          description: Immutable policy snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CredentialPolicy'
+        '404':
+          description: Revision is not retained, including revisions before a legacy migration baseline.
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/compliance/packs:
+    get:
+      summary: List installed declarative rule pack versions
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Immutable startup catalog; an absent rule-packs directory yields an empty list.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/compliance.schema.json#/$defs/Catalog'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/evaluations:
+    post:
+      summary: Evaluate supplied product evidence against an exact installed rule pack version
+      description: Stateless, local, advisory evaluation only. Does not invoke providers, persist facts or reports,
+        intercept Chat Completions, or determine legal compliance. Caller provenance is an assertion, not independently
+        verified evidence. Maximum request size is 16 KiB, with 64 concurrent evaluations (429 compliance_busy
+        on overload). Missing, expired, stale, future or type-incompatible
+        evidence remains unknown. No fallback to another pack version.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/compliance.schema.json#/$defs/EvaluationInput'
+      responses:
+        '200':
+          description: Per-control technical results, evidence references and exact rule pack digest.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/compliance.schema.json#/$defs/Evaluation'
+        '404':
+          description: rule_pack_not_found; the requested ID and version are not installed.
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/compliance/products:
+    get:
+      summary: List registered products and saved administrative profile facts
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: List registered products and saved administrative profile facts
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/products.schema.json#/$defs/ProductList
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      summary: Register a product with application bindings and an exact rule pack version
+      description: Binds existing applications, including tool-only applications with no model grants.
+        Administrative facts cannot define runtime.* or testing.*; the server supplies configuration and
+        bounded audit evidence for model calls and controlled read tools. A rule pack is advisory and does
+        not change runtime tool grants or output mode.
+      security:
+      - adminSession: []
+      parameters:
+      - &product_id002
+        $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/products.schema.json#/$defs/ProductInput
+      responses:
+        '200':
+          description: Saved profile; runtime evidence is collected by the server.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/products.schema.json#/$defs/Product
+        '409':
+          description: revision_conflict; reload the product before updating.
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/products/{id}:
+    get:
+      summary: Read a registered product profile
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Read a registered product profile
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/products.schema.json#/$defs/Product
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - &product_id001
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$
+    put:
+      summary: Update a product profile with revision checking
+      security:
+      - adminSession: []
+      parameters:
+      - *product_id001
+      - *product_id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/products.schema.json#/$defs/ProductInput
+      responses:
+        '200':
+          description: Saved profile; runtime evidence is collected by the server.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/products.schema.json#/$defs/Product
+        '409':
+          description: revision_conflict; reload the product before updating.
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/products/{id}/evaluation:
+    get:
+      summary: Read the current automatic advisory assessment
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Read the current automatic advisory assessment
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/products.schema.json#/$defs/Report
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - *product_id001
+      description: Configuration changes, including the global tool-store revision, and known evidence clock boundaries invalidate
+        prior successes. A pending response contains no evaluation payload and schedules
+        reevaluation. Ready responses use server-collected runtime facts; profile evidence
+        remains administrator-supplied. Latest reports are in memory and recomputed
+        on restart. runtime.tools.* describes enabled resource grants, output-blocking coverage and
+        tool counters from the latest 100 global indexed request entries filtered to bound applications
+        and tools.invoke. This is not a per-product window or full history. Tool counters are omitted
+        when audit is unavailable; missing evidence remains unknown. Chat Completion counters remain separate.
+        Current qualifying output-control test runs also supply testing.output.pre_deployment.passed and
+        testing.output.operation.passed for models, or testing.tools.output.pre_deployment.passed and
+        testing.tools.output.operation.passed for read tools. Tool suites additionally require a denied-resource
+        check; model and tool evidence cannot substitute for each other. Both require exact current
+        plan and source versions. Each product supports one plan per target kind, including any legacy default;
+        current reports combine both namespaces. Latest runs are selected independently per plan and phase.
+        The latest inconclusive or running result does not reuse older success.
+        snapshot.test_evidence_revision is a process-local cache generation and is not comparable across restarts.
+  /api/v1/compliance/products/{id}/evaluate:
+    post:
+      summary: Refresh a registered product using current gateway-owned evidence
+      description: Uses current model/tool configuration and metadata-only call records. Accepts no evidence
+        override or caller-supplied runtime facts. This evaluates controls without invoking an upstream tool
+        or model. The optional snapshot.tool_revision pins tool-store freshness; older archived stamps remain readable.
+      security:
+      - adminSession: []
+      parameters:
+      - *product_id001
+      - *product_id002
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '200':
+          description: New advisory assessment or explicit evaluation error state.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/products.schema.json#/$defs/Report
+        '429':
+          description: assessment_busy; gateway or product inputs kept changing during
+            snapshot evaluation.
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/compliance/packs/{id}/versions/{version}:
+    get:
+      summary: Read the exact installed rule pack definition and source metadata
+      security:
+      - adminSession: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$
+      - name: version
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$
+      responses:
+        '200':
+          description: Independent read-only pack definition. Review metadata is an
+            operator assertion.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/compliance.schema.json#/$defs/Pack
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/products/{id}/reports:
+    get:
+      summary: List retained report summaries for a registered product
+      security:
+      - adminSession: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$
+      responses:
+        '200':
+          description: Newest capture first, bounded by the global 256-report capacity.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/reports.schema.json#/$defs/ReportList
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      summary: Capture a fresh immutable advisory report with exact product, rule pack
+        and evidence snapshots
+      description: Explicit capture only; periodic assessments are not automatically
+        archived. Persists governance fact values for replay, never model request/response
+        bodies, retrieved tool text, raw resource IDs, upstream endpoints or credentials from runtime adapters.
+        Includes the tool-store revision and bounded tool evidence when available. Maximum 1 MiB per report, 256 reports and 64 MiB total;
+        capacity errors retain existing reports.
+      security:
+      - adminSession: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '200':
+          description: Committed private snapshot and SHA-256 of its exact file bytes.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/reports.schema.json#/$defs/ArchivedReport
+        '409':
+          description: archive_capacity or assessment_unavailable; no report replaced.
+        '429':
+          description: archive_busy or assessment_busy; retry later.
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/reports/{report}:
+    get:
+      summary: Read a retained historical report independently of current product/plugin
+        versions
+      security:
+      - adminSession: []
+      parameters:
+      - name: report
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^rpt_[A-Za-z0-9_-]{22}$
+      responses:
+        '200':
+          description: Historical snapshot, not a current compliance state. Includes
+            fact values.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/reports.schema.json#/$defs/ArchivedReport
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/reports/{report}/replay:
+    post:
+      summary: Replay a report at its retained evaluation time using retained rules
+        and facts
+      description: Does not invoke a model or tool or recollect output evidence. Replays the archived
+        technical result, including the original tool sample; it does not establish the current product state.
+      security:
+      - adminSession: []
+      parameters:
+      - name: report
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: ^rpt_[A-Za-z0-9_-]{22}$
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '200':
+          description: Deterministic replay with the supported evaluator version; no
+            live source access.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/reports.schema.json#/$defs/Replay
+        '409':
+          description: replay_version_unsupported; the historical document remains readable.
+        default:
+          $ref: '#/components/responses/Error'
+
+  /api/v1/compliance/test-suites:
+    get:
+      summary: List installed test suite versions
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Immutable startup catalog of bounded, declarative tests.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/testing.schema.json#/$defs/Catalog'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/test-suites/{id}/versions/{version}:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    - {name: version, in: path, required: true, schema: {type: string}}
+    get:
+      summary: Read an exact test suite
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Installed suite including measurement scope and limitations.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/testing.schema.json#/$defs/Suite'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/products/{id}/test-plans:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      summary: List independent model and read-tool plans for a product
+      description: At most one plan per target kind, including the original default plan.
+        An omitted plan_id identifies that legacy default. Listing performs no provider I/O.
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Up to two plans with their independent revisions, schedules and recent run IDs.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/testing.schema.json#/$defs/Plans'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/products/{id}/test-plans/{plan}:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    - {name: plan, in: path, required: true, schema: {type: string, enum: [model, read_tool]}}
+    get:
+      summary: Read a named test plan
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Exact named plan; does not fall back to the legacy default.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/testing.schema.json#/$defs/Plan'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Save a named model or read-tool test plan
+      description: The URL selects the plan ID; do not include plan_id in the body.
+        Use revision zero for creation and the returned revision for updates. The model plan requires
+        a model suite and model fields; read_tool requires target_kind read_tool, a tool suite and tool fields.
+        There may be only one plan per target kind, counting any legacy default. Schedule opt-in and
+        execution limits are the same as the default plan. Saving does not invoke a provider; it invalidates
+        only this plan's test evidence. Shared configuration changes still invalidate both targets.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/testing.schema.json#/$defs/PlanInput'
+      responses:
+        '200':
+          description: Saved named plan with an independent revision and scheduling state.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/testing.schema.json#/$defs/Plan'
+        '409':
+          description: revision_conflict or test_plan_target_conflict; update the existing plan of that target kind.
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/products/{id}/test-plan:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      summary: Read the legacy default test plan and scheduling errors
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Persisted plan; last_run_id points to case outcomes.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/testing.schema.json#/$defs/Plan'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Save the legacy default test plan
+      description: Explicit schedule_enabled authorizes recurring requests to the configured model or read tool.
+        Read-tool plans use target_kind read_tool and tool_alias, without model_alias or max_output_tokens;
+        the suite must match the target kind. First due after one interval;
+        300–2592000 seconds. Retain responses only with explicit retain_responses. Output-control checks
+        never retain returned text even with that option. Plan changes invalidate current test-backed
+        product evidence for this plan. Initial revision is zero. Existing default serialization is preserved.
+        A second plan of the same target kind is rejected, including conflicts with named plans.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/testing.schema.json#/$defs/PlanInput'
+      responses:
+        '200':
+          description: Saved plan; saving does not immediately call the target.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/testing.schema.json#/$defs/Plan'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/products/{id}/test-runs:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      summary: List historical active test runs
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Newest first; historical statuses are not current deployment approvals.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/testing.schema.json#/$defs/Runs'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      summary: Start a bounded pre-deployment or operation test run
+      description: Uses an administrator-authorized application bound to the product through normal gateway
+        grants, credential policy and durable audit admission. Two runs globally, one per product, 16
+        sequential cases per plan. plan_id selects model or read_tool; omission or empty selects only the
+        legacy default. A missing default returns 404 without selecting another plan or executing I/O. No fan-out.
+        Five minutes total. Supports versioned synthetic-canary detection with fresh per-case markers. No automatic inference retry. Responses are retained only
+        when opted in, except receipt-based output and tool-denial checks which never retain returned text.
+        Read-tool runs use ordinary resource grants and durable audit, with no model grant required.
+        All resources must be known; output probes must be granted. A denial probe whose grant expanded
+        may reach the provider and fails authorization verification, so use synthetic resources.
+        Rule evaluation for this plan is saved in the test run; it does not import the other plan's facts.
+        Qualifying current output-control phase facts from both plans enter product evaluation under
+        separate model and tool namespaces. Scheduling remains independent but shares the per-product limit.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [phase]
+              properties:
+                phase: {type: string, enum: [pre_deployment, operation]}
+                plan_id: {type: string, enum: ['', model, read_tool], description: Omit or use empty for the legacy default; named plans require explicit selection.}
+      responses:
+        '202':
+          description: Evidence space reserved; poll test-runs/{id} for completion.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/testing.schema.json#/$defs/Summary'
+        '429':
+          description: test_busy; overlapping product run or global concurrency reached.
+        '409':
+          description: test_capacity or revision/source conflict; no new target request.
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/test-runs/{run}:
+    parameters:
+    - {name: run, in: path, required: true, schema: {type: string}}
+    get:
+      summary: Read private test evidence and deterministic rule evaluation
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Saved versions, test set, product facts, case outcomes and optional response text.
+            Provider errors stay unknown. Canary results include detector version, generated synthetic marker and bounded evidence spans; absence is not a general privacy guarantee. Passing tests do not establish legal or whole-framework compliance.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/testing.schema.json#/$defs/Run'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/test-runs/{run}/replay:
+    parameters:
+    - {name: run, in: path, required: true, schema: {type: string}}
+    post:
+      summary: Replay saved rule decisions without requesting the model
+      description: Uses the retained facts, rule pack and time. Does not revalidate remote output or detector
+        conclusions from hashes. Test runner versions other than the supported version are rejected on load.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, additionalProperties: false}
+      responses:
+        '200':
+          description: Retained deterministic evaluation and comparison result.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/testing.schema.json#/$defs/Replay'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/tools:
+    get:
+      summary: Read current controlled read-tool configuration and global revision
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Tool metadata without credentials or ciphertext
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/tools.schema.json#/$defs/ToolSnapshot'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      summary: Create an application-scoped read tool and immutable configuration snapshot
+      description: Requires the current global tool-store revision. Maximum 32 tools, 128 total retained
+        revisions, 32 resources per tool and 32 application grants per resource. Empty resource grants deny all.
+        The fixed provider endpoint accepts POST with a resource_id and returns exactly one text field.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/tools.schema.json#/$defs/ToolInput'
+      responses:
+        '201':
+          description: Created tool metadata without upstream credential
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/tools.schema.json#/$defs/Tool'
+        '409':
+          description: Stale global revision or tool history capacity reached
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/tools/{id}:
+    put:
+      summary: Replace tool configuration and append an immutable snapshot
+      description: revision is the global revision from GET /api/v1/tools, not the tool's own revision.
+        Omit or null api_key to retain the credential; an empty string clears it. Set enabled to false to disable.
+        Already admitted calls use their accepted snapshot. There is no deletion or pruning endpoint.
+      security:
+      - adminSession: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string}
+        description: Tool ID from the administrative snapshot
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/tools.schema.json#/$defs/ToolInput'
+      responses:
+        '200':
+          description: Saved immutable tool snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/tools.schema.json#/$defs/Tool'
+        '409':
+          description: Stale global revision or tool history capacity reached
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/tools/{id}/history:
+    get:
+      summary: Read retained immutable tool metadata, newest revision first
+      description: Resolve tool_governance.tool_revision and snapshot_sha256 from a tools.invoke or assessment.tools.invoke call record.
+        Credentials and ciphertext are never included. Snapshot hashes are consistency checks, not signatures.
+      security:
+      - adminSession: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema: {type: string}
+      responses:
+        '200':
+          description: Retained tool history
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/tools.schema.json#/$defs/ToolHistory'
+        default:
+          $ref: '#/components/responses/Error'
+  /v1/tools/{alias}/invoke:
+    post:
+      summary: Authorize and execute a configured read tool, then check its output before release
+      description: Application key required. Request is at most 4 KiB and contains only resource_id;
+        caller-supplied identity, permissions and URLs are rejected. Unknown/disabled tools or unauthorized
+        resources return the same tool_not_allowed error before provider I/O. The configured provider must
+        return HTTP 200 JSON with exactly one text string, at most 8192 UTF-8 bytes within a 64 KiB envelope.
+        Fixed credentials-v1 patterns run on returned text; block mode withholds matches, while observe
+        mode releases text with a finding. Protocol, timeout, size and audit failures withhold output in both
+        modes. Terminal audit is persisted before releasing text. No redirects, automatic POST retries,
+        output streaming, end-user delegation, write tools, MCP execution or general semantic safety verdict.
+        An enabled in-scope sensitive-output policy adds credential/email/phone-category checks on the
+        returned text. Optional instruction_policy (tool-instructions-v1 or tool-instructions-v2, observe or block) checks
+        explicit task overrides, authority spoofing and role delimiters before text is released; quoted
+        attack examples also match. A match in block mode returns 403 tool_instruction_blocked; an
+        incomplete instruction check returns 502 tool_instruction_unavailable. Exact operator-declared
+        resource instruction_review settings can exempt named instruction rules only for the matching detector
+        generation and SHA-256 of the decoded text bytes. Changed documents receive no exceptions; unchanged
+        documents keep any unreviewed rule actions. Authorization, credential checks, sensitive-output protection
+        and durable audit remain independent. V2 adds a bounded answer_manipulation syntax signal for selected
+        English/Chinese answer-directed commands, including legitimate or quoted commands. Review evidence records
+        matched/mismatch/unavailable plus exempted rule IDs without a runtime document hash. Exact operator-declared
+        public_emails in the sensitive-output policy can exempt literal email findings within its
+        application scope; other addresses and credentials keep their protection. The sensitive-output
+        assessment is exposed as governance.output_policy and in audit metadata. The legacy tool credential
+        block takes precedence over either additional policy.
+        Either policy can withhold output; enabling the new policy does not disable the legacy control.
+        Redact mode replaces selected findings, rechecks the transformed text and reports completed evidence
+        with decision redact and output_policy.result redacted. Any selected credential replaces the entire text.
+      security:
+      - applicationKey: []
+      parameters:
+      - $ref: '#/components/parameters/TraceID'
+      - $ref: '#/components/parameters/ParentSpanID'
+      - $ref: '#/components/parameters/AgentID'
+      - $ref: '#/components/parameters/SpanLinks'
+      - $ref: '#/components/parameters/RetryOf'
+      - name: alias
+        in: path
+        required: true
+        schema:
+          $ref: '../schemas/tools.schema.json#/$defs/Identifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/tools.schema.json#/$defs/InvokeRequest'
+      responses:
+        '200':
+          description: Checked text and terminal allow/observe/redact decision
+          headers:
+            X-GovWeave-Trace-ID:
+              description: Present for valid opt-in tracing; correlation alone does not guarantee audit commit.
+              schema: {type: string, pattern: '^[0-9a-f]{32}$'}
+            X-GovWeave-Span-ID:
+              description: New gateway-generated span for this request, including rejected traced calls.
+              schema: {type: string, pattern: '^[0-9a-f]{16}$'}
+            X-GovWeave-Output-Action:
+              schema: {const: redacted}
+              description: Present only for completed redaction after durable audit.
+            X-Request-ID:
+              description: Correlates the decision with the metadata-only request record
+              schema: {type: string}
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/tools.schema.json#/$defs/InvokeResponse'
+        default:
+          description: No provider text. Errors use 400/401/403/413/415/429/499/502/503/504;
+            tool_not_allowed means no provider call, while tool_output_blocked means the provider was called
+            but its output was withheld. Request-ID generation failure uses the base error envelope.
+          content:
+            application/json:
+              schema:
+                anyOf:
+                - $ref: '../schemas/tools.schema.json#/$defs/InvokeError'
+                - $ref: '#/components/schemas/Error'
+  /v1/content/evaluations:
+    post:
+      summary: Observe bounded sensitive-text candidates and evaluate the application's output policy
+      description: Uses an application Bearer key. The strict body contains only text, at most 8192 UTF-8
+        bytes within a 64 KiB JSON envelope. Always runs the policy-pinned detector generation for all supported categories,
+        even when output enforcement is disabled. Returns category/rule identifiers and byte offsets without
+        echoing text; no model or tool is called. HTTP 200 means evaluation completed, not that content is safe
+        or allowed; inspect detection.state and policy.result. Unknown observations remain unknown. Audit records
+        contain policy metadata only, without text, matched values, hashes or spans. No automatic redaction or
+        legal compliance determination.
+      security:
+      - applicationKey: []
+      parameters:
+      - $ref: '#/components/parameters/TraceID'
+      - $ref: '#/components/parameters/ParentSpanID'
+      - $ref: '#/components/parameters/AgentID'
+      - $ref: '#/components/parameters/SpanLinks'
+      - $ref: '#/components/parameters/RetryOf'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/content.schema.json#/$defs/ContentEvaluationRequest'
+      responses:
+        '200':
+          description: Detector observations and policy result; no submitted text
+          headers:
+            X-GovWeave-Trace-ID:
+              description: Present for valid opt-in tracing; correlation alone does not guarantee audit commit.
+              schema: {type: string, pattern: '^[0-9a-f]{32}$'}
+            X-GovWeave-Span-ID:
+              description: New gateway-generated span for this request, including rejected traced calls.
+              schema: {type: string, pattern: '^[0-9a-f]{16}$'}
+            X-Request-ID:
+              schema: {type: string}
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/content.schema.json#/$defs/ContentEvaluationResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/policies/sensitive-output:
+    get:
+      summary: Read the current sensitive-output policy
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Current policy; initial revision zero is disabled
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/content.schema.json#/$defs/OutputPolicySnapshot'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Save and retain an immutable sensitive-output policy revision
+      description: Applies to configured model and read-tool output for selected applications. Empty application
+        scope means all applications. Categories select credential, email and/or phone findings for decision;
+        matches are candidate observations, not proof of personal ownership or a legal violation. Observe releases
+        matched valid output, block withholds it, and redact replaces selected contact spans or the entire text on a
+        selected credential match. Redact snapshots pin redaction_version sensitive-redaction-v1. All active modes
+        withhold unknown/unsupported output. Active scoped model
+        policies reject streaming before provider I/O. Optional detector_version selects sensitive-text-v1, sensitive-text-v2 or sensitive-text-v3;
+        omission preserves the current generation (initially v1). V2 adds bounded width/zero-width normalization and
+        bracketed email separators with original byte offsets. Changes affect later admitted calls. Stores at most 128
+        snapshots. Optional public_emails declares up to 16 exact ASCII public email addresses for this application
+        scope. Literal matches are exempted from email actions in final model text, tool output and standalone
+        evaluation; raw detection stays observed. No domain wildcard, normalization, credential exemption or
+        unknown-scan exemption. Omission/null/empty clears the list on PUT. All history must fit
+        within 2 MiB including revision zero; exhaustion returns output_history_full without evicting history.
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/content.schema.json#/$defs/OutputPolicyInput'
+      responses:
+        '200':
+          description: Newly active immutable revision
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/content.schema.json#/$defs/OutputPolicySnapshot'
+        '409':
+          description: revision_conflict or output_history_full; previous policy stays active
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/policies/sensitive-output/history:
+    get:
+      summary: Read retained sensitive-output policy snapshots, newest first
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Bounded complete history including initial revision zero
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/content.schema.json#/$defs/OutputPolicyHistory'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/policies/sensitive-output/revisions/{revision}:
+    get:
+      summary: Read one immutable sensitive-output policy revision
+      security:
+      - adminSession: []
+      parameters:
+      - name: revision
+        in: path
+        required: true
+        schema: {type: integer, minimum: 0}
+      responses:
+        '200':
+          description: Exact saved revision
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/content.schema.json#/$defs/OutputPolicySnapshot'
+        '404':
+          description: Revision does not exist
         default:
           $ref: '#/components/responses/Error'
 components:
@@ -567,6 +2017,9 @@ components:
         name: *id003
         allowed_connections:
           type: array
+          minItems: 0
+          maxItems: 256
+          description: Explicit model-connection grants. Empty grants no model access and supports tool-only applications.
           items: *id003
         key_prefix: *id003
         revoked: *id005
@@ -625,6 +2078,9 @@ components:
     CallRecord:
       type: object
       properties:
+        trace:
+          $ref: '../schemas/traces.schema.json#/$defs/TraceContext'
+          description: Optional opt-in association. App identity and execution are gateway evidence; relationships are caller claims.
         request_id:
           type: string
         started_at:
@@ -633,6 +2089,8 @@ components:
           type: string
         operation:
           type: string
+          description: Includes assessment.chat.completions and assessment.tools.invoke for active tests,
+            excluded from production counters but retained in the shared bounded audit index.
         application_id:
           type: string
         connection_id:
@@ -657,6 +2115,7 @@ components:
           - allow
           - deny
           - not_evaluated
+          - evaluated
         outcome:
           enum:
           - in_progress
@@ -676,6 +2135,14 @@ components:
           $ref: '#/components/schemas/PolicyAssessment'
           description: Optional for backward compatibility. Present only after request credential policy evaluation;
             separate from access authorization.
+        tool_governance:
+          $ref: '../schemas/tools.schema.json#/$defs/Governance'
+          description: Present for tools.invoke and assessment.tools.invoke. Fixed authorization, sensitivity and content evidence;
+            no resource IDs or content. The tool revision/hash resolves through the tool history API.
+        output_policy:
+          $ref: '../schemas/content.schema.json#/$defs/OutputAssessment'
+          description: Optional sensitive-output assessment for model, tool or standalone content evaluation;
+            fixed identifiers and category decisions only, without text, offsets or content hashes.
       required:
       - request_id
       - started_at
@@ -790,6 +2257,27 @@ components:
         updated_at:
           type: string
           format: date-time
+    CredentialPolicyHistory:
+      type: object
+      additionalProperties: false
+      required:
+      - snapshots
+      - total
+      properties:
+        snapshots:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/CredentialPolicy'
+        total:
+          type: integer
+          minimum: 1
+          maximum: 1024
+          description: Total retained snapshots, including ones outside this page.
+        next_before_revision:
+          type: integer
+          minimum: 1
+          description: Exclusive before_revision cursor; omitted when no older page remains.
     PolicyAssessment:
       type: object
       additionalProperties: false
@@ -846,6 +2334,82 @@ components:
                 maxLength: 128
                 writeOnly: true
   parameters:
+    TaskSnapshotPathID:
+      name: snapshot_id
+      in: path
+      required: true
+      schema:
+        $ref: '../schemas/evidence.schema.json#/$defs/TaskSnapshotID'
+    TaskSnapshotApplications:
+      name: application_id
+      in: query
+      required: true
+      style: form
+      explode: true
+      description: Explicit existing applications. For saved snapshots this set must match exactly;
+        repeated parameters must carry distinct values. Application keys cannot access these routes.
+      schema:
+        type: array
+        minItems: 1
+        maxItems: 16
+        uniqueItems: true
+        items:
+          $ref: '../schemas/evidence.schema.json#/$defs/ApplicationID'
+    EvidencePathID:
+      name: id
+      in: path
+      required: true
+      schema:
+        $ref: '../schemas/evidence.schema.json#/$defs/EvidenceID'
+    EvidenceApplication:
+      name: application_id
+      in: query
+      required: true
+      description: One explicitly selected existing application. A matching evidence ID or trace does not grant access across applications.
+      schema:
+        $ref: '../schemas/evidence.schema.json#/$defs/ApplicationID'
+    EvidenceLimit:
+      name: limit
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+    TracePathID:
+      name: trace_id
+      in: path
+      required: true
+      schema: {type: string, pattern: '^(?!0{32}$)[0-9a-f]{32}$'}
+    TraceLimit:
+      name: limit
+      in: query
+      schema: {type: integer, minimum: 1, maximum: 128, default: 100}
+    TraceID:
+      name: X-GovWeave-Trace-ID
+      in: header
+      description: Optional application-scoped correlation. Required with any other tracing header.
+        These are custom GovWeave headers, not a complete W3C Trace Context implementation.
+        Malformed or repeated headers return 400 invalid_trace_context before upstream I/O.
+        They are never forwarded to the provider. X-GovWeave-Span-ID is server-owned and forbidden on requests.
+      schema: {type: string, pattern: '^(?!0{32}$)[0-9a-f]{32}$'}
+    ParentSpanID:
+      name: X-GovWeave-Parent-Span-ID
+      in: header
+      description: Caller-declared primary predecessor, not proof of causality or permission.
+      schema: {type: string, pattern: '^(?!0{16}$)[0-9a-f]{16}$'}
+    AgentID:
+      name: X-GovWeave-Agent-ID
+      in: header
+      description: Opaque caller-declared agent identity; the authenticated application remains authoritative.
+      schema: {type: string, pattern: '^(?!0{16}$)[0-9a-f]{16}$'}
+    SpanLinks:
+      name: X-GovWeave-Link-Span-IDs
+      in: header
+      description: One to four distinct, nonzero 16-character lowercase hex IDs, comma separated without whitespace.
+        Declares dependencies for parallel joins; only visible returned spans can resolve them.
+      schema: {type: string, maxLength: 67, pattern: '^[0-9a-f]{16}(,[0-9a-f]{16}){0,3}$'}
+    RetryOf:
+      name: X-GovWeave-Retry-Of
+      in: header
+      description: Declares an earlier attempt. Does not request replay, deduplication or an automatic retry.
+      schema: {type: string, pattern: '^(?!0{16}$)[0-9a-f]{16}$'}
     ConsoleRequest:
       name: X-GovWeave-Request
       in: header
@@ -882,7 +2446,7 @@ components:
               setup_required:
                 const: false
     Error:
-      description: Structured error. Management APIs use 400/401/403/404/409/413/415/429/500/503; model APIs
+      description: Structured error. Management APIs use 400/401/403/404/409/410/413/415/429/500/503/507; model APIs
         additionally use 422/499/502/504. Error details from providers are not returned.
       content:
         application/json:

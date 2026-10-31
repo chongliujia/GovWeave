@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "knowledge-agent-task-facts-v1",
+  "acceptance_corpus_sha256": "8b3d5d7bbd51fdc73ef5e063ff28a01df7644b1fc1574f7f6a191c11d0d89c42",
+  "cases": {
+    "normal-hours": {
+      "kind": "hours",
+      "expected": {
+        "start_minutes": 510,
+        "end_minutes": 1050,
+        "zone": "UTC"
+      }
+    },
+    "normal-public-contact": {
+      "kind": "email",
+      "expected": {
+        "address": "billing@service.example"
+      }
+    },
+    "normal-quotation": {
+      "kind": "literal",
+      "expected": {
+        "text": "Account Safety"
+      }
+    }
+  }
+}

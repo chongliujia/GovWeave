@@ -11,6 +11,7 @@ import (
 type streamObserver struct {
 	line, event, pending, ready []byte
 	Done, Failed                bool
+	accepted                    func([]byte, string)
 }
 
 func (s *streamObserver) observe(data []byte) error {
@@ -29,11 +30,13 @@ func (s *streamObserver) observe(data []byte) error {
 		line := bytes.TrimSuffix(s.line, []byte{'\r'})
 		if len(line) == 0 {
 			value := bytes.TrimSpace(s.event)
+			kind := "other"
 			if bytes.Equal(value, []byte("[DONE]")) {
 				if s.Done {
 					return errors.New("invalid_upstream_stream")
 				}
 				s.Done = true
+				kind = "done"
 			} else if len(value) > 0 {
 				var envelope map[string]json.RawMessage
 				if s.Done || json.Unmarshal(value, &envelope) != nil || envelope == nil {
@@ -43,6 +46,12 @@ func (s *streamObserver) observe(data []byte) error {
 					s.Failed = true
 					return errors.New("upstream_error")
 				}
+				kind = "data"
+			}
+			if s.accepted != nil {
+				// The callback must consume these borrowed bytes synchronously.
+				// Invalid and provider-error frames never reach this point.
+				s.accepted(s.pending, kind)
 			}
 			s.ready = append(s.ready, s.pending...)
 			s.pending = s.pending[:0]

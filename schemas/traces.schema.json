@@ -1,0 +1,450 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "TraceID": {
+      "type": "string",
+      "pattern": "^(?!0{32}$)[0-9a-f]{32}$"
+    },
+    "SpanID": {
+      "type": "string",
+      "pattern": "^(?!0{16}$)[0-9a-f]{16}$"
+    },
+    "TraceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "trace_id",
+        "span_id"
+      ],
+      "properties": {
+        "version": {
+          "const": "agent-trace-v1"
+        },
+        "trace_id": {
+          "$ref": "#/$defs/TraceID"
+        },
+        "span_id": {
+          "$ref": "#/$defs/SpanID",
+          "description": "New server-generated identifier for this gateway call."
+        },
+        "parent_span_id": {
+          "$ref": "#/$defs/SpanID"
+        },
+        "agent_id": {
+          "$ref": "#/$defs/SpanID",
+          "description": "Opaque caller-declared label, not an authenticated Agent identity."
+        },
+        "links": {
+          "type": "array",
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/SpanID"
+          }
+        },
+        "retry_of_span_id": {
+          "$ref": "#/$defs/SpanID"
+        }
+      },
+      "description": "Opt-in metadata persisted only for calls associated with an authenticated application. Caller-supplied relationships do not confer access rights or prove causality."
+    },
+    "PolicyAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision",
+        "ruleset_version",
+        "mode",
+        "result",
+        "matched_rules",
+        "check_duration_us"
+      ],
+      "properties": {
+        "id": {
+          "const": "credential-egress"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ruleset_version": {
+          "const": "credentials-v1"
+        },
+        "mode": {
+          "enum": [
+            "disabled",
+            "observe",
+            "block"
+          ]
+        },
+        "result": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "matched_rules": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "private_key",
+              "api_key"
+            ]
+          }
+        },
+        "check_duration_us": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "CallRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "request_id",
+        "phase",
+        "started_at",
+        "timestamp",
+        "operation",
+        "application_id",
+        "policy_revision",
+        "decision",
+        "outcome",
+        "http_status",
+        "upstream_attempted",
+        "streaming",
+        "duration_ms",
+        "trace"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^req_[A-Za-z0-9_-]{22}$"
+        },
+        "phase": {
+          "enum": [
+            "started",
+            "finished"
+          ]
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "operation": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "application_id": {
+          "type": "string",
+          "pattern": "^app_[A-Za-z0-9_-]{16}$"
+        },
+        "connection_id": {
+          "type": "string",
+          "pattern": "^conn_[A-Za-z0-9_-]{16}$"
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "policy_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "decision": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "outcome": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "http_status": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 599
+        },
+        "upstream_status": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599
+        },
+        "upstream_attempted": {
+          "type": "boolean"
+        },
+        "streaming": {
+          "type": "boolean"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "first_byte_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "error_code": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "content_policy": {
+          "$ref": "#/$defs/PolicyAssessment"
+        },
+        "tool_governance": {
+          "$ref": "tools.schema.json#/$defs/Governance"
+        },
+        "output_policy": {
+          "$ref": "content.schema.json#/$defs/OutputAssessment"
+        },
+        "trace": {
+          "$ref": "#/$defs/TraceContext"
+        }
+      }
+    },
+    "TraceEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_span_id",
+        "target_span_id",
+        "relation",
+        "resolution"
+      ],
+      "properties": {
+        "source_span_id": {
+          "$ref": "#/$defs/SpanID",
+          "description": "Current gateway call that declares the relationship."
+        },
+        "target_span_id": {
+          "$ref": "#/$defs/SpanID",
+          "description": "Declared predecessor or dependency; it need not be visible in this response."
+        },
+        "relation": {
+          "enum": [
+            "parent",
+            "link",
+            "retry_of"
+          ]
+        },
+        "resolution": {
+          "enum": [
+            "unresolved",
+            "observed",
+            "ambiguous"
+          ],
+          "description": "Whether zero, one, or multiple matching target spans are present in this returned view. No other records are consulted."
+        }
+      }
+    },
+    "TraceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "records",
+        "completed",
+        "blocked",
+        "failed",
+        "in_progress",
+        "incomplete",
+        "redacted",
+        "unknown_detection",
+        "unresolved_references",
+        "ambiguous_references"
+      ],
+      "properties": {
+        "records": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "completed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "in_progress": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "incomplete": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "redacted": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "unknown_detection": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "unresolved_references": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 768
+        },
+        "ambiguous_references": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 768
+        }
+      },
+      "description": "Counts describe only the returned records and relationships; they do not measure whole-task completeness, detection coverage or legal compliance."
+    },
+    "TraceRiskEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "span_id",
+        "control",
+        "result",
+        "reason"
+      ],
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "pattern": "^req_[A-Za-z0-9_-]{22}$"
+        },
+        "span_id": {
+          "$ref": "#/$defs/SpanID"
+        },
+        "control": {
+          "enum": [
+            "authorization",
+            "credential_egress",
+            "sensitive_output",
+            "tool_credentials",
+            "tool_instruction"
+          ]
+        },
+        "result": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 100
+        }
+      },
+      "description": "Metadata-only observation from an existing control. Interpret it with the corresponding CallRecord operation: an independent content evaluation does not itself enforce a block or redaction."
+    },
+    "TraceView": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "trace_id",
+        "application_ids",
+        "coverage",
+        "task_completion",
+        "relationship_source",
+        "history_may_be_truncated",
+        "window_saturated",
+        "result_truncated",
+        "audit_available",
+        "records",
+        "edges",
+        "risk_events",
+        "summary"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "trace_id": {
+          "$ref": "#/$defs/TraceID"
+        },
+        "application_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^app_[A-Za-z0-9_-]{16}$"
+          },
+          "description": "Authenticated application scope, or one to sixteen applications explicitly selected by an administrator. Matching trace IDs alone grant no access."
+        },
+        "coverage": {
+          "const": "gateway_calls_only",
+          "description": "Only observed gateway model calls, read-tool calls and independent content evaluations. External Agent-internal steps are not collected."
+        },
+        "task_completion": {
+          "const": "not_determined"
+        },
+        "relationship_source": {
+          "const": "caller_declared"
+        },
+        "history_may_be_truncated": {
+          "const": true,
+          "description": "Always true: the global latest 1,000-entry index cannot establish complete task history."
+        },
+        "window_saturated": {
+          "type": "boolean",
+          "description": "True when the shared recent-request index currently holds 1,000 entries."
+        },
+        "result_truncated": {
+          "type": "boolean",
+          "description": "More matching visible records exist in the shared index than the requested result limit."
+        },
+        "audit_available": {
+          "type": "boolean",
+          "description": "Whether durable audit can currently admit and reserve capacity for new calls; not a completeness claim for returned records."
+        },
+        "records": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/CallRecord"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "maxItems": 768,
+          "items": {
+            "$ref": "#/$defs/TraceEdge"
+          }
+        },
+        "risk_events": {
+          "type": "array",
+          "maxItems": 640,
+          "items": {
+            "$ref": "#/$defs/TraceRiskEvent"
+          }
+        },
+        "summary": {
+          "$ref": "#/$defs/TraceSummary"
+        }
+      }
+    }
+  },
+  "title": "Application-scoped heterogeneous Agent call trace",
+  "$ref": "#/$defs/TraceView"
+}

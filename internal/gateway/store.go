@@ -107,7 +107,13 @@ func OpenStore(dir string) (*Store, error) {
 	if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
 		return nil, statErr
 	}
-	vault, err := openVault(dir, statErr == nil)
+	// A tool can be configured before any model/application is saved. Its
+	// credentials still depend on this key even if gateway.json does not exist.
+	_, toolStatErr := os.Stat(filepath.Join(dir, "tools.json"))
+	if toolStatErr != nil && !errors.Is(toolStatErr, os.ErrNotExist) {
+		return nil, toolStatErr
+	}
+	vault, err := openVault(dir, statErr == nil || toolStatErr == nil)
 	if err != nil {
 		return nil, err
 	}
@@ -281,8 +287,8 @@ func (s *Store) SaveConnection(id string, input ConnectionInput) (Connection, er
 }
 
 func (s *Store) validateAllowed(ids []string) ([]string, error) {
-	if len(ids) < 1 || len(ids) > 256 {
-		return nil, errors.New("Grant access to at least one model connection.")
+	if len(ids) > 256 {
+		return nil, errors.New("Grant access to at most 256 model connections.")
 	}
 	seen := map[string]bool{}
 	for _, id := range ids {
@@ -435,6 +441,25 @@ func (s *Store) Resolve(header, alias string) (Resolved, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	a, err := s.authenticateLocked(header)
+	return s.resolveLocked(a, alias, err)
+}
+
+// ResolveAssessment is for administrator-authorized, in-process test jobs.
+// It does not expose or require an application key; grants and revocation still apply.
+func (s *Store) ResolveAssessment(applicationID, alias string) (Resolved, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, app := range s.state.Applications {
+		if app.ID == applicationID && !app.Revoked {
+			copy := app.Application
+			copy.AllowedConnections = append([]string{}, app.AllowedConnections...)
+			return s.resolveLocked(copy, alias, nil)
+		}
+	}
+	return Resolved{}, ErrInvalidKey
+}
+
+func (s *Store) resolveLocked(a Application, alias string, err error) (Resolved, error) {
 	out := Resolved{Application: a, PolicyRevision: s.state.Revision}
 	if err != nil {
 		return out, err

@@ -1,0 +1,14 @@
+{
+  "revision": 0,
+  "application_id": "replace-with-product-application-id",
+  "model_alias": "assistant",
+  "target_version": "release-1.0.0",
+  "suite_id": "chat-contract-smoke",
+  "suite_version": "1.0.0",
+  "context": "Synthetic contract checks for a customer-support chat API in staging; risk coverage and representativeness still require review.",
+  "schedule_enabled": false,
+  "interval_seconds": 3600,
+  "timeout_seconds": 15,
+  "max_output_tokens": 256,
+  "retain_responses": false
+}

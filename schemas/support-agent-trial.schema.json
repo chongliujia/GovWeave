@@ -1,0 +1,609 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Independent support application trial report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "created_at",
+    "model_mode",
+    "preflight",
+    "state",
+    "selected_checks",
+    "stop_reason",
+    "model_call_budget",
+    "remaining_model_call_budget",
+    "input_sha256",
+    "source_sha256",
+    "binary_sha256",
+    "metrics",
+    "rows",
+    "local_read_timing",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "const": "support-agent-trial-v1"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "model_mode": {
+      "enum": [
+        "moonshot",
+        "scripted_local"
+      ]
+    },
+    "preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "reason",
+        "model_list_requests"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "local_fixture",
+            "ready",
+            "blocked"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "model_list_requests": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "state": {
+      "enum": [
+        "completed",
+        "incomplete"
+      ]
+    },
+    "selected_checks": {
+      "enum": [
+        "selected_checks_passed",
+        "failed_selected_checks",
+        "inconclusive"
+      ]
+    },
+    "stop_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 200
+    },
+    "model_call_budget": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32
+    },
+    "remaining_model_call_budget": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 32
+    },
+    "input_sha256": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "source_sha256": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    },
+    "binary_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planned",
+        "executed",
+        "benign",
+        "tasks_passed",
+        "tasks_failed",
+        "tasks_unknown",
+        "benign_interventions",
+        "benign_intervention_unknown",
+        "attacks",
+        "gateway_pass",
+        "gateway_fail",
+        "gateway_unknown",
+        "sensitive_scan_samples",
+        "task_latency_p95_ms",
+        "sensitive_scan_p95_us"
+      ],
+      "properties": {
+        "planned": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "executed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "benign": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tasks_passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tasks_failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tasks_unknown": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "benign_interventions": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "benign_intervention_unknown": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "attacks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gateway_pass": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gateway_fail": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gateway_unknown": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sensitive_scan_samples": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "task_latency_p95_ms": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "sensitive_scan_p95_us": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "case_id",
+          "label",
+          "status",
+          "reason",
+          "audit_complete",
+          "expected_read_returned",
+          "intervention",
+          "task_completed",
+          "task_reason",
+          "attack_marker_observed",
+          "gateway_effect",
+          "trace"
+        ],
+        "properties": {
+          "case_id": {
+            "enum": [
+              "support-hours",
+              "billing-email",
+              "refund-window",
+              "training-topic",
+              "staff-access",
+              "vendor-injection",
+              "private-contact",
+              "encoded-contact",
+              "unsupported-hex"
+            ]
+          },
+          "label": {
+            "enum": [
+              "benign",
+              "attack"
+            ]
+          },
+          "status": {
+            "enum": [
+              "not_run",
+              "completed",
+              "blocked",
+              "error",
+              "limited"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "audit_complete": {
+            "type": "boolean"
+          },
+          "expected_read_returned": {
+            "type": "boolean"
+          },
+          "intervention": {
+            "type": "boolean"
+          },
+          "task_completed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "task_reason": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "attack_marker_observed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "gateway_effect": {
+            "enum": [
+              "not_applicable",
+              "pass",
+              "fail",
+              "unknown"
+            ]
+          },
+          "trace": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/$defs/Trace"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "local_read_timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "planned",
+        "completed",
+        "pairs",
+        "delta_p50_ms",
+        "delta_p95_ms"
+      ],
+      "properties": {
+        "method": {
+          "const": "alternating-local-read-pairs-v1"
+        },
+        "planned": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50
+        },
+        "completed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 50
+        },
+        "pairs": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "index",
+              "direct_ms",
+              "gateway_ms",
+              "delta_ms"
+            ],
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 49
+              },
+              "direct_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "gateway_ms": {
+                "type": "number",
+                "minimum": 0
+              },
+              "delta_ms": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "delta_p50_ms": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "delta_p95_ms": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 2000
+      }
+    }
+  },
+  "$defs": {
+    "Event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "step",
+        "round_trip_ms"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "model",
+            "tool"
+          ]
+        },
+        "step": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 7
+        },
+        "request_id": {
+          "type": "string",
+          "pattern": "^req_[A-Za-z0-9_-]{22}$"
+        },
+        "http_status": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599
+        },
+        "round_trip_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "output_policy_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_action": {
+          "const": "redacted"
+        },
+        "tool_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "authorization": {
+          "enum": [
+            "allowed",
+            "denied",
+            "unknown"
+          ]
+        },
+        "decision": {
+          "enum": [
+            "allow",
+            "observe",
+            "redact",
+            "block"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "operation",
+            "outcome",
+            "duration_ms",
+            "policy_revision"
+          ],
+          "properties": {
+            "operation": {
+              "enum": [
+                "chat.completions",
+                "tools.invoke"
+              ]
+            },
+            "outcome": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "upstream_attempted": {
+              "type": "boolean"
+            },
+            "duration_ms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "policy_revision": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "output_policy": {
+              "$ref": "content.schema.json#/$defs/OutputAssessment"
+            },
+            "instruction_policy": {
+              "$ref": "tools.schema.json#/$defs/InstructionAssessment"
+            },
+            "tool_revision": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "error_code": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "upstream_status": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 599
+            },
+            "snapshot_sha256": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        },
+        "pacing_wait_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "resource_index": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 15
+        }
+      }
+    },
+    "Trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trace_id",
+        "status",
+        "reason",
+        "events",
+        "elapsed_ms",
+        "usage",
+        "application_version",
+        "configuration_sha256",
+        "model_calls_reserved"
+      ],
+      "properties": {
+        "trace_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^trace_[a-f0-9]{32}$"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "blocked",
+            "error",
+            "limited"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/Event"
+          }
+        },
+        "elapsed_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "usage": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "required": [
+            "prompt_tokens",
+            "completion_tokens",
+            "total_tokens"
+          ],
+          "properties": {
+            "prompt_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "completion_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_tokens": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "application_version": {
+          "const": "support-agent-v1"
+        },
+        "configuration_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "model_calls_reserved": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 6
+        }
+      }
+    }
+  }
+}

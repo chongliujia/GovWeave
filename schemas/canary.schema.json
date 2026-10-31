@@ -1,0 +1,513 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Known synthetic canary detection and measured corpus results",
+  "description": "Complete known marker exposure under bounded normalization/decoding. No general privacy or regulatory compliance claim.",
+  "$ref": "#/$defs/Report",
+  "$defs": {
+    "Match": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "representation",
+        "start_byte",
+        "end_byte",
+        "span_scope"
+      ],
+      "properties": {
+        "representation": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "normalized",
+            "percent",
+            "json_escape",
+            "hex",
+            "base64",
+            "decimal",
+            "base64_chunks",
+            "reversed",
+            "rot13",
+            "composed"
+          ]
+        },
+        "start_byte": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8192
+        },
+        "end_byte": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8192
+        },
+        "span_scope": {
+          "type": "string",
+          "enum": [
+            "raw_fragment",
+            "encoded_candidate",
+            "transformed_region"
+          ]
+        },
+        "transformations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "enum": [
+              "percent",
+              "json_escape",
+              "hex",
+              "base64",
+              "decimal",
+              "base64_chunks",
+              "reversed",
+              "rot13"
+            ]
+          }
+        },
+        "normalized": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Detection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "state",
+        "reason",
+        "input_bytes",
+        "scanned_bytes",
+        "matches"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "enum": [
+            "synthetic-canary-v1",
+            "literal-exact-v1",
+            "synthetic-canary-v2"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "observed",
+            "not_observed",
+            "unknown"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "marker_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "input_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scanned_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8192
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Match"
+          },
+          "minItems": 0,
+          "maxItems": 1
+        }
+      }
+    },
+    "Score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cases",
+        "labelled_exposed",
+        "labelled_not_exposed",
+        "true_positives",
+        "false_positives",
+        "false_negatives",
+        "true_negatives",
+        "unknown",
+        "unknown_exposed",
+        "unknown_not_exposed",
+        "boundary_errors",
+        "precision",
+        "recall",
+        "false_positive_rate",
+        "decision_coverage"
+      ],
+      "properties": {
+        "cases": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "labelled_exposed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "labelled_not_exposed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "true_positives": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "false_positives": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "false_negatives": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "true_negatives": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "unknown": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "unknown_exposed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "unknown_not_exposed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "boundary_errors": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "precision": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "recall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "false_positive_rate": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "decision_coverage": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "Comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "detector",
+        "literal_baseline"
+      ],
+      "properties": {
+        "detector": {
+          "$ref": "#/$defs/Score"
+        },
+        "literal_baseline": {
+          "$ref": "#/$defs/Score"
+        },
+        "previous_detector": {
+          "$ref": "#/$defs/Score"
+        }
+      }
+    },
+    "CaseResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "group",
+        "category",
+        "expected",
+        "response_sha256",
+        "detector",
+        "literal_baseline"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "group": {
+          "type": "string",
+          "enum": [
+            "validation",
+            "challenge",
+            "boundary"
+          ]
+        },
+        "category": {
+          "type": "string"
+        },
+        "expected": {
+          "type": "string",
+          "enum": [
+            "exposed",
+            "not_exposed",
+            "unevaluable"
+          ]
+        },
+        "response_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "detector": {
+          "$ref": "#/$defs/Detection"
+        },
+        "literal_baseline": {
+          "$ref": "#/$defs/Detection"
+        },
+        "previous_detector": {
+          "$ref": "#/$defs/Detection"
+        }
+      }
+    },
+    "Report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "measured_at",
+        "corpus_id",
+        "corpus_version",
+        "corpus_sha256",
+        "provenance",
+        "detector_version",
+        "baseline_version",
+        "aggregate",
+        "groups",
+        "cases",
+        "false_negative_ids",
+        "false_positive_ids",
+        "unknown_ids",
+        "limitations"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "measured_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "corpus_id": {
+          "type": "string"
+        },
+        "corpus_version": {
+          "type": "string"
+        },
+        "corpus_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "provenance": {
+          "type": "string"
+        },
+        "detector_version": {
+          "type": "string",
+          "enum": [
+            "synthetic-canary-v1",
+            "synthetic-canary-v2"
+          ]
+        },
+        "baseline_version": {
+          "const": "literal-exact-v1"
+        },
+        "aggregate": {
+          "$ref": "#/$defs/Comparison"
+        },
+        "groups": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "validation",
+              "challenge",
+              "boundary"
+            ]
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/Comparison"
+          }
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CaseResult"
+          },
+          "minItems": 1,
+          "maxItems": 256
+        },
+        "false_negative_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "false_positive_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "unknown_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0,
+          "maxItems": 256
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "maxItems": 16
+        },
+        "previous_detector_version": {
+          "const": "synthetic-canary-v1"
+        }
+      }
+    },
+    "Sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "group",
+        "category",
+        "expected",
+        "marker",
+        "response"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "group": {
+          "type": "string",
+          "enum": [
+            "validation",
+            "challenge",
+            "boundary"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "expected": {
+          "type": "string",
+          "enum": [
+            "exposed",
+            "not_exposed",
+            "unevaluable"
+          ]
+        },
+        "marker": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "response": {
+          "type": "string",
+          "maxLength": 32768
+        }
+      }
+    },
+    "Corpus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "id",
+        "version",
+        "provenance",
+        "label_definition",
+        "cases"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "provenance": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "label_definition": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Sample"
+          },
+          "minItems": 1,
+          "maxItems": 256
+        }
+      }
+    }
+  }
+}

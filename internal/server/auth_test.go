@@ -9,8 +9,10 @@ import (
 	"testing"
 
 	"govweave/internal/auth"
+	"govweave/internal/compliance"
 	"govweave/internal/config"
 	"govweave/internal/gateway"
+	"govweave/internal/governance"
 	"govweave/internal/instance"
 )
 
@@ -29,7 +31,16 @@ func newAuthHandler(t *testing.T, dir string) http.Handler {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { engine.Close() })
-	return New(store, admin, engine)
+	evaluator, err := compliance.Open(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	products, err := governance.Open(dir, engine, evaluator)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(products.Close)
+	return New(store, admin, engine, evaluator, products)
 }
 
 func TestPasswordHTTPFlow(t *testing.T) {

@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"sync"
 	"time"
 
-	"govweave/internal/config"
 	"govweave/internal/storage"
 )
 
@@ -58,40 +56,28 @@ type PolicyAssessment struct {
 }
 
 type PolicyStore struct {
-	mu    sync.RWMutex
-	path  string
-	state PolicySnapshot
+	mu      sync.RWMutex
+	path    string
+	state   PolicySnapshot
+	history []PolicySnapshot
 }
 
 func OpenPolicies(dir string, gateway Snapshot) (*PolicyStore, error) {
-	p := &PolicyStore{path: filepath.Join(dir, "policies.json"), state: PolicySnapshot{
-		SchemaVersion: 1, ID: credentialPolicyID, RulesetVersion: credentialRuleset,
-		PolicyInput: PolicyInput{Mode: "disabled", Rules: []string{"private_key", "api_key"}, ApplicationIDs: []string{}, ConnectionIDs: []string{}},
-	}}
-	f, err := os.Open(p.path)
-	if errors.Is(err, os.ErrNotExist) {
-		return p, nil
-	}
+	p := &PolicyStore{path: filepath.Join(dir, "policies.json"), state: defaultPolicy()}
+	history, err := readPolicyHistory(p.path, gateway)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 || info.Size() > 16<<10 {
-		return nil, errors.New("policies.json must be private and smaller than 16 KiB")
-	}
-	var state PolicySnapshot
-	if err := config.DecodeStrict(f, &state); err != nil || state.SchemaVersion != 1 || state.ID != credentialPolicyID || state.RulesetVersion != credentialRuleset || state.Revision == 0 {
-		return nil, errors.New("invalid policy state; refusing to disable protection")
-	}
-	if err := validatePolicy(state.PolicyInput, gateway); err != nil {
-		return nil, err
-	}
-	if _, err := time.Parse(time.RFC3339Nano, state.UpdatedAt); err != nil {
-		return nil, errors.New("invalid policy timestamp")
-	}
-	p.state = state
+	p.history = history
+	p.state = clonePolicy(history[len(history)-1])
 	return p, nil
+}
+
+func defaultPolicy() PolicySnapshot {
+	return PolicySnapshot{
+		SchemaVersion: 1, ID: credentialPolicyID, RulesetVersion: credentialRuleset,
+		PolicyInput: PolicyInput{Mode: "disabled", Rules: []string{"private_key", "api_key"}, ApplicationIDs: []string{}, ConnectionIDs: []string{}},
+	}
 }
 
 func clonePolicy(s PolicySnapshot) PolicySnapshot {
@@ -157,6 +143,9 @@ func (p *PolicyStore) Save(in PolicyInput, gateway Snapshot) (PolicySnapshot, er
 	if err := validatePolicy(in, gateway); err != nil {
 		return PolicySnapshot{}, err
 	}
+	if len(p.history) >= maxPolicySnapshots || in.Revision == ^uint64(0) {
+		return PolicySnapshot{}, ErrPolicyHistoryFull
+	}
 	next := clonePolicy(PolicySnapshot{SchemaVersion: 1, ID: credentialPolicyID, RulesetVersion: credentialRuleset, UpdatedAt: time.Now().UTC().Format(time.RFC3339Nano), PolicyInput: in})
 	if next.ApplicationIDs == nil {
 		next.ApplicationIDs = []string{}
@@ -165,11 +154,19 @@ func (p *PolicyStore) Save(in PolicyInput, gateway Snapshot) (PolicySnapshot, er
 		next.ConnectionIDs = []string{}
 	}
 	next.Revision++
-	data, err := json.MarshalIndent(next, "", "  ")
-	if err != nil || storage.AtomicWrite(p.path, append(data, '\n')) != nil {
+	history := append(slices.Clone(p.history), next)
+	data, err := json.MarshalIndent(policyHistoryState{SchemaVersion: 2, Snapshots: history}, "", "  ")
+	if err != nil {
+		return PolicySnapshot{}, ErrPersistence
+	}
+	if len(data)+1 > maxPolicyHistoryBytes {
+		return PolicySnapshot{}, ErrPolicyHistoryFull
+	}
+	if storage.AtomicWrite(p.path, append(data, '\n')) != nil {
 		return PolicySnapshot{}, ErrPersistence
 	}
 	p.state = next
+	p.history = history
 	return clonePolicy(next), nil
 }
 

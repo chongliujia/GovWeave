@@ -30,6 +30,7 @@ To connect your own application, follow the [application onboarding guide](docs/
 | Risk evidence | Explicit application scope, separately encrypted original/prepared content, policy snapshots, detector versions, findings and audited administrator content access; [retention guide](docs/risk-evidence.md) |
 | SSE evidence | Separate validated upstream frames and client write attempts; frame timeline, keyed fingerprints, completion/interruption states and bounded retention; [streaming boundaries](docs/risk-evidence.md#streamed-response-evidence) |
 | Multi-Agent tracing | Explicit task context across model/tool/content calls, parallel branches, joins and retries; application-isolated queries and administrator-selected aggregation; see [tracing guide](docs/agent-tracing.md) |
+| Task evidence snapshots | Freeze an unchanged task view, reopen historical metadata and export JSON or an English Markdown report; [snapshot guide](docs/risk-evidence.md#task-snapshots-and-report-export) |
 | Administration | Set an initial administrator password; use a browser session to manage the instance |
 | Languages | English by default, with an offline Simplified Chinese option |
 | Distribution | Go binary, locally built container image, and offline archive |
@@ -90,10 +91,12 @@ Capture starts **disabled**. In the console, open **Risk evidence**, expand the 
 2. Inspect the original input, prepared upstream request, observed upstream output and prepared client output. Available stages depend on how far the call progressed; blocked or redacted output stays distinct from the prepared response.
 3. Review the recorded findings, detector/policy versions and retained relationship graph. An administrator can request a content preview and then the original text; each content access is recorded before release.
 4. For SSE, expand the frame timeline to inspect offsets, sizes, observation times and the termination reason. `stream_incomplete` distinguishes an unfinished stream from an actual write/flush failure.
+5. Use **Task evidence across applications** to join retained captures and recent audit records for a trace across 1–16 explicitly selected applications. Inspect parent/join/retry references and distinguish missing, unreadable and budget-excluded captures; see [task evidence](docs/risk-evidence.md#cross-application-task-evidence).
+6. Save the reviewed task view as a snapshot, reopen it with the exact application scope, and export JSON or a Markdown report. Historical evidence states remain frozen independently of content expiry; [snapshot limits](docs/risk-evidence.md#task-snapshots-and-report-export) apply.
 
 The default retention is **30 days and 64 KiB per object**, configurable to 1–365 days and 4 KiB–1 MiB. Oversized content is omitted in full; counts and keyed fingerprints remain. Stream timelines retain the first **128 frames** with an explicit truncation flag. SSE evidence covers validated frames and write attempts, excludes invalid/error-frame contents, and does not prove client receipt. Capture is published after terminal audit; a process crash can lose in-flight evidence.
 
-**SSE evidence capture does not enable streaming safety enforcement.** In-scope output protection still rejects SSE before provider I/O. Evidence graphs cover retained calls within the selected application; declared Agent links are not verified causality. Product report samples remain available independently of body capture and do not establish complete product-wide coverage. See the [risk evidence guide](docs/risk-evidence.md) for limits, missing-evidence states and recovery.
+**SSE evidence capture does not enable streaming safety enforcement.** In-scope output protection still rejects SSE before provider I/O. Individual capture graphs stay within one application; the separate task view requires explicit administrator-selected applications. Declared Agent links are not verified causality. Product report samples remain available independently of body capture and do not establish complete product-wide coverage. See the [risk evidence guide](docs/risk-evidence.md) for limits, missing-evidence states and recovery.
 
 ## Request protection and data handling
 
