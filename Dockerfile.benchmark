@@ -1,0 +1,19 @@
+# This developer harness is separate from the production image.
+ARG GO_VERSION=1.26.9
+FROM golang:${GO_VERSION} AS build
+WORKDIR /src
+COPY go.mod ./
+COPY cmd ./cmd
+COPY internal ./internal
+RUN CGO_ENABLED=0 GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local go build -trimpath -o /out/gateway-bench ./cmd/gateway-bench
+RUN mkdir -p /out/work/tmp && chmod 0700 /out/work /out/work/tmp
+
+FROM scratch
+COPY --from=build /out/gateway-bench /gateway-bench
+COPY --from=build --chown=65532:65532 /src /src
+COPY --from=build --chown=65532:65532 /out/work /work
+COPY LICENSE /licenses/GovWeave-LICENSE
+COPY THIRD_PARTY_NOTICES /licenses/THIRD_PARTY_NOTICES
+USER 65532:65532
+ENV TMPDIR=/work/tmp GOMAXPROCS=4
+ENTRYPOINT ["/gateway-bench"]

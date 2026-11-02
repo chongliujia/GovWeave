@@ -31,6 +31,7 @@ import (
 const maxEvidenceFileBytes = 6 << 20
 const maxEvidencePolicyBytes = 64 << 10
 const evidenceAAD = "govweave-evidence-v1\x00"
+const maxEvidenceWrites = 2
 
 type storedEvidence struct {
 	Bundle  EvidenceBundle    `json:"bundle"`
@@ -50,7 +51,11 @@ type storedEvidenceAccess struct {
 // EvidenceStore is a bounded supplementary content vault. It is separate from
 // call admission/audit and cannot establish that a client received an output.
 type EvidenceStore struct {
-	mu             sync.Mutex
+	mu sync.Mutex
+	// Config reads occur on every model request. Keep them independent of
+	// ciphertext persistence under mu. SaveConfig holds mu first and publishes
+	// under configMu only after its access event and config file are durable.
+	configMu       sync.RWMutex
 	dir            string
 	aead           cipher.AEAD
 	fingerprintKey []byte
@@ -58,6 +63,10 @@ type EvidenceStore struct {
 	configuration  EvidenceConfig
 	entries        map[string]evidenceIndexEntry
 	bytes          int64
+	pending        map[string]int64
+	reservedBytes  int64
+	writeEvidence  func(string, []byte) error
+	writeSlots     chan struct{}
 	accessBytes    int64
 	accessDigest   [sha256.Size]byte
 	access         []EvidenceAccess
@@ -117,7 +126,7 @@ func syncEvidenceDirectory(dir string) error {
 		return err
 	}
 	defer f.Close()
-	return f.Sync()
+	return storage.Sync(f)
 }
 
 func immutableEvidenceFile(path string, data []byte) error {
@@ -127,7 +136,7 @@ func immutableEvidenceFile(path string, data []byte) error {
 	}
 	defer os.Remove(f.Name())
 	if _, err = f.Write(data); err == nil {
-		err = f.Sync()
+		err = storage.Sync(f)
 	}
 	closeErr := f.Close()
 	if err != nil || closeErr != nil {
@@ -213,7 +222,8 @@ func OpenEvidence(dir string) (*EvidenceStore, error) {
 		return m.Sum(nil)
 	}
 	s := &EvidenceStore{dir: vaultDir, aead: aead, fingerprintKey: derive("evidence-fingerprint-v1"), accessKey: derive("evidence-access-v1"),
-		configuration: defaultEvidenceConfig(), entries: map[string]evidenceIndexEntry{}, access: []EvidenceAccess{}, accessDigest: sha256.Sum256(nil), now: time.Now}
+		configuration: defaultEvidenceConfig(), entries: map[string]evidenceIndexEntry{}, pending: map[string]int64{}, writeEvidence: immutableEvidenceFile, writeSlots: make(chan struct{}, maxEvidenceWrites),
+		access: []EvidenceAccess{}, accessDigest: sha256.Sum256(nil), now: time.Now}
 	configPath := filepath.Join(vaultDir, "config.json")
 	if _, err := os.Lstat(configPath); err == nil {
 		data, err := privateEvidenceFile(configPath, 16<<10)
@@ -249,8 +259,8 @@ func OpenEvidence(dir string) (*EvidenceStore, error) {
 }
 
 func (s *EvidenceStore) Config() EvidenceConfig {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
 	return cloneEvidenceConfig(s.configuration)
 }
 
@@ -282,7 +292,9 @@ func (s *EvidenceStore) SaveConfig(in EvidenceConfig, gateway Snapshot, actor st
 	if storage.AtomicWrite(filepath.Join(s.dir, "config.json"), data) != nil || syncEvidenceDirectory(s.dir) != nil {
 		return EvidenceConfig{}, ErrEvidenceUnavailable
 	}
+	s.configMu.Lock()
 	s.configuration = in
+	s.configMu.Unlock()
 	return cloneEvidenceConfig(in), nil
 }
 
@@ -307,31 +319,80 @@ func evidenceDelivery(state string) bool {
 	return slices.Contains([]string{"not_observed", "withheld", "release_prepared", "write_completed", "write_failed", "stream_incomplete"}, state)
 }
 
+type preparedEvidence struct {
+	summary EvidenceSummary
+	sealed  []byte
+}
+
+// Capture remains synchronous. Only the immutable file I/O runs outside the
+// index lock; every in-flight ID and byte is reserved before the lock is released.
+// An entry becomes visible only after the file and directory synchronization
+// complete. Concurrent readers cannot observe an unconfirmed capture.
 func (s *EvidenceStore) Capture(record CallRecord, payload EvidencePayload) (EvidenceSummary, error) {
+	prepared, err := s.prepareCapture(record, payload)
+	if err != nil {
+		return EvidenceSummary{}, err
+	}
+	id := prepared.summary.ID
+	path := filepath.Join(s.dir, id+".sealed")
+	err = s.persistCapture(path, prepared.sealed)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err != nil {
+		// A failure after linking may leave a valid but unconfirmed file. Keep
+		// its conservative reservation until restart reconstructs the index.
+		// Release capacity only when absence is confirmed; never advertise it.
+		if _, statErr := os.Lstat(path); errors.Is(statErr, os.ErrNotExist) {
+			s.releaseCaptureReservation(id)
+		}
+		return EvidenceSummary{}, err
+	}
+	n := s.pending[id]
+	s.releaseCaptureReservation(id)
+	s.entries[id] = evidenceIndexEntry{summary: prepared.summary, bytes: n}
+	s.bytes += n
+	return prepared.summary, nil
+}
+
+// Bound simultaneous sync operations independently of request concurrency.
+// Waiting writers retain their capacity reservation but never hold the index lock.
+func (s *EvidenceStore) persistCapture(path string, sealed []byte) error {
+	s.writeSlots <- struct{}{}
+	defer func() { <-s.writeSlots }()
+	return s.writeEvidence(path, sealed)
+}
+
+// Caller holds mu.
+func (s *EvidenceStore) releaseCaptureReservation(id string) {
+	s.reservedBytes -= s.pending[id]
+	delete(s.pending, id)
+}
+
+func (s *EvidenceStore) prepareCapture(record CallRecord, payload EvidencePayload) (preparedEvidence, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if !payload.Config.Applies(record.ApplicationID) {
-		return EvidenceSummary{}, ErrEvidenceDisabled
+		return preparedEvidence{}, ErrEvidenceDisabled
 	}
 	if !validEvidenceConfig(payload.Config) || EvidenceID(record.RequestID) == "" || record.SchemaVersion != 1 ||
 		len(payload.Objects) > 4 || len(payload.Policies) > 8 || !validTrace(record.Trace) || len(record.Operation) > 100 {
-		return EvidenceSummary{}, ErrEvidenceInvalid
+		return preparedEvidence{}, ErrEvidenceInvalid
 	}
 	if payload.DeliveryState == "" {
 		payload.DeliveryState = "not_observed"
 	}
 	if !evidenceDelivery(payload.DeliveryState) {
-		return EvidenceSummary{}, ErrEvidenceInvalid
+		return preparedEvidence{}, ErrEvidenceInvalid
 	}
 	id := EvidenceID(record.RequestID)
-	if _, exists := s.entries[id]; exists {
-		return EvidenceSummary{}, ErrConflict
+	if _, exists := s.entries[id]; exists || s.pending[id] != 0 {
+		return preparedEvidence{}, ErrConflict
 	}
 	if _, err := s.purgeExpiredLocked("system"); err != nil {
-		return EvidenceSummary{}, err
+		return preparedEvidence{}, err
 	}
-	if len(s.entries) >= MaxEvidenceRecords {
-		return EvidenceSummary{}, ErrEvidenceCapacity
+	if len(s.entries)+len(s.pending) >= MaxEvidenceRecords {
+		return preparedEvidence{}, ErrEvidenceCapacity
 	}
 	now := s.now().UTC()
 	summary := EvidenceSummary{SchemaVersion: 1, ID: id, RequestID: record.RequestID, ApplicationID: record.ApplicationID, Operation: record.Operation,
@@ -345,11 +406,11 @@ func (s *EvidenceStore) Capture(record CallRecord, payload EvidencePayload) (Evi
 	for _, input := range payload.Objects {
 		if input.Stream != nil {
 			if seen[input.Kind] {
-				return EvidenceSummary{}, ErrEvidenceInvalid
+				return preparedEvidence{}, ErrEvidenceInvalid
 			}
 			object, content, err := s.streamEvidenceObject(id, record, input, payload.Config)
 			if err != nil {
-				return EvidenceSummary{}, err
+				return preparedEvidence{}, err
 			}
 			seen[input.Kind] = true
 			if object.ContentState == "retained" {
@@ -361,7 +422,7 @@ func (s *EvidenceStore) Capture(record CallRecord, payload EvidencePayload) (Evi
 		}
 		validMedia := slices.Contains([]string{"application/json", "text/plain"}, input.MediaType) || input.MediaType == "text/event-stream" && input.Data == nil && input.ContentState == "streaming_not_captured"
 		if !evidenceKind(input.Kind) || seen[input.Kind] || !validMedia || len(input.Data) > maxResponseBytes {
-			return EvidenceSummary{}, ErrEvidenceInvalid
+			return preparedEvidence{}, ErrEvidenceInvalid
 		}
 		seen[input.Kind] = true
 		object := EvidenceObject{ID: id + ":" + input.Kind, Kind: input.Kind, MediaType: input.MediaType, Bytes: len(input.Data)}
@@ -371,11 +432,11 @@ func (s *EvidenceStore) Capture(record CallRecord, payload EvidencePayload) (Evi
 				object.ContentState = "not_observed"
 			}
 			if !slices.Contains([]string{"not_observed", "streaming_not_captured"}, object.ContentState) {
-				return EvidenceSummary{}, ErrEvidenceInvalid
+				return preparedEvidence{}, ErrEvidenceInvalid
 			}
 		} else {
 			if input.ContentState != "" {
-				return EvidenceSummary{}, ErrEvidenceInvalid
+				return preparedEvidence{}, ErrEvidenceInvalid
 			}
 			object.Fingerprint = s.fingerprint(record.ApplicationID, input.Data)
 			switch {
@@ -387,7 +448,9 @@ func (s *EvidenceStore) Capture(record CallRecord, payload EvidencePayload) (Evi
 				object.ContentState = "unsupported_encoding"
 			default:
 				object.ContentState = "retained"
-				stored.Content[object.ID] = bytes.Clone(input.Data)
+				// Borrow only through synchronous serialization below. No caller
+				// plaintext buffer is retained in the index or passed to file I/O.
+				stored.Content[object.ID] = input.Data
 				stored.Bundle.RetainedBytes += len(input.Data)
 			}
 		}
@@ -398,30 +461,35 @@ func (s *EvidenceStore) Capture(record CallRecord, payload EvidencePayload) (Evi
 		policyBytes += len(policy.Snapshot)
 		if !slices.Contains([]string{"input", "output", "tool"}, policy.Kind) || len(policy.ID) > 100 || policy.ID == "" ||
 			policyBytes > maxEvidencePolicyBytes || !json.Valid(policy.Snapshot) {
-			return EvidenceSummary{}, ErrEvidenceInvalid
+			return preparedEvidence{}, ErrEvidenceInvalid
 		}
 		policy.Snapshot = bytes.Clone(policy.Snapshot)
 		stored.Bundle.Policies = append(stored.Bundle.Policies, policy)
 	}
 	stored.Bundle.ObjectCount = len(stored.Bundle.Objects)
-	plain, err := json.Marshal(stored)
-	if err != nil || len(plain)+s.aead.NonceSize()+s.aead.Overhead() > maxEvidenceFileBytes {
-		return EvidenceSummary{}, ErrEvidenceCapacity
+	// Encode into an owned buffer with room for the nonce prefix, then encrypt
+	// the JSON in place. This avoids a second full-size plaintext/ciphertext
+	// allocation. The existing nonce|ciphertext|tag format is unchanged; JSON
+	// decoders already accept the Encoder's trailing newline.
+	var buffer bytes.Buffer
+	nonceSize := s.aead.NonceSize()
+	buffer.Write(make([]byte, nonceSize))
+	if err := json.NewEncoder(&buffer).Encode(stored); err != nil || buffer.Len()+s.aead.Overhead() > maxEvidenceFileBytes {
+		return preparedEvidence{}, ErrEvidenceCapacity
 	}
-	nonce := make([]byte, s.aead.NonceSize())
+	buffer.Grow(s.aead.Overhead())
+	data := buffer.Bytes()
+	nonce := data[:nonceSize]
 	if _, err := rand.Read(nonce); err != nil {
-		return EvidenceSummary{}, ErrEvidenceUnavailable
+		return preparedEvidence{}, ErrEvidenceUnavailable
 	}
-	sealed := s.aead.Seal(nonce, nonce, plain, []byte(evidenceAAD+id))
-	if s.bytes+int64(len(sealed)) > MaxEvidenceBytes {
-		return EvidenceSummary{}, ErrEvidenceCapacity
+	sealed := s.aead.Seal(data[:nonceSize], nonce, data[nonceSize:], []byte(evidenceAAD+id))
+	if s.bytes+s.reservedBytes+int64(len(sealed)) > MaxEvidenceBytes {
+		return preparedEvidence{}, ErrEvidenceCapacity
 	}
-	if err := immutableEvidenceFile(filepath.Join(s.dir, id+".sealed"), sealed); err != nil {
-		return EvidenceSummary{}, err
-	}
-	s.entries[id] = evidenceIndexEntry{summary: stored.Bundle.EvidenceSummary, bytes: int64(len(sealed))}
-	s.bytes += int64(len(sealed))
-	return stored.Bundle.EvidenceSummary, nil
+	s.pending[id] = int64(len(sealed))
+	s.reservedBytes += int64(len(sealed))
+	return preparedEvidence{summary: stored.Bundle.EvidenceSummary, sealed: sealed}, nil
 }
 
 func (s *EvidenceStore) read(id string) (storedEvidence, int64, error) {
@@ -684,7 +752,7 @@ func (s *EvidenceStore) appendAccess(event EvidenceAccess) error {
 	}
 	n, err := f.Write(data)
 	if err == nil && n == len(data) {
-		err = f.Sync()
+		err = storage.Sync(f)
 	}
 	closeErr := f.Close()
 	if err != nil || closeErr != nil || n != len(data) {

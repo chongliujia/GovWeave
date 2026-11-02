@@ -87,6 +87,22 @@ benchmark-canary:
 	go run ./cmd/canary-bench
 	go run ./cmd/canary-bench -corpus tests/testdata/canary-validation-v2.json
 
+.PHONY: build-gateway-bench benchmark-gateway
+build-gateway-bench:
+	CGO_ENABLED=0 go build -trimpath -o bin/gateway-bench ./cmd/gateway-bench
+
+benchmark-gateway: build-gateway-bench
+	./bin/gateway-bench $(GATEWAY_BENCH_ARGS)
+
+GATEWAY_BENCH_IMAGE ?= govweave-gateway-bench:local
+GATEWAY_BENCH_GO_VERSION ?= $(shell sed -n 's/^ARG GO_VERSION=//p' Dockerfile)
+.PHONY: build-gateway-bench-docker benchmark-gateway-docker
+build-gateway-bench-docker:
+	docker build --network none --build-arg GO_VERSION=$(GATEWAY_BENCH_GO_VERSION) -f Dockerfile.benchmark -t $(GATEWAY_BENCH_IMAGE) .
+
+benchmark-gateway-docker: build-gateway-bench-docker
+	python3 scripts/benchmark-gateway-docker.py --image $(GATEWAY_BENCH_IMAGE) -- $(GATEWAY_BENCH_ARGS)
+
 validate-routing:
 	go run ./cmd/canary-bench -routing -corpus tests/testdata/canary-validation-v3.json
 
@@ -98,11 +114,13 @@ check:
 	test -z "$$(gofmt -l cmd internal)"
 	node --check internal/server/web/app.js
 	node --check internal/server/web/gateway.js
+	node --check internal/server/web/request-review.js
 	node --check internal/server/web/integration.js
 	node --check internal/server/web/evidence.js
 	node --check internal/server/web/policies.js
 	node --check internal/server/web/i18n.js
 	node tests/i18n-check.cjs
+	node tests/request-review-test.cjs
 
 package:
 	sh scripts/package-offline.sh

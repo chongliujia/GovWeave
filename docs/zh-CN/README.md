@@ -12,6 +12,7 @@
 | 留存加密风险证据、复核处理前后输出与查询证据关系 | [风险证据](risk-evidence.md) |
 | 测量已知标记泄露检测，查看漏检样本 | [标记检测与验证](canary-validation.md) |
 | 比较检测阶段效果与本机调用耗时 | [效果与成本回测](canary-benchmark.md) |
+| 测量端到端网关延迟、证据开销及进程资源 | [合成网关负载基准](gateway-benchmark.md) |
 | 扩展文本检测器，验证快慢路径分流 | [检测器插件与分流回放](detector-routing.md) |
 | 没有真实模型或应用，体验完整测评 | [本机演示](local-demonstration.md) |
 | 部署二进制或容器，配置地址、HTTPS、备份和恢复 | [部署与运维](deployment.md) |

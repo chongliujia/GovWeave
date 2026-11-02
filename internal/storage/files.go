@@ -26,7 +26,7 @@ func AtomicWrite(path string, data []byte) error {
 		f.Close()
 		return err
 	}
-	if err := f.Sync(); err != nil {
+	if err := Sync(f); err != nil {
 		f.Close()
 		return err
 	}

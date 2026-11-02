@@ -87,7 +87,7 @@ See [application and agent integration](docs/model-gateway.md#application-and-ag
 
 Capture starts **disabled**. In the console, open **Risk evidence**, expand the retention settings, explicitly select applications, and choose **Metadata only** or **Full capture**. Existing application requests need no additional capture parameters. New applications are not added automatically.
 
-1. Send an authorized request through the gateway and find it by application or request ID.
+1. Send an authorized request through the gateway. In **Request logs**, filter detected matches, blocked/rejected calls or failed/unknown checks, and search by application, request/trace ID, model or rule. Counts cover the loaded snapshot and may overlap. Open a request for its check summary, then choose **View retained evidence**; returning restores your filters.
 2. Inspect the original input, prepared upstream request, observed upstream output and prepared client output. Available stages depend on how far the call progressed; blocked or redacted output stays distinct from the prepared response.
 3. Review the recorded findings, detector/policy versions and retained relationship graph. An administrator can request a content preview and then the original text; each content access is recorded before release.
 4. For SSE, expand the frame timeline to inspect offsets, sizes, observation times and the termination reason. `stream_incomplete` distinguishes an unfinished stream from an actual write/flush failure.
@@ -167,6 +167,8 @@ make package
 After `make build`, run `node tests/evidence-smoke.cjs` with the [documented Playwright/Chrome setup](docs/development.md#browser-verification) to check capture, original blocked output, privileged content access, report replay, normal/interrupted SSE, retention limits and restart persistence. It uses isolated local synthetic services; no model API key is required.
 
 English is the default documentation language. Chinese documentation lives in `README.zh-CN.md` and `docs/zh-CN/`. Keep examples and capability statements consistent with the code and API contracts.
+
+Run `make benchmark-gateway` for [synthetic end-to-end gateway load measurements](docs/gateway-benchmark.md): direct-provider comparisons, JSON/SSE, evidence capture modes, and separate gateway CPU/heap/GC counters. It uses local fixtures and produces private reports; results are not production capacity or SLA claims.
 
 ## License
 

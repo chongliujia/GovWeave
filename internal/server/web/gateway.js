@@ -2,6 +2,7 @@ import { t, formatDateTime, formatTime } from "/i18n.js";
 import { createPolicyConsole, policyResults, policyRules, renderPolicySnapshot } from "/policies.js";
 import { createIntegrationConsole } from "/integration.js";
 import { createEvidenceConsole } from "/evidence.js";
+import { reviewRequest, matchesReview, matchesRequestSearch } from "/request-review.js";
 const el = id => document.getElementById(id);
 const node = (tag, text, className) => {
   const value = document.createElement(tag);
@@ -17,9 +18,12 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   let auditSnapshot = null, requestSnapshot = null, inspectedRequest = null;
   let inspectedPolicy = null, inspectedPolicyStatus = "idle", policyInspectionEpoch = 0;
   let overviewUpdatedAt = null, overviewFailed = false, activePage = "overview";
+  let requestEpoch = 0, requestLoadState = "idle", requestFilter = "all", requestUpdatedAt = null;
+  let evidenceOrigin = null;
   const integration = createIntegrationConsole({ getState: () => state, getInstance, request, openRecords: async (applicationID, record) => {
-    chooseTab("requests"); el("requests-app").value = applicationID;
-    await act(el("refresh-requests"), async () => { await loadRequests(); if (record) inspectRequest(record); });
+    chooseTab("requests"); el("requests-app").value = applicationID; resetRequestFilters();
+    const loaded = await loadRequests();
+    if (loaded && record && activePage === "requests" && el("requests-app").value === applicationID) inspectRequest(record);
   } });
   const evidence = createEvidenceConsole({ request, getState: () => state });
   const pages = {
@@ -27,7 +31,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     connections: ["Model connections", "MODEL CONNECTIONS / 02", "Configure upstream models and service aliases for consistent application access."],
     applications: ["Applications & keys", "APPLICATION ACCESS / 03", "Give each application its own key and explicit model grants."],
     policies: ["Runtime policies", "RUNTIME POLICIES / 04", "Control credential egress with local checks before model execution."],
-    requests: ["Request logs", "REQUEST LOG / 05", "Review authorization and execution results for each request ID."],
+    requests: ["Request logs", "REQUEST LOG / 05", "Find recorded risks, understand the action taken, and follow the evidence."],
     evidence: ["Risk evidence", "RISK EVIDENCE / 06", "Inspect retained request evidence, recorded findings and their relationships."],
     deployment: ["Deployment & access", "INSTANCE SETTINGS / 06", "Set your gateway URL and generate connection details for your applications."],
   };
@@ -53,7 +57,11 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   }
   function chooseTab(name) {
     if (!getInstance() || !pages[name]) return;
-    if (name !== activePage) { integration.clear(); evidence.clear(); }
+    if (name !== activePage) {
+      integration.clear(); evidence.clear();
+      if (activePage === "requests") { requestEpoch++; if (requestLoadState === "loading") requestLoadState = "idle"; }
+    }
+    if (name !== "evidence") { evidenceOrigin = null; el("evidence-return").hidden = true; }
     activePage = name;
     renderHeading(name);
     el("notice").hidden = true;
@@ -69,7 +77,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   document.querySelectorAll("[data-tab]").forEach(button => button.addEventListener("click", event => {
     event.preventDefault(); chooseTab(button.dataset.tab);
     if (!getInstance()) return;
-    if (button.dataset.tab === "requests") act(el("refresh-requests"), loadRequests);
+    if (button.dataset.tab === "requests") loadRequests();
     if (button.dataset.tab === "overview") act(el("refresh-overview"), refresh);
   }));
   document.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => el(button.dataset.close).close()));
@@ -207,9 +215,58 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     await refreshOverview();
   }
   const outcomes = { completed: "Completed", blocked: "Blocked", failed: "Failed", cancelled: "Cancelled", rejected: "Rejected", in_progress: "In progress", incomplete: "Outcome unknown" };
-  const operationNames = { "chat.completions": "Chat completion", "models.list": "Model list", "connection.test": "Connection check" };
+  const operationNames = { "chat.completions": "Chat completion", "models.list": "Model list", "connection.test": "Connection check", "tools.invoke": "Tool invocation", "content.evaluate": "Content evaluation" };
+  const checkResults = { ...policyResults, allow: "Allowed by this check", observed: "Observed match", not_observed: "No matches", redact: "Redaction requested", redacted: "Redacted", pending: "Check pending", not_evaluated: "Not evaluated" };
+  const reviewFilters = { all: "All records", matched: "Detected matches", blocked: "Blocked / rejected", attention: "Failed / unknown" };
   const applicationName = record => state.applications.find(a => a.id === record.application_id)?.name || (record.operation === "connection.test" ? t("Administrator check") : t("Unknown application"));
   const statusClass = record => ["failed", "blocked", "rejected"].includes(record.outcome) ? "failed" : record.outcome === "completed" ? "available" : "muted-status";
+  function resetRequestFilters() { requestFilter = "all"; el("request-search").value = ""; }
+  function renderEvidenceReturn() {
+    el("evidence-return").hidden = !evidenceOrigin;
+    if (!evidenceOrigin) return;
+    el("evidence-return-button").textContent = t(evidenceOrigin.page === "requests" ? "Back to filtered records" : "Back to overview");
+    el("evidence-return-context").textContent = evidenceOrigin.requestID;
+  }
+  function followEvidence(record, task = false) {
+    if (!record?.application_id) return;
+    const page = activePage === "requests" ? "requests" : "overview";
+    el("request-detail").close();
+    chooseTab("evidence");
+    evidenceOrigin = { page, requestID: record.request_id }; renderEvidenceReturn();
+    if (task && record.trace?.trace_id) evidence.openTask(record.application_id, record.trace.trace_id);
+    else evidence.openRequest(record.application_id, record.request_id);
+  }
+  el("evidence-return-button").addEventListener("click", () => {
+    if (!evidenceOrigin) return;
+    const origin = evidenceOrigin; chooseTab(origin.page);
+    if (origin.page === "requests") {
+      renderRequestTable(requestSnapshot);
+      el("request-list").querySelector(`[data-request-id="${CSS.escape(origin.requestID)}"] .request-open`)?.focus();
+    }
+  });
+  function renderRequestReview(record) {
+    const review = reviewRequest(record), box = el("request-review-checks"); box.replaceChildren();
+    el("request-review-summary").textContent = t(review.matched
+      ? "A check recorded a match. Review the action taken and follow the retained evidence."
+      : review.attention ? "This request or a check is incomplete. Review the recorded reason before drawing conclusions."
+      : "No matches are recorded here. Checks may be disabled, outside scope or incomplete.");
+    for (const check of review.checks) {
+      const item = node("article", undefined, "request-check");
+      item.dataset.state = check.unknown ? "unknown" : check.rules.length || check.categories.length ? "matched" : "neutral";
+      const heading = node("div"); heading.append(node("strong", t(check.label)), node("span", t(check.unknown ? "Check unavailable" : checkResults[check.result] || check.result || "Not evaluated")));
+      item.append(heading);
+      if (check.categories.length) item.append(node("p", t("Recorded categories: {categories}", { categories: check.categories.join(", ") })));
+      if (check.rules.length) item.append(node("code", check.rules.join(" · ")));
+      if (check.version) item.append(node("small", t("{version} · revision {revision}", { version: check.version, revision: check.revision ?? "—" })));
+      box.append(item);
+    }
+    if (!review.checks.length) box.append(node("p", t("No check results were recorded for this operation."), "field-hint"));
+    el("request-evidence").hidden = !record.application_id;
+    el("request-task").hidden = !record.application_id || !record.trace?.trace_id;
+    el("request-detail-context").textContent = `${applicationName(record)} · ${record.model || t(operationNames[record.operation] || record.operation)} · ${formatDateTime(record.started_at)}`;
+  }
+  el("request-evidence").addEventListener("click", () => followEvidence(inspectedRequest));
+  el("request-task").addEventListener("click", () => followEvidence(inspectedRequest, true));
   function renderRequestPolicy() {
     el("request-policy-snapshot").hidden = !inspectedRequest?.content_policy;
     el("load-request-policy").hidden = !!inspectedPolicy;
@@ -240,6 +297,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   function inspectRequest(record) {
     if (inspectedRequest?.request_id !== record.request_id) {
       policyInspectionEpoch++; inspectedPolicy = null; inspectedPolicyStatus = "idle";
+      el("request-metadata").open = false;
     }
     inspectedRequest = record;
     el("request-detail").querySelector(".editor-notice").hidden = true;
@@ -247,6 +305,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     const status = node("div", undefined, "detail-outcome");
     status.append(node("strong", t(outcomes[record.outcome] || record.outcome)), node("span", `HTTP ${record.http_status || "—"}`));
     el("request-detail-state").replaceChildren(status);
+    renderRequestReview(record);
     const fields = el("request-detail-fields"); fields.replaceChildren();
     const values = [
       [t("Started at"), formatDateTime(record.started_at)], [t("Application"), applicationName(record)],
@@ -265,39 +324,69 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
         [t("Policy check duration"), `${policy.check_duration_us} µs`],
       );
     } else values.push([t("Credential policy"), t("Not evaluated")]);
+    if (record.trace) values.push([t("Trace ID (client correlation)"), record.trace.trace_id], [t("Span ID"), record.trace.span_id], [t("Declared agent"), record.trace.agent_id || "—"]);
+    if (record.tool_governance) values.push([t("Tool ID"), record.tool_governance.tool_id || "—"], [t("Tool authorization"), record.tool_governance.authorization], [t("Recorded reasons"), record.tool_governance.reasons?.join(", ") || "—"]);
     for (const [label, value] of values) { const row = node("div"); row.append(node("dt", label), node("dd", value)); fields.append(row); }
     renderRequestPolicy();
     if (!el("request-detail").open) el("request-detail").showModal();
   }
   function renderRequestTable(view) {
-    requestSnapshot = view;
-    el("audit-status").textContent = `${view.available ? t("Logging available") : t("Logging unavailable · New requests stopped")} · ${(view.bytes / 1048576).toFixed(2)} / 128 MiB`;
-    const list = el("request-list"); list.replaceChildren();
-    if (!view.records.length) {
-      const tr = node("tr"), td = node("td", undefined, "table-empty"); td.colSpan = 5;
-      td.append(node("strong", t("No request records yet")), node("span", t("Send a request with an application key to see its authorization and execution results here."))); tr.append(td); list.append(tr);
+    const records = view?.records || [], ready = requestLoadState === "ready" && !!view;
+    el("page-requests").setAttribute("aria-busy", String(requestLoadState === "loading"));
+    el("refresh-requests").disabled = requestLoadState === "loading";
+    el("audit-status").textContent = view ? `${view.available ? t("Logging available") : t("Logging unavailable · New requests stopped")} · ${(view.bytes / 1048576).toFixed(2)} / 128 MiB` : "";
+    el("request-list-status").dataset.state = requestLoadState;
+    el("request-list-status").textContent = t(requestLoadState === "loading" ? "Loading request records…" : requestLoadState === "error" ? "Request records could not be loaded. Refresh to try again." : requestUpdatedAt && ready ? "Updated {time}" : "Not loaded", { time: requestUpdatedAt ? formatTime(requestUpdatedAt) : "" });
+    const buttons = el("request-review-filters");
+    for (const [key, label] of Object.entries(reviewFilters)) {
+      const button = buttons.querySelector(`[data-review-filter="${key}"]`);
+      button.setAttribute("aria-pressed", String(requestFilter === key)); button.disabled = !ready;
+      button.replaceChildren(node("span", t(label)), node("strong", ready ? String(records.filter(record => matchesReview(record, key)).length) : "—"));
     }
-    for (const record of view.records) {
+    const filtered = records.filter(record => matchesReview(record, requestFilter) && matchesRequestSearch(record, el("request-search").value, applicationName(record)));
+    el("request-result-count").textContent = ready ? t("{shown} of {total} loaded records", { shown: filtered.length, total: records.length }) : "";
+    el("request-reset-filters").hidden = requestFilter === "all" && !el("request-search").value;
+    const list = el("request-list"); list.replaceChildren();
+    if (!ready || !filtered.length) {
+      const tr = node("tr"), td = node("td", undefined, "table-empty"); td.colSpan = 5;
+      const title = !ready ? (requestLoadState === "loading" ? "Loading request records…" : "Request records unavailable") : records.length ? "No records match these filters" : "No request records yet";
+      const message = !ready ? (requestLoadState === "loading" ? "Fetching the latest records for the selected application." : "Refresh the records to retry. No risk counts are available.") : records.length ? "Clear the search or choose another filter. Only the loaded records are searched." : "Send a request with an application key to see its authorization and execution results here.";
+      td.append(node("strong", t(title)), node("span", t(message))); tr.append(td); list.append(tr);
+    }
+    for (const record of ready ? filtered : []) {
       const tr = node("tr"); tr.dataset.requestId = record.request_id;
       const identity = node("td"), requestButton = action(record.request_id, async () => inspectRequest(record));
       requestButton.className = "request-open"; requestButton.setAttribute("aria-label", t("View request {id}", { id: record.request_id }));
       identity.append(node("span", formatDateTime(record.started_at)), requestButton);
       if (record.application_id) {
-        const retained = action(t("Risk evidence"), async () => { chooseTab("evidence"); evidence.openRequest(record.application_id, record.request_id); });
+        const retained = action(t("Risk evidence"), async () => followEvidence(record));
         retained.dataset.evidenceFor = record.request_id; identity.append(retained);
       }
       const model = node("td"); model.append(node("span", applicationName(record)), node("code", record.model || "—"));
       const operation = node("td"); operation.append(node("span", (t(operationNames[record.operation] || record.operation)) + (record.streaming ? t(" · Streaming") : "")), node("small", record.decision === "allow" ? t("Allowed") : record.decision === "deny" ? t("Denied") : t("Not evaluated")));
       const result = node("td"); result.append(node("span", `${t(outcomes[record.outcome] || record.outcome)} · ${record.http_status || "—"}`, `capability ${statusClass(record)}`), node("small", record.error_code || (record.upstream_attempted ? t("Upstream {status}", { status: record.upstream_status || t("No response") }) : t("No upstream request"))));
       if (record.content_policy?.matched_rules.length) result.append(node("small", t(policyResults[record.content_policy.result]), "policy-match"));
+      const review = reviewRequest(record);
+      if (review.matched) {
+        result.append(node("span", t("Detected match"), "request-risk-badge"));
+        result.append(node("small", [...new Set(review.checks.flatMap(check => check.categories.length ? check.categories : check.rules))].join(" · ")));
+      } else if (review.attention) result.append(node("span", t("Needs investigation"), "request-risk-badge unknown"));
       const duration = node("td", `${record.duration_ms} ms`); duration.append(node("small", record.first_byte_ms === undefined ? "—" : t("First byte {duration} ms", { duration: record.first_byte_ms })));
+      model.dataset.label = t("Application / Model"); operation.dataset.label = t("Operation / Authorization"); duration.dataset.label = t("Duration / First byte");
       tr.append(identity, model, operation, result, duration); list.append(tr);
     }
   }
   async function loadRequests() {
-    const view = await request(`/api/v1/requests?limit=100&application_id=${encodeURIComponent(el("requests-app").value)}`);
-    renderRequestTable(view);
-    if (!el("requests-app").value) { auditSnapshot = view; renderOverview(); }
+    const generation = ++requestEpoch, applicationID = el("requests-app").value;
+    requestSnapshot = null; requestUpdatedAt = null; requestLoadState = "loading"; renderRequestTable(null);
+    try {
+      const view = await request(`/api/v1/requests?limit=100&application_id=${encodeURIComponent(applicationID)}`);
+      if (generation !== requestEpoch || applicationID !== el("requests-app").value) return;
+      if (!Array.isArray(view.records) || view.records.length > 100 || applicationID && view.records.some(record => record.application_id !== applicationID)) throw new Error("invalid_request_scope");
+      requestSnapshot = view; requestUpdatedAt = new Date(); requestLoadState = "ready";
+      if (!applicationID) { auditSnapshot = view; renderOverview(); }
+    } catch { if (generation === requestEpoch) requestLoadState = "error"; }
+    if (generation === requestEpoch) { renderRequestTable(requestSnapshot); return requestLoadState === "ready"; }
   }
   function topologyNodes(id, items, type) {
     const list = el(id); list.replaceChildren();
@@ -322,6 +411,9 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     el("topology-model-count").textContent = t("{count} ENABLED", { count: models.length });
     topologyNodes("topology-apps", apps, "app"); topologyNodes("topology-models", models, "model");
     if (!auditSnapshot) return;
+    const matches = auditSnapshot.records.filter(record => reviewRequest(record).matched).length;
+    el("overview-review").hidden = matches === 0;
+    el("overview-review-count").textContent = t("{count} requests have recorded matches", { count: matches });
     const chats = auditSnapshot.records.filter(r => r.operation === "chat.completions");
     const issues = chats.filter(r => ["failed", "blocked", "rejected"].includes(r.outcome)).length;
     el("metric-requests").textContent = String(chats.length).padStart(2, "0");
@@ -357,6 +449,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     }
   }
   function renderOverviewFailure() {
+    el("overview-review").hidden = true;
     el("metric-requests").textContent = el("metric-issues").textContent = "—";
     el("overview-updated").textContent = t("Could not load request records");
     el("metric-issues-note").textContent = t("Refresh to try again");
@@ -389,8 +482,18 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   el("application-search").addEventListener("input", renderApplications);
   el("refresh-overview").addEventListener("click", () => act(el("refresh-overview"), refresh));
   el("refresh-gateway").addEventListener("click", () => act(el("refresh-gateway"), async () => { await refresh(); resetConnection(); resetApplication(); notice(t("Latest configuration loaded. Select a connection or application to edit.")); }));
-  el("refresh-requests").addEventListener("click", () => act(el("refresh-requests"), loadRequests));
-  el("requests-app").addEventListener("change", () => act(el("refresh-requests"), loadRequests));
+  el("refresh-requests").addEventListener("click", loadRequests);
+  el("requests-app").addEventListener("change", loadRequests);
+  el("request-search").addEventListener("input", () => renderRequestTable(requestSnapshot));
+  el("request-reset-filters").addEventListener("click", () => { resetRequestFilters(); renderRequestTable(requestSnapshot); el("request-search").focus(); });
+  el("request-review-filters").addEventListener("click", event => {
+    const button = event.target.closest("[data-review-filter]");
+    if (!button || button.disabled) return;
+    requestFilter = button.dataset.reviewFilter; renderRequestTable(requestSnapshot);
+  });
+  el("overview-review-open").addEventListener("click", () => {
+    chooseTab("requests"); el("requests-app").value = ""; resetRequestFilters(); requestFilter = "matched"; loadRequests();
+  });
   el("copy-new-key").addEventListener("click", () => copy(el("new-api-key").textContent));
   el("dismiss-key").addEventListener("click", () => showKey(""));
   function relocalize() {
@@ -398,6 +501,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     renderHeading(activePage);
     policies.relocalize();
     evidence.relocalize();
+    renderEvidenceReturn();
     renderConnections(); renderApplications();
     const selected = [...el("application-grants").querySelectorAll("input:checked")].map(input => input.value);
     renderGrants(selected);
@@ -406,7 +510,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     renderExample(); renderOverview();
     if (overviewUpdatedAt) el("overview-updated").textContent = t("Updated {time}", { time: formatTime(overviewUpdatedAt) });
     if (overviewFailed) renderOverviewFailure();
-    if (requestSnapshot) renderRequestTable(requestSnapshot);
+    renderRequestTable(requestSnapshot);
     if (el("request-detail").open && inspectedRequest) inspectRequest(inspectedRequest);
     el("connection-form-title").textContent = editingConnection ? t("Edit: {name}", { name: editingConnection.name }) : t("Add model connection");
     el("credential-hint").textContent = editingConnection
@@ -419,6 +523,8 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     integration.clear();
     evidence.reset();
     policyInspectionEpoch++; inspectedPolicy = null; inspectedPolicyStatus = "idle";
+    requestEpoch++; requestLoadState = "idle"; requestUpdatedAt = null; resetRequestFilters();
+    evidenceOrigin = null; renderEvidenceReturn(); el("overview-review").hidden = true;
     policies.reset();
     state = { connections: [], applications: [] }; editingConnection = editingApplication = null; auditSnapshot = requestSnapshot = inspectedRequest = null;
     overviewUpdatedAt = null; overviewFailed = false;
@@ -430,6 +536,8 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     el("overview-updated").textContent = t("Not loaded");
     el("topology-apps").replaceChildren(); el("topology-models").replaceChildren();
     el("request-detail-fields").replaceChildren(); el("request-detail-state").replaceChildren(); el("detail-request-id").textContent = "";
+    el("request-review-checks").replaceChildren(); el("request-review-summary").textContent = ""; el("request-detail-context").textContent = "";
+    renderRequestTable(null);
     renderRequestPolicy();
     populateSelect("example-app", t("Create an application first"), []); populateSelect("requests-app", t("All applications and connection checks"), []);
     el("sdk-example").textContent = ""; el("audit-status").textContent = "";

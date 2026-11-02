@@ -299,6 +299,7 @@ async function main() {
     const blockedRow = page.locator(`[data-request-id="${blockedID}"]`);
     await blockedRow.getByText('Blocked by policy', { exact: true }).waitFor();
     await blockedRow.locator('.request-open').click();
+    await page.locator('#request-metadata summary').click();
     await page.locator('#request-detail-fields').getByText('API key patterns', { exact: true }).waitFor();
     await page.locator('#request-detail-fields').getByText('No upstream request', { exact: true }).waitFor();
     await page.locator('#request-detail-fields').getByText('credential-egress / 2 / credentials-v1', { exact: true }).waitFor();

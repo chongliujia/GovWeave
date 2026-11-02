@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"slices"
@@ -88,7 +87,9 @@ func (s *EvidenceStore) streamEvidenceObject(id string, record CallRecord, input
 		return object, nil, nil
 	}
 	object.ContentState = "retained"
-	return object, bytes.Clone(stream.Data), nil
+	// prepareCapture serializes this borrowed view before returning any sealed
+	// bytes to persistence; callers retain ownership of the source buffer.
+	return object, stream.Data, nil
 }
 
 func validStoredEvidenceStream(object EvidenceObject, bundle EvidenceBundle) bool {

@@ -171,7 +171,7 @@ export function createEvidenceConsole({ request, getState }) {
   }
 
   async function loadTask(event) {
-    event.preventDefault(); clearContent();
+    event?.preventDefault(); clearContent();
     const trace = el("evidence-task-trace").value, ids = taskApplications();
     clearTask();
     if (!/^[0-9a-f]{32}$/.test(trace) || /^0+$/.test(trace) || ids.length < 1 || ids.length > 16) { taskState = "invalid"; renderTask(); return; }
@@ -545,7 +545,20 @@ export function createEvidenceConsole({ request, getState }) {
     enter() { renderApplications(); loadConfig(); },
     clear,
     refresh: renderApplications,
-    openRequest(app, id) { renderApplications(); el("evidence-app").value = app; requestFilter = id; loadList(); },
+    async openRequest(app, id) {
+      renderApplications(); el("evidence-app").value = app; requestFilter = id;
+      const pending = loadList(), generation = epoch;
+      await pending;
+      if (generation !== epoch || applicationID() !== app || requestFilter !== id) return;
+      const retained = items.find(item => item.request_id === id);
+      if (retained) await loadDetail(retained.id);
+    },
+    openTask(app, trace) {
+      renderApplications(); clearTask(); clearContent();
+      el("evidence-task-trace").value = trace; renderTaskScope([app]);
+      el("evidence-task-panel").open = true; el("evidence-task-trace").focus();
+      return loadTask();
+    },
     relocalize() { renderApplications(); renderConfigStatus(); renderDetail(); renderContentLabels(); },
     reset() { clear(); config = null; configState = "idle"; el("evidence-app").value = ""; el("evidence-config-form").reset(); el("evidence-app-options").replaceChildren(); renderConfigStatus(); },
   };

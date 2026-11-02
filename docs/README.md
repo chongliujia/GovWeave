@@ -21,6 +21,7 @@ These guides describe **0.2.0-dev**, the implemented single-instance gateway. St
 | Verify real LangGraph/Pydantic AI handoffs, cancellation and missing receipts | [Real-framework trace trial](framework-tracing-trial.md) |
 | Measure known-marker exposure detection and inspect missed cases | [Canary validation](canary-validation.md) |
 | Compare detector stage quality and local call latency | [Canary benchmark](canary-benchmark.md) |
+| Measure end-to-end gateway latency, evidence overhead and process resources | [Synthetic gateway load benchmark](gateway-benchmark.md) |
 | Extend text detectors and validate fast/deep routing | [Detector plugins and routing](detector-routing.md) |
 | Try assessment without a real model or application | [Local demonstration](local-demonstration.md) |
 | Deploy a binary or container; configure URLs and HTTPS | [Deployment](deployment.md) |

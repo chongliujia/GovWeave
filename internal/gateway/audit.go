@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"govweave/internal/storage"
 )
 
 const AuditMaxBytes int64 = 128 << 20
@@ -178,7 +180,7 @@ func (a *Audit) append(record CallRecord) error {
 	n, err := a.file.Write(data)
 	a.size += int64(n)
 	if err == nil {
-		err = a.file.Sync()
+		err = storage.Sync(a.file)
 	}
 	if err != nil || n != len(data) {
 		a.failed = true
