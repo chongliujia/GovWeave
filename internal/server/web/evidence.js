@@ -1,4 +1,5 @@
 import { t, formatDateTime } from "/i18n.js";
+import { createTaskMap } from "/task-map-view.js";
 
 const el = id => document.getElementById(id);
 const node = (tag, text, className) => {
@@ -29,13 +30,15 @@ const statusMessages = {
   error: "Evidence could not be loaded. No safety conclusion can be drawn.", missing: "This evidence is unavailable or expired. Its content cannot be reconstructed.",
 };
 
-export function createEvidenceConsole({ request, getState }) {
+export function createEvidenceConsole({ request, getState, inspectCall }) {
   let epoch = 0, configEpoch = 0, revealEpoch = 0;
   let config = null, items = [], detail = null, graph = null, requestFilter = "";
   let listState = "idle", graphState = "idle", configState = "idle", busy = false;
   let revealedObject = "", revealedView = "", redactionState = "", contentMessage = "", revealing = false;
   let taskEpoch = 0, taskView = null, taskState = "idle";
   let snapshotEpoch = 0, taskArchive = null, taskArchives = [], snapshotState = "idle";
+  let taskDrilldown = null;
+  const taskMap = createTaskMap({ inspect: call => inspectTaskCall(call, "map"), openEvidence: call => openTaskCapture(call, "map") });
 
   const applicationID = () => el("evidence-app").value;
   const scoped = suffix => `${suffix}${suffix.includes("?") ? "&" : "?"}application_id=${encodeURIComponent(applicationID())}`;
@@ -97,9 +100,40 @@ export function createEvidenceConsole({ request, getState }) {
   }
 
   function clearTask() {
+    if (taskDrilldown) {
+      epoch++; busy = false; clearDetail(); items = []; requestFilter = ""; listState = "idle";
+      el("evidence-app").value = ""; renderList();
+    }
     taskEpoch++; taskView = null; taskState = "idle";
     snapshotEpoch++; taskArchive = null; taskArchives = []; snapshotState = "idle";
+    clearTaskDrilldown();
     renderTask();
+  }
+
+  function clearTaskDrilldown() {
+    taskDrilldown = null; el("evidence-task-return").hidden = true;
+    el("evidence-task-return-context").textContent = "";
+  }
+
+  function focusTaskCall(requestID, source = "list") {
+    if (source === "map") { taskMap.focus(requestID); return; }
+    const row = el("evidence-task-calls").querySelector(`[data-task-request="${CSS.escape(requestID)}"]`);
+    el("evidence-task-panel").open = true;
+    (row || el("evidence-task-results")).scrollIntoView({ block: "center", behavior: "instant" });
+    (row?.querySelector("button") || el("evidence-task-panel").querySelector("summary")).focus({ preventScroll: true });
+  }
+
+  function inspectTaskCall(call, origin = "list") {
+    if (!call.record || !taskView?.calls.includes(call)) return;
+    clearContent();
+    const view = taskView, generation = taskEpoch;
+    inspectCall(call.record, {
+      source: "task", historical: !!taskArchive, savedAt: taskArchive?.snapshot.created_at,
+      applicationLabel: taskArchive ? call.application_id : undefined,
+      isCurrent: () => generation === taskEpoch && taskView === view,
+      onClose: () => { if (generation === taskEpoch && taskView === view) focusTaskCall(call.request_id, origin); },
+      openEvidence: () => { if (generation === taskEpoch && taskView === view && !taskArchive) openTaskCapture(call, origin); },
+    });
   }
 
   function renderTaskScope(chosen = taskApplications()) {
@@ -113,15 +147,19 @@ export function createEvidenceConsole({ request, getState }) {
     }
   }
 
-  async function openTaskCapture(row) {
-    if (row.evidence_state !== "retained" || !taskView?.application_ids.includes(row.application_id)) return;
+  async function openTaskCapture(row, source = "list") {
+    if (taskArchive || !taskView?.calls.includes(row)) return;
     const taskGeneration = taskEpoch;
+    const origin = { requestID: row.request_id, taskView, source };
+    taskDrilldown = origin; el("evidence-task-return").hidden = false;
+    el("evidence-task-return-context").textContent = row.request_id;
     clearContent(); el("evidence-app").value = row.application_id; requestFilter = row.request_id;
     const loading = loadList(), generation = epoch;
+    el("evidence-task-return").scrollIntoView({ block: "start", behavior: "instant" });
     await loading;
     if (epoch === generation && taskEpoch === taskGeneration && applicationID() === row.application_id) {
-      await loadDetail(row.evidence_id);
-      if (detail?.id === row.evidence_id) el("evidence-detail").scrollIntoView({ block: "start", behavior: "instant" });
+      const retained = items.find(item => item.request_id === row.request_id);
+      if (retained) await loadDetail(retained.id);
     }
   }
 
@@ -141,6 +179,7 @@ export function createEvidenceConsole({ request, getState }) {
     renderTaskSnapshots();
     el("evidence-task-results").hidden = !taskView;
     rows.replaceChildren(); edges.replaceChildren(); el("evidence-task-coverage").textContent = "";
+    taskMap.render(taskView, { historical: !!taskArchive, applications: getState().applications, busy: ["saving", "opening", "loading"].includes(snapshotState) });
     if (!taskView) return;
     const coverage = el("evidence-task-coverage");
     coverage.textContent = taskArchive ? t("These are saved observations. Evidence availability and application names may have changed; reload live task evidence for current observations.") : t("This live view uses up to {calls} calls and {captures} capture reads across the selected applications. It is not an archived or complete task record.", { calls: taskView.call_limit, captures: taskView.evidence_limit });
@@ -152,11 +191,20 @@ export function createEvidenceConsole({ request, getState }) {
       const row = node("tr"); row.dataset.taskRequest = call.request_id;
       const app = getState().applications.find(app => app.id === call.application_id);
       const identity = node("td"); identity.append(node("span", taskArchive ? call.application_id : app?.name || call.application_id), node("small", taskArchive ? "" : call.application_id), node("small", call.record?.trace?.agent_id || "—"));
-      const request = node("td"); request.append(node("span", call.record ? formatDateTime(call.record.timestamp) : "—"), node("code", call.request_id));
+      const request = node("td"); request.append(node("span", call.record ? formatDateTime(call.record.timestamp) : "—"));
+      if (call.record) {
+        const button = node("button", call.request_id, "request-open"); button.type = "button"; button.dataset.taskInspect = call.request_id;
+        button.disabled = ["saving", "opening", "loading"].includes(snapshotState);
+        button.setAttribute("aria-label", t("Inspect task call {id}", { id: call.request_id }));
+        button.addEventListener("click", () => inspectTaskCall(call)); request.append(button);
+      } else request.append(node("code", call.request_id));
       const operation = node("td"); operation.append(node("span", call.record?.operation || t("Unknown")), node("small", call.record?.outcome || t("Unknown")));
       const availability = node("td"); availability.append(node("span", t(states[call.evidence_state])), node("small", t(sources[call.record_source])));
-      if (call.evidence_state === "retained" && !taskArchive) {
-        const button = node("button", t("Open retained capture"), "text-button"); button.type = "button"; button.dataset.taskEvidence = call.evidence_id;
+      if (!taskArchive) {
+        const button = node("button", t(call.evidence_state === "retained" ? "Open retained capture" : "Check current evidence"), "text-button"); button.type = "button";
+        button.disabled = ["saving", "opening", "loading"].includes(snapshotState);
+        if (call.evidence_state === "retained") button.dataset.taskEvidence = call.evidence_id;
+        else button.dataset.taskEvidenceRequest = call.request_id;
         button.addEventListener("click", () => openTaskCapture(call)); availability.append(button);
       }
       const findings = node("td", call.evidence_state === "retained" ? String(call.findings.length) : "—");
@@ -191,7 +239,7 @@ export function createEvidenceConsole({ request, getState }) {
     const states = ["retained", "not_found", "unavailable", "not_loaded"];
     if (!value || !/^[0-9a-f]{64}$/.test(value.view_sha256) || value.trace_id !== trace || value.scope !== "selected_applications" || value.coverage !== "retained_evidence_and_recent_audit" ||
         !Array.isArray(value.application_ids) || JSON.stringify(value.application_ids.slice().sort()) !== JSON.stringify(ids) ||
-        !Array.isArray(value.calls) || value.calls.length > 128 || !Array.isArray(value.edges) || !value.summary ||
+        !Array.isArray(value.calls) || value.calls.length > 128 || !Array.isArray(value.edges) || value.edges.length > 768 || !value.summary ||
         value.calls.some(call => !ids.includes(call.application_id) || !states.includes(call.evidence_state) || !Array.isArray(call.findings) ||
           (call.record && (call.record.application_id !== call.application_id || call.record.request_id !== call.request_id || call.record.trace?.trace_id !== trace)) ||
           (call.evidence_state === "retained" && !/^ev_[A-Za-z0-9_-]{22}$/.test(call.evidence_id)))) throw new Error("invalid_task_scope");
@@ -233,7 +281,7 @@ export function createEvidenceConsole({ request, getState }) {
     if (!value?.snapshot || !/^tsk_[A-Za-z0-9_-]{22}$/.test(value.summary?.id) || value.snapshot.id !== value.summary.id ||
         value.integrity !== "authenticated_local" || !/^[0-9a-f]{64}$/.test(value.summary.sha256)) throw new Error("invalid_snapshot");
     validateTaskView(value.snapshot.view, trace, ids);
-    epoch++; busy = false; clearDetail(); renderList();
+    epoch++; busy = false; clearDetail(); clearTaskDrilldown(); renderList();
     taskArchive = value; taskView = value.snapshot.view; taskState = "archived";
   }
 
@@ -267,7 +315,8 @@ export function createEvidenceConsole({ request, getState }) {
   }
 
   async function openTaskSnapshot(id) {
-    clearContent();
+    epoch++; busy = false; clearDetail(); renderList();
+    clearTaskDrilldown();
     const trace = el("evidence-task-trace").value, ids = taskApplications(), generation = taskEpoch, operation = ++snapshotEpoch;
     taskView = taskArchive = null; taskState = "idle"; snapshotState = "opening"; renderTask();
     try {
@@ -301,6 +350,7 @@ export function createEvidenceConsole({ request, getState }) {
     el("evidence-config-status").dataset.state = configState;
     el("evidence-config-fields").disabled = !config || ["loading", "saving"].includes(configState);
     el("evidence-reload-config").disabled = ["loading", "saving"].includes(configState);
+    renderGuidance();
   }
 
   async function loadConfig() {
@@ -337,12 +387,46 @@ export function createEvidenceConsole({ request, getState }) {
     if (generation === configEpoch) renderConfigStatus();
   }
 
+  function renderGuidance() {
+    const panel = el("evidence-guidance"), app = applicationID();
+    panel.hidden = !app || !["empty", "error", "missing"].includes(listState);
+    if (panel.hidden) {
+      for (const id of ["evidence-guidance-title", "evidence-guidance-message", "evidence-guidance-scope", "evidence-guidance-config", "evidence-guidance-revision"]) el(id).textContent = "";
+      panel.dataset.state = "hidden"; el("evidence-guidance-config").dataset.state = "unknown";
+      return;
+    }
+    panel.dataset.state = listState;
+    el("evidence-guidance-title").textContent = t(listState === "error" ? "Evidence lookup failed" : listState === "missing" ? "This capture is unavailable" : requestFilter ? "No retained capture for this request" : "No retained evidence in this application");
+    el("evidence-guidance-message").textContent = t(listState === "error"
+      ? "Retry the lookup before interpreting the result. A failed lookup does not establish that evidence is absent."
+      : "The available records do not establish why this capture is missing. It may not have been collected, may have expired, or may be unavailable. Missing evidence is not a clean result.");
+    const application = getState().applications.find(value => value.id === app);
+    el("evidence-guidance-scope").textContent = application ? `${application.name} · ${app}` : app;
+    let capture = "unknown";
+    if (["loading", "saving"].includes(configState)) capture = "loading";
+    else if (config && configState === "ready") capture = config.mode === "disabled" ? "disabled" : !config.application_ids.includes(app) ? "outside" : config.mode;
+    const descriptions = {
+      unknown: "Retention settings are unavailable. Reload them before changing capture.",
+      loading: "Checking the saved retention settings…",
+      disabled: "Capture is disabled in the loaded settings.",
+      outside: "This application is outside the loaded capture scope.",
+      metadata: "This application is set to retain metadata only.",
+      full: "This application is set to retain full content within configured limits.",
+    };
+    el("evidence-guidance-config").dataset.state = capture;
+    el("evidence-guidance-config").textContent = t(descriptions[capture]);
+    el("evidence-guidance-revision").textContent = config && configState === "ready" ? t("Last loaded retention settings · revision {revision}", { revision: config.revision }) : "";
+    el("evidence-guidance-browse").hidden = !requestFilter;
+  }
+
   function renderList() {
     const list = el("evidence-list"); list.replaceChildren();
     const status = el("evidence-status"); status.dataset.state = listState; status.textContent = t(statusMessages[listState]);
     if (requestFilter) status.append(node("code", ` ${requestFilter}`));
     el("evidence-refresh").disabled = busy || !applicationID();
     el("evidence-clear-filter").hidden = !requestFilter;
+    el("evidence-list-wrap").hidden = items.length === 0;
+    renderGuidance();
     for (const item of items) {
       const row = node("tr"); row.dataset.evidenceId = item.id;
       const identity = node("td"), button = node("button", item.request_id, "request-open");
@@ -364,7 +448,7 @@ export function createEvidenceConsole({ request, getState }) {
     try {
       const value = await request(scoped(`/api/v1/evidence?limit=50${requestFilter ? `&request_id=${encodeURIComponent(requestFilter)}` : ""}`));
       if (generation !== epoch) return;
-      if (!Array.isArray(value.items) || value.items.some(item => item.application_id !== app || typeof item.id !== "string")) throw new Error("invalid_scope");
+      if (!Array.isArray(value.items) || value.items.length > 50 || value.items.some(item => item.application_id !== app || typeof item.id !== "string" || requestFilter && item.request_id !== requestFilter)) throw new Error("invalid_scope");
       items = value.items; listState = items.length ? "ready" : "empty";
     } catch { if (generation === epoch) listState = "error"; }
     if (generation === epoch) { busy = false; renderList(); }
@@ -521,18 +605,32 @@ export function createEvidenceConsole({ request, getState }) {
     }
   }
 
-  el("evidence-app").addEventListener("change", () => { requestFilter = ""; loadList(); });
+  el("evidence-app").addEventListener("change", () => { clearTaskDrilldown(); requestFilter = ""; loadList(); });
+  el("evidence-task-return-button").addEventListener("click", () => {
+    const origin = taskDrilldown; clearTaskDrilldown();
+    if (!origin || taskView !== origin.taskView) return;
+    epoch++; busy = false; clearDetail(); items = []; requestFilter = ""; listState = "idle";
+    el("evidence-app").value = ""; renderList(); focusTaskCall(origin.requestID, origin.source);
+  });
   el("evidence-task-form").addEventListener("submit", loadTask);
   el("evidence-task-save").addEventListener("click", saveTaskSnapshot);
   el("evidence-task-archives-load").addEventListener("click", loadTaskSnapshots);
   el("evidence-task-form").addEventListener("input", () => { clearTask(); epoch++; busy = false; clearDetail(); renderList(); });
   el("evidence-use-trace").addEventListener("click", () => {
     if (!detail?.trace_id) return;
-    clearTask(); clearContent(); el("evidence-task-trace").value = detail.trace_id; renderTaskScope([applicationID()]);
+    const trace = detail.trace_id, app = applicationID();
+    clearTask(); clearContent(); el("evidence-task-trace").value = trace; renderTaskScope([app]);
     el("evidence-task-panel").open = true; el("evidence-task-trace").focus();
   });
   el("evidence-refresh").addEventListener("click", loadList);
-  el("evidence-clear-filter").addEventListener("click", () => { requestFilter = ""; loadList(); });
+  const clearRequestFilter = () => { requestFilter = ""; loadList(); };
+  el("evidence-clear-filter").addEventListener("click", clearRequestFilter);
+  el("evidence-guidance-browse").addEventListener("click", clearRequestFilter);
+  el("evidence-guidance-retry").addEventListener("click", loadList);
+  el("evidence-guidance-settings").addEventListener("click", () => {
+    const panel = el("evidence-config-panel"); panel.open = true;
+    panel.scrollIntoView({ block: "start", behavior: "instant" }); panel.querySelector("summary").focus();
+  });
   el("evidence-close-detail").addEventListener("click", () => { epoch++; busy = false; clearDetail(); listState = items.length ? "ready" : applicationID() ? "empty" : "idle"; renderList(); });
   el("evidence-hide-content").addEventListener("click", clearContent);
   el("evidence-reveal-reason").addEventListener("change", clearContent);

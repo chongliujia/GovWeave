@@ -20,12 +20,13 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   let overviewUpdatedAt = null, overviewFailed = false, activePage = "overview";
   let requestEpoch = 0, requestLoadState = "idle", requestFilter = "all", requestUpdatedAt = null;
   let evidenceOrigin = null;
+  let requestContext = null;
   const integration = createIntegrationConsole({ getState: () => state, getInstance, request, openRecords: async (applicationID, record) => {
     chooseTab("requests"); el("requests-app").value = applicationID; resetRequestFilters();
     const loaded = await loadRequests();
     if (loaded && record && activePage === "requests" && el("requests-app").value === applicationID) inspectRequest(record);
   } });
-  const evidence = createEvidenceConsole({ request, getState: () => state });
+  const evidence = createEvidenceConsole({ request, getState: () => state, inspectCall: inspectRequest });
   const pages = {
     overview: ["Overview", "OVERVIEW / 01", "See how applications connect to models and review recent activity."],
     connections: ["Model connections", "MODEL CONNECTIONS / 02", "Configure upstream models and service aliases for consistent application access."],
@@ -229,6 +230,11 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   }
   function followEvidence(record, task = false) {
     if (!record?.application_id) return;
+    if (requestContext?.source === "task") {
+      const context = requestContext;
+      if (task || context.historical || !context.isCurrent()) return;
+      requestContext = null; el("request-detail").close(); context.openEvidence(); return;
+    }
     const page = activePage === "requests" ? "requests" : "overview";
     el("request-detail").close();
     chooseTab("evidence");
@@ -247,7 +253,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   function renderRequestReview(record) {
     const review = reviewRequest(record), box = el("request-review-checks"); box.replaceChildren();
     el("request-review-summary").textContent = t(review.matched
-      ? "A check recorded a match. Review the action taken and follow the retained evidence."
+      ? requestContext?.historical ? "Recorded matches are shown from the saved task snapshot." : "A check recorded a match. Review the action taken and follow the retained evidence."
       : review.attention ? "This request or a check is incomplete. Review the recorded reason before drawing conclusions."
       : "No matches are recorded here. Checks may be disabled, outside scope or incomplete.");
     for (const check of review.checks) {
@@ -261,14 +267,24 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
       box.append(item);
     }
     if (!review.checks.length) box.append(node("p", t("No check results were recorded for this operation."), "field-hint"));
-    el("request-evidence").hidden = !record.application_id;
-    el("request-task").hidden = !record.application_id || !record.trace?.trace_id;
-    el("request-detail-context").textContent = `${applicationName(record)} · ${record.model || t(operationNames[record.operation] || record.operation)} · ${formatDateTime(record.started_at)}`;
+    el("request-evidence").hidden = !record.application_id || !!requestContext?.historical;
+    el("request-task").hidden = !record.application_id || !record.trace?.trace_id || requestContext?.source === "task";
+    el("request-back-task").hidden = requestContext?.source !== "task";
+    const source = el("request-source-context"); source.hidden = !requestContext;
+    source.textContent = requestContext?.historical
+      ? t("Saved task observation · {time}. This review uses archived metadata; current content and settings are not loaded.", { time: formatDateTime(requestContext.savedAt) })
+      : requestContext ? t("From the selected task view. Return to keep the same applications and loaded observations.") : "";
+    el("request-detail-context").textContent = `${requestContext?.applicationLabel || applicationName(record)} · ${record.model || t(operationNames[record.operation] || record.operation)} · ${formatDateTime(record.started_at)}`;
   }
+  el("request-back-task").addEventListener("click", () => el("request-detail").close());
+  el("request-detail").addEventListener("close", () => {
+    if (el("request-detail").open) return;
+    const context = requestContext; requestContext = null; context?.onClose();
+  });
   el("request-evidence").addEventListener("click", () => followEvidence(inspectedRequest));
   el("request-task").addEventListener("click", () => followEvidence(inspectedRequest, true));
   function renderRequestPolicy() {
-    el("request-policy-snapshot").hidden = !inspectedRequest?.content_policy;
+    el("request-policy-snapshot").hidden = !inspectedRequest?.content_policy || !!requestContext?.historical;
     el("load-request-policy").hidden = !!inspectedPolicy;
     el("load-request-policy").disabled = inspectedPolicyStatus === "loading";
     const messages = {
@@ -281,7 +297,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     if (inspectedPolicy) renderPolicySnapshot(el("request-policy-fields"), inspectedPolicy);
   }
   el("load-request-policy").addEventListener("click", async () => {
-    if (!inspectedRequest?.content_policy || inspectedPolicyStatus === "loading") return;
+    if (!inspectedRequest?.content_policy || inspectedPolicyStatus === "loading" || requestContext?.historical) return;
     const generation = policyInspectionEpoch, revision = inspectedRequest.content_policy.revision;
     inspectedPolicyStatus = "loading"; renderRequestPolicy();
     try {
@@ -294,12 +310,12 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     }
     if (generation === policyInspectionEpoch) renderRequestPolicy();
   });
-  function inspectRequest(record) {
-    if (inspectedRequest?.request_id !== record.request_id) {
+  function inspectRequest(record, context = null) {
+    if (inspectedRequest?.request_id !== record.request_id || requestContext !== context) {
       policyInspectionEpoch++; inspectedPolicy = null; inspectedPolicyStatus = "idle";
       el("request-metadata").open = false;
     }
-    inspectedRequest = record;
+    inspectedRequest = record; requestContext = context;
     el("request-detail").querySelector(".editor-notice").hidden = true;
     el("detail-request-id").textContent = record.request_id;
     const status = node("div", undefined, "detail-outcome");
@@ -308,7 +324,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     renderRequestReview(record);
     const fields = el("request-detail-fields"); fields.replaceChildren();
     const values = [
-      [t("Started at"), formatDateTime(record.started_at)], [t("Application"), applicationName(record)],
+      [t("Started at"), formatDateTime(record.started_at)], [t("Application"), requestContext?.applicationLabel || applicationName(record)],
       [t("Model alias"), record.model || "—"], [t("Action"), record.operation + (record.streaming ? " · SSE" : "")],
       [t("Access authorization"), record.decision === "allow" ? t("Allowed") : record.decision === "deny" ? t("Denied") : t("Not evaluated")],
       [t("Upstream request"), record.upstream_attempted ? t("Attempted · {status}", { status: record.upstream_status || t("No status received") }) : t("No upstream request")],
@@ -511,7 +527,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     if (overviewUpdatedAt) el("overview-updated").textContent = t("Updated {time}", { time: formatTime(overviewUpdatedAt) });
     if (overviewFailed) renderOverviewFailure();
     renderRequestTable(requestSnapshot);
-    if (el("request-detail").open && inspectedRequest) inspectRequest(inspectedRequest);
+    if (el("request-detail").open && inspectedRequest) inspectRequest(inspectedRequest, requestContext);
     el("connection-form-title").textContent = editingConnection ? t("Edit: {name}", { name: editingConnection.name }) : t("Add model connection");
     el("credential-hint").textContent = editingConnection
       ? t(editingConnection.has_credential ? "An encrypted credential is saved. Leave empty to keep it, or enter a replacement." : "No upstream credential configured.")
@@ -522,7 +538,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   return { refresh, renderExample, relocalize, enter() { chooseTab("overview"); }, reset() {
     integration.clear();
     evidence.reset();
-    policyInspectionEpoch++; inspectedPolicy = null; inspectedPolicyStatus = "idle";
+    policyInspectionEpoch++; inspectedPolicy = null; inspectedPolicyStatus = "idle"; requestContext = null;
     requestEpoch++; requestLoadState = "idle"; requestUpdatedAt = null; resetRequestFilters();
     evidenceOrigin = null; renderEvidenceReturn(); el("overview-review").hidden = true;
     policies.reset();
@@ -537,6 +553,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     el("topology-apps").replaceChildren(); el("topology-models").replaceChildren();
     el("request-detail-fields").replaceChildren(); el("request-detail-state").replaceChildren(); el("detail-request-id").textContent = "";
     el("request-review-checks").replaceChildren(); el("request-review-summary").textContent = ""; el("request-detail-context").textContent = "";
+    el("request-source-context").textContent = ""; el("request-source-context").hidden = true; el("request-back-task").hidden = true;
     renderRequestTable(null);
     renderRequestPolicy();
     populateSelect("example-app", t("Create an application first"), []); populateSelect("requests-app", t("All applications and connection checks"), []);

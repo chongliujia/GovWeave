@@ -115,12 +115,15 @@ check:
 	node --check internal/server/web/app.js
 	node --check internal/server/web/gateway.js
 	node --check internal/server/web/request-review.js
+	node --check internal/server/web/task-map.js
+	node --check internal/server/web/task-map-view.js
 	node --check internal/server/web/integration.js
 	node --check internal/server/web/evidence.js
 	node --check internal/server/web/policies.js
 	node --check internal/server/web/i18n.js
 	node tests/i18n-check.cjs
 	node tests/request-review-test.cjs
+	node tests/task-map-test.cjs
 
 package:
 	sh scripts/package-offline.sh

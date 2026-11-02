@@ -60,7 +60,7 @@ func New(store *instance.Store, admin *auth.Manager, engine *gateway.Engine, eva
 			return
 		}
 		switch r.URL.Path {
-		case "/", "/app.js", "/gateway.js", "/integration.js", "/evidence.js", "/policies.js", "/request-review.js", "/i18n.js", "/style.css", "/logo.svg":
+		case "/", "/app.js", "/gateway.js", "/integration.js", "/evidence.js", "/policies.js", "/request-review.js", "/task-map.js", "/task-map-view.js", "/i18n.js", "/style.css", "/logo.svg":
 			files.ServeHTTP(w, r)
 		default:
 			apiError(w, 404, "not_found", "Endpoint or page not found.")
