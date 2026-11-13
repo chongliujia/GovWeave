@@ -3,6 +3,8 @@ import { createPolicyConsole, policyResults, policyRules, renderPolicySnapshot }
 import { createIntegrationConsole } from "/integration.js";
 import { createEvidenceConsole } from "/evidence.js";
 import { reviewRequest, matchesReview, matchesRequestSearch } from "/request-review.js";
+import { createDashboard } from "/dashboard.js";
+import { createPluginConsole } from "/plugins.js";
 const el = id => document.getElementById(id);
 const node = (tag, text, className) => {
   const value = document.createElement(tag);
@@ -13,6 +15,7 @@ const node = (tag, text, className) => {
 
 export function createGatewayConsole({ request, notice, copy, getInstance }) {
   const policies = createPolicyConsole({ request, notice });
+  const plugins = createPluginConsole({ request, notice });
   let state = { connections: [], applications: [] };
   let editingConnection = null, editingApplication = null;
   let auditSnapshot = null, requestSnapshot = null, inspectedRequest = null;
@@ -21,6 +24,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   let requestEpoch = 0, requestLoadState = "idle", requestFilter = "all", requestUpdatedAt = null;
   let evidenceOrigin = null;
   let requestContext = null;
+  const dashboard = createDashboard({ inspectRequest, applicationName: record => applicationName(record) });
   const integration = createIntegrationConsole({ getState: () => state, getInstance, request, openRecords: async (applicationID, record) => {
     chooseTab("requests"); el("requests-app").value = applicationID; resetRequestFilters();
     const loaded = await loadRequests();
@@ -32,6 +36,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     connections: ["Model connections", "MODEL CONNECTIONS / 02", "Configure upstream models and service aliases for consistent application access."],
     applications: ["Applications & keys", "APPLICATION ACCESS / 03", "Give each application its own key and explicit model grants."],
     policies: ["Runtime policies", "RUNTIME POLICIES / 04", "Control credential egress with local checks before model execution."],
+    plugins: ["Plugin center", "PLUGINS / 07", "Choose installed rule packs and configure sensitive-output detectors independently."],
     requests: ["Request logs", "REQUEST LOG / 05", "Find recorded risks, understand the action taken, and follow the evidence."],
     evidence: ["Risk evidence", "RISK EVIDENCE / 06", "Inspect retained request evidence, recorded findings and their relationships."],
     deployment: ["Deployment & access", "INSTANCE SETTINGS / 06", "Set your gateway URL and generate connection details for your applications."],
@@ -54,6 +59,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     el("page-title").textContent = title;
     el("page-eyebrow").textContent = eyebrow;
     el("page-description").textContent = description;
+    el("dashboard-new-application").hidden = name !== "overview";
     document.title = `${title} · GovWeave`;
   }
   function chooseTab(name) {
@@ -74,6 +80,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     });
     window.scrollTo({ top: 0, behavior: "instant" });
     if (name === "evidence") evidence.enter();
+    if (name === "plugins") plugins.enter();
   }
   document.querySelectorAll("[data-tab]").forEach(button => button.addEventListener("click", event => {
     event.preventDefault(); chooseTab(button.dataset.tab);
@@ -400,7 +407,11 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
       if (generation !== requestEpoch || applicationID !== el("requests-app").value) return;
       if (!Array.isArray(view.records) || view.records.length > 100 || applicationID && view.records.some(record => record.application_id !== applicationID)) throw new Error("invalid_request_scope");
       requestSnapshot = view; requestUpdatedAt = new Date(); requestLoadState = "ready";
-      if (!applicationID) { auditSnapshot = view; renderOverview(); }
+      if (!applicationID) {
+        auditSnapshot = view; overviewUpdatedAt = requestUpdatedAt; overviewFailed = false;
+        el("overview-updated").textContent = t("Updated {time}", { time: formatTime(overviewUpdatedAt) });
+        renderOverview();
+      }
     } catch { if (generation === requestEpoch) requestLoadState = "error"; }
     if (generation === requestEpoch) { renderRequestTable(requestSnapshot); return requestLoadState === "ready"; }
   }
@@ -419,21 +430,22 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     const models = state.connections.filter(c => c.enabled), apps = state.applications.filter(a => !a.revoked);
     el("nav-model-count").textContent = state.connections.length;
     el("nav-app-count").textContent = apps.length;
-    el("metric-models").textContent = String(models.length).padStart(2, "0");
-    el("metric-apps").textContent = String(apps.length).padStart(2, "0");
+    el("metric-models").textContent = String(models.length);
+    el("metric-apps").textContent = String(apps.length);
     el("metric-models-note").textContent = t(state.connections.length === 1 ? "{total} connection · {disabled} disabled" : "{total} connections · {disabled} disabled", { total: state.connections.length, disabled: state.connections.length - models.length });
     el("metric-apps-note").textContent = t(state.applications.length === 1 ? "{total} application · {revoked} revoked" : "{total} applications · {revoked} revoked", { total: state.applications.length, revoked: state.applications.length - apps.length });
     el("topology-app-count").textContent = t("{count} ACTIVE", { count: apps.length });
     el("topology-model-count").textContent = t("{count} ENABLED", { count: models.length });
     topologyNodes("topology-apps", apps, "app"); topologyNodes("topology-models", models, "model");
+    dashboard.render(auditSnapshot, overviewUpdatedAt, overviewFailed);
     if (!auditSnapshot) return;
     const matches = auditSnapshot.records.filter(record => reviewRequest(record).matched).length;
     el("overview-review").hidden = matches === 0;
     el("overview-review-count").textContent = t("{count} requests have recorded matches", { count: matches });
     const chats = auditSnapshot.records.filter(r => r.operation === "chat.completions");
     const issues = chats.filter(r => ["failed", "blocked", "rejected"].includes(r.outcome)).length;
-    el("metric-requests").textContent = String(chats.length).padStart(2, "0");
-    el("metric-issues").textContent = String(issues).padStart(2, "0");
+    el("metric-requests").textContent = String(chats.length);
+    el("metric-issues").textContent = String(issues);
     el("metric-issues").classList.toggle("has-issues", issues > 0);
     el("metric-issues-note").textContent = auditSnapshot.available ? t("{completed} completed · {cancelled} cancelled", { completed: chats.filter(r => r.outcome === "completed").length, cancelled: chats.filter(r => r.outcome === "cancelled").length }) : t("Logging unavailable · New requests stopped");
     const list = el("overview-records"); list.replaceChildren();
@@ -448,7 +460,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
       description.append(node("strong", applicationName(record)), node("small", `${formatTime(record.started_at)} / ${t(operationNames[record.operation] || record.operation)}`));
       const inspect = action(`${t(outcomes[record.outcome] || record.outcome)} ↗`, async () => inspectRequest(record));
       inspect.className = `text-button capability ${statusClass(record)}`;
-      row.append(node("span", issue ? "!" : "↗", `activity-mark${issue ? " issue" : ""}`), description, node("code", record.model || "—", "recent-model"), inspect, node("span", `${record.duration_ms} ms`, "recent-duration"));
+      row.append(node("span", issue ? "!" : "↗", `activity-mark${issue ? " issue" : ""}`), description, inspect, node("code", record.model || "—", "recent-model"), node("span", `${record.duration_ms} ms`, "recent-duration"));
       list.append(row);
     }
   }
@@ -465,6 +477,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     }
   }
   function renderOverviewFailure() {
+    dashboard.render(null, null, true);
     el("overview-review").hidden = true;
     el("metric-requests").textContent = el("metric-issues").textContent = "—";
     el("overview-updated").textContent = t("Could not load request records");
@@ -492,6 +505,14 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
   });
   el("new-connection").addEventListener("click", openConnection);
   el("new-application").addEventListener("click", openApplication);
+  el("dashboard-new-application").addEventListener("click", openApplication);
+  el("console-search-form").addEventListener("submit", event => {
+    event.preventDefault();
+    if (!getInstance()) return;
+    chooseTab("requests"); el("requests-app").value = ""; resetRequestFilters();
+    el("request-search").value = el("console-search").value.trim();
+    loadRequests(); el("request-search").focus();
+  });
   el("connection-editor").addEventListener("close", resetConnection);
   el("application-editor").addEventListener("close", resetApplication);
   el("connection-search").addEventListener("input", renderConnections);
@@ -516,6 +537,7 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     if (!getInstance()) { document.title = t("GovWeave · Enterprise AI Gateway"); return; }
     renderHeading(activePage);
     policies.relocalize();
+    plugins.relocalize();
     evidence.relocalize();
     renderEvidenceReturn();
     renderConnections(); renderApplications();
@@ -542,10 +564,12 @@ export function createGatewayConsole({ request, notice, copy, getInstance }) {
     requestEpoch++; requestLoadState = "idle"; requestUpdatedAt = null; resetRequestFilters();
     evidenceOrigin = null; renderEvidenceReturn(); el("overview-review").hidden = true;
     policies.reset();
+    plugins.reset();
     state = { connections: [], applications: [] }; editingConnection = editingApplication = null; auditSnapshot = requestSnapshot = inspectedRequest = null;
     overviewUpdatedAt = null; overviewFailed = false;
+    dashboard.reset();
     for (const id of ["connection-editor", "application-editor", "request-detail"]) { if (el(id).open) el(id).close(); }
-    el("connection-search").value = el("application-search").value = "";
+    el("connection-search").value = el("application-search").value = el("console-search").value = "";
     showKey(""); resetConnection(); resetApplication(); renderConnections(); renderApplications();
     el("request-list").replaceChildren(); el("overview-records").replaceChildren();
     for (const id of ["metric-models", "metric-apps", "metric-requests", "metric-issues", "nav-model-count", "nav-app-count"]) el(id).textContent = "—";

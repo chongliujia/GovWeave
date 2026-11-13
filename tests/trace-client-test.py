@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "examples/python"))
 from govweave_tools import GovernedToolClient, ToolCallError
 from govweave_agent import KnowledgeAgent
-from govweave_tracing import TraceContext, invoke_traced_tool, run_traced_agent
+from govweave_tracing import TraceContext, invoke_traced_tool, run_traced_agent, run_stateful_traced_agent
 
 KEY = "gw_app_" + "A" * 43
 REQUEST_ID = "req_" + "B" * 22
@@ -74,6 +74,57 @@ def agent():
 
 
 class TraceClientTests(unittest.TestCase):
+    def test_stateful_agent_preserves_closure_budget_and_restores_transport(self):
+        class StatefulAgent(KnowledgeAgent):
+            def __init__(self):
+                super().__init__("https://gateway.example", KEY, "model", "support", {"guide": "Synthetic guide"})
+                self.calls = 0
+                self.reads = 0
+                execute = self.tool.execute
+
+                def tracked(arguments):
+                    self.reads += 1
+                    return execute(arguments)
+
+                self.tool.execute = tracked
+
+            def _chat(self, messages, event):
+                self.calls += 1
+                if self.calls > 2:
+                    raise ToolCallError("model_call_budget")
+                return super()._chat(messages, event)
+
+        instance = StatefulAgent()
+        original = instance.tool._opener = Mock()
+        original.open.side_effect = [Response(model_response(), span="1" * 16), Response(envelope(), span="2" * 16), Response(model_response(True), span="3" * 16)]
+        result = run_stateful_traced_agent(instance, "Private question", TraceContext(TRACE))
+        self.assertEqual((result.status, instance.calls, instance.reads), ("completed", 2, 1))
+        self.assertEqual([event["span_id"] for event in result.events], [str(number) * 16 for number in (1, 2, 3)])
+        for index, call in enumerate(original.open.call_args_list):
+            headers = dict((name.lower(), value) for name, value in call.args[0].header_items())
+            self.assertEqual(headers["x-govweave-trace-id"], TRACE)
+            self.assertEqual(headers.get("x-govweave-parent-span-id", ""), str(index) * 16 if index else "")
+        self.assertIs(instance.tool._opener, original)
+        self.assertNotIn("Private question", json.dumps(result.metadata()))
+        self.assertNotIn(TEXT, json.dumps(result.metadata()))
+        limited = run_stateful_traced_agent(instance, "Another question", TraceContext(TRACE))
+        self.assertEqual(limited.reason, "model_call_budget")
+        self.assertEqual(original.open.call_count, 3)
+        self.assertNotIn("span_id", limited.events[0])
+        self.assertIs(instance.tool._opener, original)
+        with self.assertRaises(ToolCallError):
+            run_stateful_traced_agent(instance, "", TraceContext(TRACE))
+        self.assertIs(instance.tool._opener, original)
+
+    def test_stateful_agent_invalid_receipt_never_falls_back(self):
+        instance = agent()
+        original = instance.tool._opener
+        original.open.return_value = Response(model_response(True), trace="c" * 32)
+        result = run_stateful_traced_agent(instance, "Synthetic question", TraceContext(TRACE))
+        self.assertEqual(result.reason, "invalid_trace_receipt")
+        self.assertEqual(original.open.call_count, 1)
+        self.assertIs(instance.tool._opener, original)
+
     def test_invalid_identifiers_and_mutable_links_rejected_before_network(self):
         c = client()
         for bad in ("", "0" * 32, "A" * 32, "a" * 31, "a" * 33, "a" * 32 + "\n", None, 12):

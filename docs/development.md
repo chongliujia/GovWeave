@@ -36,6 +36,10 @@ Use a separate data directory and unused port when running a development instanc
 
 ## Repository map
 
+The overview uses `dashboard.js` and `dashboard.css` for its light dashboard layout, sampled request chart, and review queue. It defaults to English and remembers an explicit Simplified Chinese selection. The chart uses only the latest 100 returned audit records, not token accounting or complete traffic history. Range/model filters do not fetch additional history; empty intervals are not proof of zero traffic. Missing records remain unavailable, and matches are not severity or legal-compliance judgments.
+
+Run `node tests/dashboard-test.cjs` for dependency-free aggregation, boundary, review and translation checks (also included in `make check`). With the optional Playwright/Chrome dependencies below, run `node tests/dashboard-smoke.cjs` to check the actual console assets against **synthetic local API fixtures**, including English-first startup, remembered language, chart filters, search, inspection, sign-out clearing, failure/empty states and 360–1600px layouts. Screenshots go to `dist/dashboard-smoke/`. This frontend-only check does not require Go and does not replace backend, authentication or persistence tests. Rebuild the Go binary to serve changed embedded assets.
+
 | Path | Responsibility |
 | --- | --- |
 | `cmd/govweave/` | CLI flags, startup, instance lock, and shutdown |

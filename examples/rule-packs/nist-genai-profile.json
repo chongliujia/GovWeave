@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "id": "nist-genai-profile",
+  "version": "0.1.0",
+  "name": "US NIST AI 600-1: GenAI / 生成式 AI 风险 (draft)",
+  "description": "Voluntary GenAI profile subset: grounded output checks, red teaming, provenance and human review. Complements, rather than replaces, the existing AI RMF lifecycle pack.",
+  "framework_kind": "voluntary_framework",
+  "review": {"status": "draft"},
+  "sources": [{"title": "NIST AI 600-1 Generative Artificial Intelligence Profile", "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf", "version": "July 2024", "checked_on": "2026-11-13"}],
+  "limitations": [
+    "Voluntary, unreviewed partial mapping; not US law, NIST certification or complete coverage of the profile's risk categories and suggested actions.",
+    "Tests and documents must be supplied. No fact is produced merely by installing this pack; no detector can establish absence of hallucination, bias or privacy risk.",
+    "Booleans assert availability of evidence, not independently verified quality or test success. Scope remains a human judgment. The 30-day freshness interval is local assurance policy, not a NIST mandate."
+  ],
+  "controls": [
+    {"id": "GAI-SCOPE", "title": "Review GenAI scope and risk priorities", "citation": "NIST AI 600-1 section 1; profile tailoring", "severity": "medium", "assessment_method": "manual", "basis": "supporting_practice", "requirement": {"fact": "genai.scope_review_recorded", "operator": "eq", "value": true, "source": "document"}, "remediation": "Document use cases and selected risks; justify omitted risk areas."},
+    {"id": "GAI-GROUNDING", "title": "Output citation checks recorded", "citation": "MS-2.5-003; partial evidence support", "severity": "high", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.genai_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "genai.citation_checks_recorded", "operator": "eq", "value": true, "source": "assessment", "max_age_seconds": 2592000}, "remediation": "Retain sampled output/source checks and failure analysis."},
+    {"id": "GAI-REDTEAM", "title": "GenAI red-team evidence recorded", "citation": "MS-2.7-007; partial evidence support", "severity": "high", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.genai_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "genai.redteam_recorded", "operator": "eq", "value": true, "source": "assessment", "max_age_seconds": 2592000}, "remediation": "Reference injection, extraction and misuse tests with versioned results."},
+    {"id": "GAI-PROVENANCE", "title": "Training and evaluation provenance recorded", "citation": "MS-2.5-005; partial evidence support", "severity": "medium", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.genai_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "genai.provenance_recorded", "operator": "eq", "value": true, "source": "document", "max_age_seconds": 2592000}, "remediation": "Reference provenance and retrieval-data grounding records."},
+    {"id": "GAI-LIMITS", "title": "Review measurement limits", "citation": "MS-2.5-001", "severity": "high", "assessment_method": "manual", "basis": "supporting_practice", "applies_when": {"fact": "scope.genai_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "genai.measurement_limits_reviewed", "operator": "eq", "value": true, "source": "document"}, "remediation": "Review representativeness before generalising test results."}
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "eu-gdpr-ai",
+  "version": "0.1.0",
+  "name": "EU GDPR: AI data protection / AI 数据保护 (draft)",
+  "description": "Selected AI processing accountability evidence and manual privacy review. Redaction does not establish lawful processing or anonymous data.",
+  "framework_kind": "law",
+  "review": {"status": "draft"},
+  "sources": [
+    {"title": "GDPR, Regulation (EU) 2016/679", "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj/eng/", "version": "2016/679; selected Articles 5, 6, 9, 22, 35", "checked_on": "2026-11-13"},
+    {"title": "EDPB Opinion 28/2024 on AI models", "url": "https://www.edpb.europa.eu/system/files/documents/2024-12/edpb_opinion_202428_ai-models_en.pdf", "version": "28/2024, adopted 2024-12-17", "checked_on": "2026-11-13"},
+    {"title": "EDPB small business guide: Be compliant", "url": "https://www.edpb.europa.eu/sme/be-compliant/be-compliant_en", "version": "Public guidance checked 2026-11-13", "checked_on": "2026-11-13"}
+  ],
+  "limitations": [
+    "Unreviewed selected EU GDPR controls; not full GDPR, UK GDPR, national law or sectoral compliance.",
+    "Scope and conditional DPIA/automated-decision triggers are assessment assertions requiring qualified review. Missing triggers remain unknown; a false assertion is not a legal exemption.",
+    "Evidence booleans do not independently verify documents, lawful basis, anonymity or data-subject safeguards. The 30-day freshness limit is local assurance policy, not a statutory retention period.",
+    "Does not cover all transparency notices, rights, processor contracts, transfers, breach notification or supervisory consultation. Do not use a detector result as proof of consent, anonymity or legality."
+  ],
+  "controls": [
+    {"id": "GDPR-SCOPE", "title": "Review processing scope and conditional triggers", "citation": "Arts. 2-3, 22, 35; scope assurance", "severity": "high", "assessment_method": "manual", "basis": "supporting_practice", "requirement": {"fact": "gdpr.scope_review_recorded", "operator": "eq", "value": true, "source": "document"}, "remediation": "Document territorial scope, controller/processor roles, personal-data processing and DPIA/automated-decision triggers."},
+    {"id": "GDPR-INVENTORY", "title": "AI processing inventory available", "citation": "Art. 5(2); supporting accountability record", "severity": "medium", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.eu_gdpr_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "gdpr.processing_inventory_available", "operator": "eq", "value": true, "source": "document", "max_age_seconds": 2592000}, "remediation": "Reference purposes, data categories, recipients and retention for training and inference."},
+    {"id": "GDPR-MINIMISATION", "title": "Minimisation assessment record available", "citation": "Art. 5(1)(c), (e); evidence support", "severity": "high", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.eu_gdpr_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "gdpr.minimisation_assessment_available", "operator": "eq", "value": true, "source": "assessment", "max_age_seconds": 2592000}, "remediation": "Record necessity and retention tests; include residual leakage and detector limitations where used."},
+    {"id": "GDPR-LAWFULNESS", "title": "Review legal basis and personal-data status", "citation": "Arts. 6, 9; EDPB Opinion 28/2024", "severity": "high", "assessment_method": "manual", "basis": "legal_obligation", "applies_when": {"fact": "scope.eu_gdpr_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "gdpr.lawfulness_review_recorded", "operator": "eq", "value": true, "source": "document"}, "remediation": "Review each processing purpose, lawful basis, special-category conditions and any anonymity claim."},
+    {"id": "GDPR-DPIA", "title": "Review DPIA when required", "citation": "Art. 35", "severity": "high", "assessment_method": "manual", "basis": "legal_obligation", "applies_when": {"all": [{"fact": "scope.eu_gdpr_in_scope", "operator": "eq", "value": true, "source": "assessment"}, {"fact": "scope.gdpr_dpia_required", "operator": "eq", "value": true, "source": "assessment"}]}, "requirement": {"fact": "gdpr.dpia_review_recorded", "operator": "eq", "value": true, "source": "document"}, "remediation": "Review the impact assessment before the relevant processing, including residual risks and consultation needs."},
+    {"id": "GDPR-ADM", "title": "Review significant solely automated decisions", "citation": "Art. 22", "severity": "high", "assessment_method": "manual", "basis": "legal_obligation", "applies_when": {"all": [{"fact": "scope.eu_gdpr_in_scope", "operator": "eq", "value": true, "source": "assessment"}, {"fact": "scope.gdpr_article22_relevant", "operator": "eq", "value": true, "source": "assessment"}]}, "requirement": {"fact": "gdpr.automated_decision_review_recorded", "operator": "eq", "value": true, "source": "document"}, "remediation": "Review applicability, permitted exceptions and safeguards including meaningful human intervention where required."}
+  ]
+}

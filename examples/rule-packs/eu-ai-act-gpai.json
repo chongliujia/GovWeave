@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "id": "eu-ai-act-gpai",
+  "version": "0.1.0",
+  "name": "EU AI Act: GPAI provider / 通用模型提供者 (draft)",
+  "description": "Selected Article 53 evidence requests for GPAI model providers, not ordinary downstream API customers. A reviewer must establish scope and transitional dates first.",
+  "framework_kind": "law",
+  "review": {"status": "draft"},
+  "sources": [
+    {"title": "EU AI Act Article 53", "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-53", "version": "Consolidated text as at 2026-07-27", "checked_on": "2026-11-13"},
+    {"title": "European Commission implementation timeline", "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/eu-ai-act-implementation-timeline", "version": "Timeline checked 2026-11-13", "checked_on": "2026-11-13"}
+  ],
+  "limitations": [
+    "Unreviewed subset, not full Article 53, Article 55 systemic-risk compliance, Code of Practice adherence or certification.",
+    "Review model-provider status, market placement date, transitional rules and open-source exceptions; scope.eu_gpai_in_scope refers to the selected Article 53 requirements after that review, not just presence of an LLM.",
+    "Documentation exceptions differ from copyright and training-summary obligations. Do not set a global false scope solely because a model is open source; review excluded documentation controls separately.",
+    "Evidence availability is not legal adequacy. All booleans are supplied claims and documents are not fetched or independently verified. The 30-day freshness interval is local assurance policy, not a legal deadline."
+  ],
+  "controls": [
+    {"id": "GPAI-SCOPE", "title": "Review role, exceptions and transition", "citation": "Art. 53(2); implementation timeline; scope assurance", "severity": "high", "assessment_method": "manual", "basis": "supporting_practice", "requirement": {"fact": "gpai.scope_review_recorded", "operator": "eq", "value": true, "source": "document"}, "remediation": "Record applicability and deadlines, plus separate documentation-exemption and systemic-risk decisions."},
+    {"id": "GPAI-DOCS", "title": "Model documentation record available", "citation": "Art. 53(1)(a)-(b), (2); evidence support", "severity": "medium", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"all": [{"fact": "scope.eu_gpai_in_scope", "operator": "eq", "value": true, "source": "assessment"}, {"fact": "scope.gpai_documentation_required", "operator": "eq", "value": true, "source": "assessment"}]}, "requirement": {"fact": "gpai.documentation_available", "operator": "eq", "value": true, "source": "document", "max_age_seconds": 2592000}, "remediation": "Reference model documentation and downstream information; separately review Annex XI/XII adequacy."},
+    {"id": "GPAI-COPYRIGHT", "title": "Copyright policy record available", "citation": "Art. 53(1)(c); evidence support", "severity": "high", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.eu_gpai_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "gpai.copyright_policy_available", "operator": "eq", "value": true, "source": "document", "max_age_seconds": 2592000}, "remediation": "Reference the copyright policy and rights-reservation process."},
+    {"id": "GPAI-SUMMARY", "title": "Training-content summary publication recorded", "citation": "Art. 53(1)(d); evidence support", "severity": "medium", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.eu_gpai_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "gpai.training_summary_publication_recorded", "operator": "eq", "value": true, "source": "assessment", "max_age_seconds": 2592000}, "remediation": "Retain publication evidence for the training-content summary."},
+    {"id": "GPAI-ADEQUACY", "title": "Review substantive Article 53 adequacy", "citation": "Art. 53(1)-(2)", "severity": "high", "assessment_method": "manual", "basis": "legal_obligation", "applies_when": {"fact": "scope.eu_gpai_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "gpai.adequacy_review_recorded", "operator": "eq", "value": true, "source": "document"}, "remediation": "Have qualified reviewers assess documents, copyright measures and the official summary template; do not infer compliance from file presence."}
+  ]
+}

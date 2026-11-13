@@ -69,3 +69,16 @@ func TestCompliancePluginAPI(t *testing.T) {
 		t.Fatalf("unexpected evaluation: %s", w.Body.String())
 	}
 }
+
+func TestCoverageRequiresAdministrator(t *testing.T) {
+	handler := handler(t)
+	path := "/api/v1/compliance/products/absent/coverage"
+	for _, key := range []string{"", "gw_app_synthetic-key"} {
+		if invoke(handler, "GET", path, "", key, nil).Code != 401 {
+			t.Fatal("coverage must require administrator authentication")
+		}
+	}
+	if invoke(handler, "GET", path, "", testPassword, nil).Code != 404 {
+		t.Fatal("missing product must not return an empty coverage report")
+	}
+}

@@ -8,9 +8,33 @@
 
 **当前为 0.2.0-dev 预览版**，采用单进程、单组织部署，尚不是完整的 GRC 平台或法律合规认证服务。
 
+**语言：** 控制台和主文档默认使用英文。可通过控制台语言选择器切换简体中文，浏览器会记住选择；文档语言通过页面顶部链接切换。
+
 接入自己的应用请从[应用接入指南](docs/zh-CN/application-onboarding.md)开始：启动网关、配置模型、创建应用密钥，再复制 BASE URL 和模型别名。“部署与接入”页面支持选择模型、生成非流式 Python/cURL 示例、仅检查本机配置，以及显式发送一次测试请求并核对审计记录。
 
 [风险证据](docs/zh-CN/risk-evidence.md)将调用、采集内容、策略快照和检测发现关联起来。按应用显式启用的加密留存支持 JSON 响应及有界 SSE 帧证据，提供内容访问审计和应用范围内的关系图。普通调用日志仍只存元数据；归档产品报告保存运行统计对应的具体样本记录。
+
+## 界面截图
+
+以下为隔离本机测试中使用**合成数据**拍摄的实际控制台截图，不是正式业务流量或合规结论。截图来源和更新方式见[截图说明](docs/zh-CN/screenshots.md)。
+
+### 网关运行总览
+
+查看请求活动和待复核项目；这里展示切换为简体中文后的界面。
+
+![中文网关运行总览：合成请求活动和待复核项目](docs/screenshots/overview-zh.png)
+
+### 本地脱敏预览
+
+保存策略前，用合成文本试测检测器草稿；预览不会改变运行时保护。
+
+![中文插件中心：合成邮箱的脱敏预览](docs/screenshots/redaction-preview-zh.png)
+
+### 系统流量覆盖
+
+区分运行调用与主动探针，明确展示尚未验证的系统边界，不将局部观察解释为全系统覆盖。
+
+![中文产品覆盖面板：授权路径、独立探针计数和未验证通道](docs/screenshots/system-coverage-zh.png)
 
 ## 当前可以做什么
 
@@ -24,6 +48,9 @@
 - 提供[敏感文本检测与输出保护](docs/zh-CN/sensitive-output.md)：独立应用检测 API，以及按应用启用的非流式模型回答／工具输出观察、阻断与复检后脱敏返回，共用有界的凭证、邮箱与中国大陆手机号检测器；可显式选择 v2/v3 的有限格式归一化与编码检测，保留旧版本及冻结测量。
 - 运行时策略中心可按应用和模型范围检查请求中的私钥标记及部分 API 密钥样式；默认关闭，支持观察与阻断。每次保存保留不可变快照，可按调用记录中的版本追溯配置。
 - 通用合规评估引擎可加载本地 JSON 规则包，通过管理 API 判断技术控制项是否满足；登记产品后可自动采集网关配置和有界调用样本并重评，不附带已审核法规包。见[规则包与评估](docs/zh-CN/compliance-engine.md)。
+- 提供[插件中心](docs/zh-CN/plugin-center.md)：选择已安装框架／规则包版本、绑定产品应用、配置检测与脱敏，并查看逐项证据及模型测试历史。
+- 提供[欧美首批规则包](docs/zh-CN/eu-us-compliance-bundle.md)：八个固定版本的局部草案包，涉及 EU AI Act 准备度、GDPR 证据、NIST 框架、FTC 声明证据及技术输出控制；需显式安装，不代表完整或已审核法规覆盖。
+- 提供[系统流量覆盖视图](docs/zh-CN/system-gateway-pilot.md)：只读查看产品授权路径与有界调用样本，区分主动探针，并明确显示应用边界和绕行路径尚未验证。
 - 提供[欧盟 AI 客服透明度草案](docs/zh-CN/eu-transparency-reports.md)，区分控制缺口、证据缺口和人工复核；可显式保存独立报告快照及历史重放，数值运行事实引用实际参与计数的样本请求。
 - 提供[已知合成标记检测与效果测量](docs/zh-CN/canary-validation.md)，支持有限编码识别，并保留冻结样本中的误报、漏报和未知结果；可用[效果与成本回测](docs/zh-CN/canary-benchmark.md)比较检测阶段的增益与本机耗时，或用[检测器插件与分流回放](docs/zh-CN/detector-routing.md)验证快慢路径；真实模型效果尚未验证。
 - 提供[主动测评](docs/zh-CN/active-assessments.md)：版本化测试包、部署前测试、显式开启的运行期复测和部分 NIST 生命周期证据；可明确开启独立私有测试回答留存。
@@ -78,6 +105,34 @@ curl --fail-with-body "${GOVWEAVE_BASE_URL%/}/chat/completions" \
 ```
 
 Python SDK 示例、流式调用及工具执行边界见[模型与应用接入指南](docs/zh-CN/model-gateway.md)。
+
+## 配置控制与合规证据
+
+应用和 SDK 使用 **GovWeave 的 `/v1` BASE URL、应用密钥和已授权模型别名**，上游地址与凭证留在网关连接配置中。例如硅基流动的上游地址填写 `https://api.siliconflow.cn/v1`，不要填写 `/v1/chat/completions`；`GET /models` 检查成功不等于推理验证成功。
+
+1. 配置模型授权及适用范围内的运行时策略。输入凭证阻断与敏感输出脱敏是独立控制；选择框架不会自动启用执行策略。
+2. 在 **插件中心 → 合规框架／规则包** 选择已安装版本，创建并保存产品，绑定应用。当前每个产品选择一个规则包。
+3. 评估产品，逐项查看证据、缺口及人工复核要求。缺少组织材料不会自动通过；需要保留测评证据时，显式归档报告。
+4. 通过 **模型测试与留存历史** 创建主动测评，按需显式开启周期复测。普通应用调用显示在请求审计中，不会自动创建主动测试任务。
+5. 刷新 **系统流量覆盖**，比较授权配置与观察记录。样本来自全局最近 100 条记录，再按产品过滤，不是流量覆盖率或完整长期历史。
+
+详见[插件中心指南](docs/zh-CN/plugin-center.md)和[系统级网关试点](docs/zh-CN/system-gateway-pilot.md)。仅修改模型客户端 BASE URL，不会让应用输入／最终输出、RAG 检索或 Agent 交接全部经过网关；这些路径需要单独接入及防绕行控制。当前输入保护检查凭证样式，不是通用输入个人信息脱敏。
+
+## 正式网关联调实测
+
+**2026-11-13 23:04:04–23:04:11（Asia/Shanghai；UTC 15:04:04–15:04:11）**，三条合成、非流式应用请求经过已有 Docker 部署的 GovWeave 实例，上游配置为硅基流动 `Qwen/Qwen3.8-27B`。输入策略为 `block`（修订 2），输出策略为 `redact`（修订 1），检测器为 `sensitive-text-v1`。
+
+| 用例 | 观察结果 | 是否尝试调用上游 | 客户端耗时 |
+| --- | --- | --- | --- |
+| 普通固定回答请求 | HTTP 200，回答与预期一致 | 是 | 2,754 ms |
+| 合成邮箱回显 | HTTP 200，已脱敏；回答和推理文本均未出现原标记 | 是 | 3,577 ms |
+| 输入包含合成凭证 | HTTP 403，`policy_blocked`；访问上游前阻断 | 否 | 4 ms |
+
+三条应用范围内的 trace 查询均读回已结束审计记录。同日 22:56 的较早一轮在输入检查关闭、输出脱敏开启时，也验证了合成凭证的**输出脱敏**。后一轮的输入阻断请求没有输出可检查，`output_unavailable` 不表示发生泄露。
+
+已核实保存的产品绑定了对应应用，并选择 `sensitive-output-governance` 版本 `1.1.0`。**未读取管理员测评报告结果**，不能据此宣称框架通过。这些是普通应用接口上的合成请求，不是主动测评任务，也不是已核实的终端用户流量。单次耗时不是性能基准或 SLA；本轮正式联调没有测试 RAG、工具或多 Agent 路径。
+
+仓库仅记录脱敏后的结果摘要；私有报告保留在被忽略的 `dist/` 下（`formal-gateway-smoke-20261113T145606Z.json`、`formal-gateway-smoke-20261113T150404Z.json`），不随仓库分发，不包含密钥或原始请求／响应正文。这些结果与[隔离环境中的欧美规则包和模型试验](docs/zh-CN/eu-us-compliance-bundle.md)分开，两者均不构成法律合规认证。
 
 ## 查看风险证据
 
@@ -163,6 +218,9 @@ make package
 - [风险证据、SSE 留存与内容访问审计](docs/zh-CN/risk-evidence.md)
 - [异构 Agent 追踪与关联边界](docs/zh-CN/agent-tracing.md)
 - [产品评估与报告证据](docs/zh-CN/product-assessments.md)
+- [插件中心与配置流程](docs/zh-CN/plugin-center.md)
+- [欧美首批规则包及隔离测试结果](docs/zh-CN/eu-us-compliance-bundle.md)
+- [系统级网关覆盖与可追踪知识库试点](docs/zh-CN/system-gateway-pilot.md)
 - [部署 Schema](schemas/deployment.schema.json)、[实例更新 Schema](schemas/instance.schema.json)、[连接与应用 Schema](schemas/gateway.schema.json)、[策略状态 Schema](schemas/policies.schema.json)
 - [OpenAPI 契约](api/openapi.yaml)
 

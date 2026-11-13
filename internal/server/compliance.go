@@ -9,6 +9,18 @@ import (
 )
 
 func (s *Server) registerCompliance(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/v1/compliance/products/{id}/coverage", s.authorize(func(w http.ResponseWriter, r *http.Request) {
+		coverage, err := s.governance.Coverage(r.PathValue("id"))
+		if errors.Is(err, governance.ErrSnapshotChanged) {
+			apiError(w, 429, "assessment_busy", err.Error())
+			return
+		}
+		if err != nil {
+			gatewayError(w, err)
+			return
+		}
+		writeJSON(w, 200, coverage)
+	}))
 	mux.HandleFunc("GET /api/v1/compliance/packs/{id}/versions/{version}", s.authorize(func(w http.ResponseWriter, r *http.Request) {
 		pack, err := s.compliance.PackSnapshot(r.PathValue("id"), r.PathValue("version"))
 		if errors.Is(err, compliance.ErrPackNotFound) {

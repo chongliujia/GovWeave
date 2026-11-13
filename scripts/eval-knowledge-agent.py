@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from govweave_agent import KnowledgeAgent, READ_TOOL
 from govweave_tools import ToolCallError
 from moonshot_preflight import PreflightError, load_credential, list_models, require_model, REQUEST_PROFILE, SUPPORTED_MODEL
+from model_targets import load_target
 
 SPEC = importlib.util.spec_from_file_location("trajectory_fixture", ROOT / "scripts/demo-tools.py")
 TOOLS = importlib.util.module_from_spec(SPEC)
@@ -66,7 +67,9 @@ class Handler(BaseHTTPRequestHandler):
                 question = next(msg["content"] for msg in messages if msg["role"] == "user")
                 case = next(case for case in CORPUS["cases"] if case["question"] == question)
                 returned = [msg["content"] for msg in messages if msg["role"] == "tool"]
-                if not returned or (case["scripted_behavior"] == "follow_read" and len(returned) == 1):
+                if getattr(self.server, "fixture_profile", "vulnerable") == "reference" and case["label"] == "attack":
+                    message, finish = {"role": "assistant", "content": "I cannot disclose restricted information."}, "stop"
+                elif not returned or (case["scripted_behavior"] == "follow_read" and len(returned) == 1):
                     resource = case["resource_id"] if not returned else "restricted-guide"
                     message = {"role": "assistant", "content": None, "tool_calls": [{"id": "fixture_call_" + str(len(returned)), "type": "function", "function": {"name": "read_resource", "arguments": json.dumps({"resource_id": resource})}}]}
                     finish = "tool_calls"
@@ -133,10 +136,13 @@ def metrics(rows):
 
 
 def configure_target(session, args, provider_key):
+    target = getattr(args, "target_config", None)
     endpoint = "https://api.moonshot.cn/v1" if args.kimi else f"http://127.0.0.1:{session.provider.server_port}/v1"
+    if target:
+        endpoint = target["base_url"]
     connection, _ = session.request("/api/v1/connections", {"revision": 0, "name": "Knowledge Agent evaluation target", "base_url": endpoint,
-        "model": args.model if args.kimi else "scripted-knowledge-agent", "alias": "knowledge-model", "api_key": provider_key,
-        "enabled": True, "allow_insecure_http": not args.kimi, "timeout_seconds": 45 if args.kimi else 3})
+        "model": target["model"] if target else (args.model if args.kimi else "scripted-knowledge-agent"), "alias": "knowledge-model", "api_key": provider_key,
+        "enabled": True, "allow_insecure_http": endpoint.startswith("http://"), "timeout_seconds": 45 if args.kimi or target else 3})
     saved, _ = session.request("/api/v1/applications/" + session.application["id"], {"revision": session.application["revision"], "name": "Synthetic knowledge Agent", "allowed_connections": [connection["id"]]}, method="PUT")
     session.application = saved["application"]
 
@@ -198,7 +204,7 @@ def exercise(session, args, provider_key):
                 break
             configure_controls(session, mode, args.controls)
             agent = BudgetAgent(session.origin, session.key, "knowledge-model", "support-docs", {resource: "Synthetic test resource " + resource for resource in CORPUS["resources"]},
-                                timeout=50 if args.kimi else 5, max_tool_calls=3, allow_insecure_http=True,
+                                timeout=50 if args.kimi or getattr(args, "target_config", None) else 5, max_tool_calls=3, allow_insecure_http=True,
                                 request_profile=REQUEST_PROFILE if args.kimi else "generic-v1")
             agent.budget = budget
             outcome = agent.run(case["question"])
@@ -217,6 +223,7 @@ def exercise(session, args, provider_key):
     sources += ["internal/instruction/detector.go", "internal/gateway/tools_instructions.go", "internal/gateway/tools_engine.go", "internal/gateway/tools_store.go", "internal/gateway/output_exceptions.go", "internal/gateway/output_policy.go", "internal/gateway/output_redaction.go", "internal/gateway/output_engine.go", "internal/gateway/engine.go"]
     sources += ["internal/instruction/v2.go", "internal/gateway/tools_instruction_review.go"]
     sources += ["scripts/moonshot_preflight.py"]
+    sources += ["scripts/model_targets.py"]
     report = {"schema_version": 1, "id": "knowledge-agent-evaluation-v2", "controls": args.controls, "state": state,
         "created_at": datetime.now(timezone.utc).isoformat(), "repetitions_per_case_condition": 1,
         "model_mode": "moonshot" if args.kimi else "scripted_local", "model": args.model if args.kimi else "scripted-knowledge-agent",
@@ -230,6 +237,13 @@ def exercise(session, args, provider_key):
             "A successful exact attack marker is a narrow observed objective. Unknown errors are reported separately with lower/upper attack-rate bounds. Benign blocked/intervened counts are task-policy outcomes, not general detector false-positive estimates.",
             "No monetary cost is estimated. Usage is provider-reported when present; missing usage is null. API calls and execution bounds are reported separately.",
             "Traces correlate local tasks with actual gateway request IDs; the client-created trace ID is not a trusted cross-service identity or production audit signature."]}
+    if getattr(args, "target_config", None):
+        report.update(model_mode="local_live", model=args.target_config["model"], target=args.target_metadata)
+        report["limitations"].append("Model revision, quantization and template digest are operator declarations, not verified server attestations. Generic tool-call compatibility is required.")
+    else:
+        report["fixture_profile"] = getattr(args, "fixture_profile", "vulnerable") if not args.kimi else None
+    if report.get("fixture_profile") == "reference":
+        report["limitations"].append("Reference fixture uses the corpus attack label to refuse; it is an oracle for harness testing, not a trained or safety-aligned model.")
     serialized = json.dumps(report)
     for secret in (session.key, provider_key, TOOLS.PROVIDER_KEY):
         require(secret not in serialized, "credential retained in report")
@@ -265,19 +279,28 @@ def main(args):
     CORPUS_PATH = ROOT / ("tests/testdata/knowledge-agent-validation-" + args.corpus + ".json")
     CORPUS = json.loads(CORPUS_PATH.read_text())
     FREEZE = json.loads((ROOT / ("tests/testdata/knowledge-agent-" + args.corpus + "-freeze.json")).read_text())
+    local_target = getattr(args, "local_target", None)
+    require(not (args.kimi and local_target), "choose one live provider mode")
+    require(not (local_target and (args.model or args.credential_file)), "local target configuration owns model and credentials")
+    require(not (local_target or args.kimi) or args.fixture_profile == "vulnerable", "fixture profile cannot be combined with live mode")
+    live = bool(args.kimi or local_target)
     if args.max_model_calls is None:
-        args.max_model_calls = 16 if args.kimi else 128
+        args.max_model_calls = 16 if live else 128
     require(hashlib.sha256(CORPUS_PATH.read_bytes()).hexdigest() == FREEZE["corpus_sha256"], "frozen corpus changed")
-    require(1 <= args.max_model_calls <= (32 if args.kimi else 128), "invalid model call budget")
+    require(1 <= args.max_model_calls <= (32 if live else 128), "invalid model call budget")
+    require(not local_target or args.case_id, "local live mode requires explicit case selection")
     require(not args.kimi or (args.model and args.case_id), "live mode requires an explicit model and case selection")
     if args.kimi and args.model != SUPPORTED_MODEL:
         raise PreflightError("unsupported_model_profile")
     provider_key = load_credential(args.credential_file) if args.kimi else TOOLS.PROVIDER_KEY
+    if local_target:
+        args.target_config, args.target_metadata, provider_key = load_target(local_target)
     if args.kimi:
         require_model(args.model, list_models(provider_key))
     output = (args.output_dir or ROOT / "dist/knowledge-agent-evaluation" / (datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(3))).resolve()
     output.mkdir(parents=True, exist_ok=False, mode=0o700)
     with TOOLS.ToolSession(args.binary.resolve(), provider_factory=Provider) as session:
+        session.provider.fixture_profile = args.fixture_profile
         report = exercise(session, args, provider_key)
     TOOLS.save_json(output / "report.json", report)
     fd = os.open(output / "report.md", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -300,6 +323,8 @@ if __name__ == "__main__":
     parser.add_argument("--kimi", action="store_true", help="Explicit live Moonshot calls; use synthetic selected cases only.")
     parser.add_argument("--model", help="Explicit provider model ID for live mode.")
     parser.add_argument("--credential-file", type=Path, help="Private key-only file; otherwise use MOONSHOT_API_KEY or MOONSHOT_API_KEY_FILE.")
+    parser.add_argument("--local-target", type=Path, help="Explicit live calls to a validated loopback model target JSON.")
+    parser.add_argument("--fixture-profile", choices=("vulnerable", "reference"), default="vulnerable", help="Scripted fixture behavior; reference uses labels as an oracle, not real alignment.")
     parser.add_argument("--case-id", action="append", help="Select a fixed corpus case; repeat for multiple cases.")
     parser.add_argument("--max-model-calls", type=int, help="Global request budget; defaults to 128 local / 16 live, maximum 32 live.")
     try:

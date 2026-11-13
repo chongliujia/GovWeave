@@ -8,9 +8,33 @@ Deploy GovWeave on your own infrastructure, connect an OpenAI-compatible model e
 
 **Status: 0.2.0-dev preview.** The current implementation is a single-process, single-organization gateway. It is not a complete GRC platform or a legal compliance certification service.
 
+**Language:** The console and primary documentation default to English. Use the console language selector to switch to Simplified Chinese; the browser remembers your choice. For Chinese documentation, follow the link at the top of this page.
+
 To connect your own application, follow the [application onboarding guide](docs/application-onboarding.md): start the gateway, configure a model, create an application key, then copy its base URL and model alias. Deployment & access now offers model selection, non-streaming Python/cURL examples, a local configuration check and an explicit single-request verification with audit correlation.
 
 [Risk evidence](docs/risk-evidence.md) connects calls, captured content, policy snapshots and recorded findings. Opt-in encrypted capture supports JSON responses and bounded SSE frame evidence, with content-access auditing and application-scoped relationship graphs. Ordinary call logs remain metadata-only; archived product reports retain the exact sampled records behind their runtime counts.
+
+## Screenshots
+
+Actual console screenshots from isolated local tests using **synthetic fixtures**, not production traffic or compliance results. [Screenshot sources and refresh instructions](docs/screenshots/README.md).
+
+### Gateway overview
+
+Review request activity and items needing investigation in the English-default console.
+
+![English gateway overview with synthetic activity and review items](docs/screenshots/overview-en.png)
+
+### Local redaction preview
+
+Try a detector draft against synthetic text before saving a policy. Previewing does not change live enforcement.
+
+![English plugin-center preview showing synthetic email redaction](docs/screenshots/redaction-preview-en.png)
+
+### System traffic coverage
+
+Keep runtime calls separate from assessment probes, and show unverified system boundaries rather than claiming complete coverage.
+
+![English product coverage panel showing routes, separate probes and unverified channels](docs/screenshots/system-coverage-en.png)
 
 ## What works today
 
@@ -23,6 +47,9 @@ To connect your own application, follow the [application onboarding guide](docs/
 | Sensitive output | Version-pinned, bounded credential/email/CN mobile detection, an application evaluation API, and optional non-streaming model/tool blocking or verified redaction; explicit v2/v3 options add limited normalization and encoding checks; see [scope and measurements](docs/sensitive-output.md) |
 | Runtime policies | Local credential checks; disabled, observe, or block; immutable configuration history and revision lookup |
 | Compliance evaluator | Local rule pack plugins, product profiles, gateway evidence and automatic advisory reassessment |
+| Plugin center | Select installed framework/rule-pack versions, bind product applications, configure detectors/redaction, and review control evidence and model-test history; [workflow](docs/plugin-center.md) |
+| EU/US starter bundle | Eight pinned, partial draft packs covering EU AI Act preparation, GDPR evidence, NIST profiles, FTC claims evidence and technical output controls; [scope, installation and isolated results](docs/eu-us-compliance-bundle.md) |
+| System traffic coverage | Read-only product view of granted routes and bounded observed calls, with assessment probes separate and bypass/application boundaries explicitly unverified; [pilot guide](docs/system-gateway-pilot.md) |
 | Report snapshots | Explicit immutable capture, retained rule/evidence inputs, findings and fixed-time replay; numeric runtime facts reference the exact contributing sampled requests |
 | Canary exposure check | Fresh synthetic markers, bounded encoding detection and a frozen-corpus measurement report; see [scope and measured misses](docs/canary-validation.md) and [quality/cost replay](docs/canary-benchmark.md); [detector plugins and routing replay](docs/detector-routing.md) compare fast/deep paths |
 | Active assessment | Versioned test suites, pre-deployment runs, opt-in operation retesting and partial NIST AI RMF lifecycle evidence; see [guide](docs/active-assessments.md) |
@@ -83,6 +110,34 @@ curl --fail-with-body "${GOVWEAVE_BASE_URL%/}/chat/completions" \
 ```
 
 See [application and agent integration](docs/model-gateway.md#application-and-agent-integration) for a Python SDK example, streaming behavior, and the tool execution boundary.
+
+## Configure controls and compliance evidence
+
+Applications and SDKs use **the GovWeave `/v1` base URL, an application key and an authorized model alias**. The upstream provider URL and credential stay in the gateway connection. For example, a SiliconFlow connection uses `https://api.siliconflow.cn/v1`, not `/v1/chat/completions`; a successful `GET /models` check alone does not verify inference.
+
+1. Configure model grants and scoped runtime policies. Input credential blocking and sensitive-output redaction are separate controls; selecting a framework does not enable enforcement.
+2. In **Plugin center → Compliance frameworks / rule packs**, select an installed version, create/save a product and bind its applications. Each product currently selects one rule pack.
+3. Evaluate the product and inspect each control's evidence, gaps and manual-review requirements. Missing organizational facts remain unresolved, not passed. Archive a report explicitly when retained assessment evidence is needed.
+4. Use **Model tests and retained history** for explicit active assessments and opt-in periodic retesting. Ordinary application calls appear in request audit; they do not create active test runs.
+5. Refresh **System traffic coverage** to compare configured routes with observations from the global most recent 100 records filtered to the product. This is not a coverage percentage or complete long-term history.
+
+See the [plugin-center guide](docs/plugin-center.md) and [system gateway pilot](docs/system-gateway-pilot.md). Changing a model client's base URL does not route all application ingress/egress, RAG retrieval or agent handoffs through the gateway. Those paths need separate integration and bypass controls. Input protection currently checks credential patterns, not general input-PII redaction.
+
+## Verified formal-gateway smoke test
+
+On **2026-11-13, 23:04:04–23:04:11 Asia/Shanghai (15:04:04–15:04:11 UTC)**, three synthetic, non-streaming application requests traversed the existing Docker-deployed GovWeave instance with SiliconFlow `Qwen/Qwen3.8-27B` configured upstream. Input policy was `block` (revision 2); output policy was `redact` (revision 1), using `sensitive-text-v1`.
+
+| Case | Observed result | Upstream attempted | Client elapsed time |
+| --- | --- | --- | --- |
+| Benign exact-response request | HTTP 200; expected answer matched | Yes | 2,754 ms |
+| Synthetic email echo | HTTP 200; redacted; original marker absent from answer and reasoning | Yes | 3,577 ms |
+| Synthetic credential in input | HTTP 403, `policy_blocked`; stopped before provider access | No | 4 ms |
+
+All three application-scoped trace queries returned finished audit records. An earlier run at 22:56 Asia/Shanghai, with input checks disabled and output redaction enabled, also verified synthetic credential **output** redaction. The later input-blocked request has no output to inspect; `output_unavailable` is not evidence of a leak.
+
+A saved product's application binding and `sensitive-output-governance` version `1.1.0` selection were verified. **Administrator assessment report results were not read back**, so these runtime checks do not establish a framework pass. They are ordinary synthetic application calls, not active assessment jobs or verified end-user traffic. Single-request timings are not benchmarks or SLAs; RAG, tool and multi-agent paths were not exercised in this formal run.
+
+Sanitized summaries are documented here; private reports remain under ignored `dist/` (`formal-gateway-smoke-20261113T145606Z.json` and `formal-gateway-smoke-20261113T150404Z.json`) and are not distributed with the repository. Credentials and raw request/response bodies are not included. These results are separate from the [isolated EU/US rule-pack and model trials](docs/eu-us-compliance-bundle.md), and neither constitutes legal compliance certification.
 
 ## Inspect risk evidence
 
@@ -150,6 +205,9 @@ No model or test application yet? Run `make demo` for an isolated local support 
 - [Risk evidence, SSE capture and content-access auditing](docs/risk-evidence.md)
 - [Multi-Agent tracing and relationship boundaries](docs/agent-tracing.md)
 - [Product assessments and report evidence](docs/product-assessments.md)
+- [Plugin center and configuration workflow](docs/plugin-center.md)
+- [EU/US starter packs and isolated test results](docs/eu-us-compliance-bundle.md)
+- [System gateway coverage and traced knowledge pilot](docs/system-gateway-pilot.md)
 - [Development and verification](docs/development.md)
 - [Architecture decisions](docs/README.md#architecture-decisions)
 - [OpenAPI contract](api/openapi.yaml) and [JSON schemas](schemas/)

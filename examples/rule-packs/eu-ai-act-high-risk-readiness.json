@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "eu-ai-act-high-risk-readiness",
+  "version": "0.1.0",
+  "name": "EU AI Act: high-risk readiness / 高风险准备度 (draft)",
+  "description": "Selected provider-side readiness evidence for Articles 9, 11 and 14. Available before application deadlines; gaps are preparation gaps, not findings of an applicable legal violation.",
+  "framework_kind": "law",
+  "review": {"status": "draft"},
+  "sources": [
+    {"title": "EU AI Act Article 9", "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-9", "version": "Consolidated text as at 2026-07-27", "checked_on": "2026-11-13"},
+    {"title": "EU AI Act Article 11", "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-11", "version": "Consolidated text as at 2026-07-27", "checked_on": "2026-11-13"},
+    {"title": "EU AI Act Article 14", "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-14", "version": "Consolidated text as at 2026-07-27", "checked_on": "2026-11-13"},
+    {"title": "European Commission implementation timeline", "url": "https://ai-act-service-desk.ec.europa.eu/en/ai-act/eu-ai-act-implementation-timeline", "version": "Timeline checked 2026-11-13", "checked_on": "2026-11-13"}
+  ],
+  "limitations": [
+    "Unreviewed preparation checklist, not full AI Act coverage, conformity assessment, CE marking or deployment approval.",
+    "The Commission timeline checked on 2026-11-13 lists Annex III high-risk rules for 2027-12-02 and Annex I product high-risk rules for 2028-08-02. Individual transitional provisions require legal review.",
+    "No effective_from is set deliberately: this is readiness assessment, not an assertion that future obligations already apply.",
+    "Scope is an assessment assertion, not verified classification. A false scope routes substantive controls out but never passes the unconditional scope review.",
+    "Document and assessment booleans only describe submitted evidence. GovWeave does not read documents or verify their adequacy. The 30-day freshness limit is a local assurance choice, not a statutory deadline.",
+    "Excludes full data governance, quality management, registration, post-market obligations, deployer duties, prohibited practices and GPAI. Human oversight and legal classification remain manual."
+  ],
+  "controls": [
+    {"id": "EUHR-SCOPE", "title": "Review provider scope and applicable dates", "citation": "Arts. 2, 6, 113; implementation timeline; readiness routing", "severity": "high", "assessment_method": "manual", "basis": "supporting_practice", "requirement": {"fact": "euhr.scope_review_recorded", "operator": "eq", "value": true, "source": "document"}, "remediation": "Record role, Annex classification, exemptions, transitional dates and the rationale for scope.euhr_in_scope."},
+    {"id": "EUHR-RISK", "title": "Risk-management record available", "citation": "Art. 9(1)-(2); partial readiness evidence", "severity": "high", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.euhr_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "euhr.risk_record_available", "operator": "eq", "value": true, "source": "document", "max_age_seconds": 2592000}, "remediation": "Supply a version-linked risk register covering intended use and foreseeable misuse."},
+    {"id": "EUHR-TEST", "title": "Pre-market test evidence available", "citation": "Art. 9(6), (8); partial readiness evidence", "severity": "high", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.euhr_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "euhr.test_record_available", "operator": "eq", "value": true, "source": "assessment", "max_age_seconds": 2592000}, "remediation": "Reference tests and predefined metrics for this version; evidence availability is not test adequacy or success."},
+    {"id": "EUHR-DOCS", "title": "Technical documentation available", "citation": "Art. 11; partial readiness evidence", "severity": "medium", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.euhr_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "euhr.technical_documentation_available", "operator": "eq", "value": true, "source": "document", "max_age_seconds": 2592000}, "remediation": "Reference maintained technical documentation; arrange separate Annex IV completeness review."},
+    {"id": "EUHR-OVERSIGHT", "title": "Review effective human oversight", "citation": "Art. 14; readiness review", "severity": "high", "assessment_method": "manual", "basis": "supporting_practice", "applies_when": {"fact": "scope.euhr_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "euhr.oversight_review_recorded", "operator": "eq", "value": true, "source": "document"}, "remediation": "Review whether responsible people can understand limitations, intervene and stop operation safely."}
+  ]
+}

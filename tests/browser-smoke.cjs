@@ -103,7 +103,7 @@ async function main() {
     await login(page);
     await page.locator('.tabs [data-tab="overview"]').click();
     await page.locator('#overview-setup').waitFor({ state: 'visible' });
-    assert.equal(await page.locator('#metric-models').textContent(), '00');
+    assert.equal(await page.locator('#metric-models').textContent(), '0');
     await page.screenshot({ path: path.join(output, 'overview-empty.png'), fullPage: true, animations: 'disabled' });
     await page.locator('.tabs [data-tab="deployment"]').click();
     await page.locator('#organization').fill('GovWeave 演示企业');
@@ -238,10 +238,10 @@ async function main() {
     assert.ok((await page.locator('#sdk-example').textContent()).includes(origin));
     assert.ok(!(await page.locator('#sdk-example').textContent()).includes(rotated));
     await page.locator('.tabs [data-tab="overview"]').click();
-    await page.locator('#metric-requests').filter({ hasText: '03' }).waitFor();
-    assert.equal(await page.locator('#metric-issues').textContent(), '01');
-    assert.equal(await page.locator('#metric-models').textContent(), '01');
-    assert.equal(await page.locator('#metric-apps').textContent(), '01');
+    await page.locator('#metric-requests').filter({ hasText: /^3$/ }).waitFor();
+    assert.equal(await page.locator('#metric-issues').textContent(), '1');
+    assert.equal(await page.locator('#metric-models').textContent(), '1');
+    assert.equal(await page.locator('#metric-apps').textContent(), '1');
     await page.screenshot({ path: path.join(output, 'overview.png'), fullPage: true, animations: 'disabled' });
     await page.locator('#console-language').selectOption('zh-CN');
     assert.equal(await page.locator('#page-title').textContent(), '运行总览');

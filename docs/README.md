@@ -8,6 +8,11 @@ These guides describe **0.2.0-dev**, the implemented single-instance gateway. St
 
 | Task | Guide |
 | --- | --- |
+| View English/Chinese console screenshots and refresh public images | [Console screenshots](screenshots/README.md) |
+| Review the dated formal-gateway smoke results and their limits | [Verified formal-gateway smoke test](../README.md#verified-formal-gateway-smoke-test) |
+| Inspect system coverage gaps and run a traced knowledge-retrieval pilot | [System gateway pilot](system-gateway-pilot.md) |
+| Select installed framework packs and configure runtime detectors in the console | [Plugin center](plugin-center.md) |
+| Install and test the bounded EU / US AI draft bundle | [EU / US compliance bundle](eu-us-compliance-bundle.md) |
 | Connect your own application with a base URL, application key and model alias | [Application onboarding](application-onboarding.md) |
 | Retain encrypted risk evidence, review original/processed output and inspect evidence relationships | [Risk evidence](risk-evidence.md) |
 | Inspect sensitive text and protect non-streaming model/tool output | [Sensitive output](sensitive-output.md) |
@@ -31,6 +36,7 @@ These guides describe **0.2.0-dev**, the implemented single-instance gateway. St
 | Understand streaming, errors, records, and capacity limits | [Model gateway](model-gateway.md#streaming-timeouts-and-errors) |
 | Configure request credential detection and inspect matches | [Runtime policies](runtime-policies.md) |
 | Install declarative rule packs and evaluate product evidence | [Compliance engine](compliance-engine.md) |
+| Plan ISO 42001, NIST and jurisdiction-specific framework integration | [Compliance framework roadmap](compliance-roadmap.md) |
 | Register products and automatically assess gateway evidence | [Product assessments](product-assessments.md) |
 | Review the EU transparency draft and retain/replay reports | [EU draft and report snapshots](eu-transparency-reports.md) |
 | Run pre-deployment and periodic operation tests; inspect NIST lifecycle evidence | [Active assessment](active-assessments.md) |

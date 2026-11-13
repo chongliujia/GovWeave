@@ -109,21 +109,31 @@ validate-routing:
 test:
 	go test -race ./...
 
+.PHONY: test-regional-compliance
+test-regional-compliance: build
+	python3 tests/regional-compliance-smoke.py
+
 check:
 	go vet ./...
 	test -z "$$(gofmt -l cmd internal)"
 	node --check internal/server/web/app.js
 	node --check internal/server/web/gateway.js
+	node --check internal/server/web/dashboard.js
 	node --check internal/server/web/request-review.js
 	node --check internal/server/web/task-map.js
 	node --check internal/server/web/task-map-view.js
 	node --check internal/server/web/integration.js
 	node --check internal/server/web/evidence.js
 	node --check internal/server/web/policies.js
+	node --check internal/server/web/plugins.js
+	node --check internal/server/web/plugin-assessment.js
+	node --check tests/plugins-smoke.cjs
 	node --check internal/server/web/i18n.js
 	node tests/i18n-check.cjs
 	node tests/request-review-test.cjs
 	node tests/task-map-test.cjs
+	node tests/dashboard-test.cjs
+	node tests/plugin-assessment-test.cjs
 
 package:
 	sh scripts/package-offline.sh

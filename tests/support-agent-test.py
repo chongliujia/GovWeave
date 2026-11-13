@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Support application boundaries and evidence semantics; no external calls."""
 import importlib.util
+from email.message import Message
+import io
 import json
 import os
 from pathlib import Path
@@ -8,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 import urllib.error
@@ -28,6 +31,38 @@ T = module("support_trial", "scripts/trial-support-agent.py")
 
 
 class FilesAndIdentity(unittest.TestCase):
+    def test_answer_uses_gateway_trace_and_saves_only_metadata(self):
+        with tempfile.TemporaryDirectory() as folder:
+            trace_path = Path(folder) / "trace.json"
+            args = SimpleNamespace(config=Path(folder) / "config.json", trace=trace_path, json=True,
+                                   trace_id=None, agent_id=None, parent_span_id=None)
+            context = A.TraceContext("a" * 32, agent_id="b" * 16)
+            question, answer, key = "Private synthetic question", "Synthetic final answer", "gw_app_" + "a" * 43
+            response = io.BytesIO(json.dumps({"choices": [{"finish_reason": "stop", "message": {"role": "assistant", "content": answer}}]}).encode())
+            response.status = 200
+            response.headers = Message()
+            for name, value in {"Content-Type": "application/json", "X-Request-ID": "req_" + "c" * 22,
+                                "X-GovWeave-Trace-ID": context.trace_id, "X-GovWeave-Span-ID": "d" * 16}.items():
+                response.headers[name] = value
+            stdout = io.StringIO()
+            with patch.object(A, "load_config", return_value=T.CONFIG), patch.object(A, "credential", return_value=key), \
+                    patch.object(A.TraceContext, "new", return_value=context), \
+                    patch.object(sys, "stdin", SimpleNamespace(buffer=io.BytesIO(question.encode()))), \
+                    patch.object(sys, "stdout", stdout), \
+                    patch("urllib.request.OpenerDirector.open", return_value=response) as opened:
+                self.assertEqual(A.answer(args), 0)
+            metadata = json.loads(trace_path.read_text())
+            self.assertEqual(metadata["trace_id"], context.trace_id)
+            self.assertEqual(metadata["events"][0]["span_id"], "d" * 16)
+            self.assertEqual(metadata["model_calls_reserved"], 1)
+            self.assertEqual(metadata["coverage"]["whole_system_coverage"], "not_established")
+            self.assertEqual(json.loads(stdout.getvalue())["answer"], answer)
+            self.assertEqual(opened.call_count, 1)
+            self.assertEqual(opened.call_args.args[0].full_url, T.CONFIG["gateway_root"].rstrip("/") + "/v1/chat/completions")
+            for secret in (question, answer, key):
+                self.assertNotIn(secret, trace_path.read_text())
+            self.assertEqual(trace_path.stat().st_mode & 0o777, 0o600)
+
     def test_file_snapshot_and_path_boundaries(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

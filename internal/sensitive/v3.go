@@ -13,17 +13,6 @@ const Version3 = "sensitive-text-v3"
 const MaxEncodedTokenBytes = 2048
 const MaxEncodedViews = 32
 
-// Supports and Scan are the extensible registry. The original DetectVersion
-// and SupportedVersion stay byte-for-byte frozen with the v1/v2 implementation.
-func Supports(version string) bool { return SupportedVersion(version) || version == Version3 }
-
-func Scan(input []byte, version string) Result {
-	if version == Version3 {
-		return detectV3(input)
-	}
-	return DetectVersion(input, version)
-}
-
 // Recognize only whole ASCII addresses in paired inline code or strong-markup
 // delimiters, with punctuation/space boundaries. This is not a Markdown parser.
 // The finding covers the address bytes, never the delimiters. Transformed

@@ -104,7 +104,7 @@ async function main() {
     page.on('request', request => { browserRequests.push(request.url()); if (!request.url().startsWith(origin + '/')) failures.push('External request from evidence UI'); });
     await page.goto(origin);
     await page.locator('#dashboard').waitFor({ state: 'visible' });
-    await page.locator('#metric-apps').filter({ hasText: '02' }).waitFor();
+    await page.locator('#metric-apps').filter({ hasText: /^2$/ }).waitFor();
     await page.locator('[data-tab="evidence"]').first().click();
     await page.locator('#evidence-config-panel').evaluate(element => { element.open = true; });
     await page.locator('#evidence-config-status[data-state="ready"]').waitFor();
@@ -285,7 +285,7 @@ async function main() {
     await api('/api/v1/auth/login', { password });
     assert.deepEqual(await api(`${archivePath}${taskScope}`, undefined, 'GET'), taskArchive);
     assert.equal((await api(`/api/v1/evidence/${evidenceID}?application_id=${a.application.id}`, undefined, 'GET')).id, evidenceID);
-    await page.reload(); await page.locator('#metric-apps').filter({ hasText: '02' }).waitFor();
+    await page.reload(); await page.locator('#metric-apps').filter({ hasText: /^2$/ }).waitFor();
     await page.locator('[data-tab="evidence"]').first().click();
     await page.locator('#evidence-app').selectOption(a.application.id);
     await page.locator(`[data-evidence-open="${rid}"]`).click();

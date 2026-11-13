@@ -88,7 +88,7 @@ async function main() {
     });
     await page.goto(origin);
     await page.locator('#dashboard').waitFor({ state: 'visible' });
-    await page.locator('#metric-apps').filter({ hasText: '02' }).waitFor();
+    await page.locator('#metric-apps').filter({ hasText: /^2$/ }).waitFor();
     await page.locator('.tabs [data-tab="deployment"]').click();
     await page.locator('#example-app').selectOption(a.application.id);
     await page.locator('#example-model').selectOption('beta-alias');

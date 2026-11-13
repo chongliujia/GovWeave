@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "us-ftc-ai-claims",
+  "version": "0.1.0",
+  "name": "US FTC: AI claims evidence / AI 宣传证据 (draft)",
+  "description": "Selected advertising-substantiation evidence requests for AI product claims. Enforcement examples inform review; they are not universal technical requirements.",
+  "framework_kind": "regulation",
+  "review": {"status": "draft"},
+  "sources": [
+    {"title": "FTC Policy Statement Regarding Advertising Substantiation", "url": "https://www.ftc.gov/legal-library/browse/ftc-policy-statement-regarding-advertising-substantiation", "version": "1984 policy statement; checked 2026-11-13", "checked_on": "2026-11-13"},
+    {"title": "FTC Workado AI detection claims enforcement announcement", "url": "https://www.ftc.gov/news-events/news/press-releases/2025/04/ftc-order-requires-workado-back-artificial-intelligence-detection-claims", "version": "April 2025 enforcement example", "checked_on": "2026-11-13"}
+  ],
+  "limitations": [
+    "Draft supporting checklist under existing consumer-protection principles, not a standalone US AI Act, complete FTC compliance or legal determination.",
+    "The policy statement explains substantiation principles; a case-specific order is not a general rule for all companies. This pack does not import proposed AI policy statements as binding law.",
+    "Excludes state AI/privacy laws, employment, credit, healthcare, federal procurement and other sectoral rules.",
+    "Evidence availability and assessment booleans are supplied claims, not independent verification. The 30-day freshness limit is local assurance policy, not an FTC-mandated interval."
+  ],
+  "controls": [
+    {"id": "FTC-SCOPE", "title": "Review jurisdiction and advertising context", "citation": "FTC substantiation policy; scope assurance", "severity": "medium", "assessment_method": "manual", "basis": "supporting_practice", "requirement": {"fact": "ftc.scope_review_recorded", "operator": "eq", "value": true, "source": "document"}, "remediation": "Record jurisdiction, audience and the objective claims being assessed."},
+    {"id": "FTC-CLAIMS", "title": "Versioned claims inventory available", "citation": "FTC substantiation policy: reasonable basis; supporting practice", "severity": "medium", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.us_ftc_claims_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "ftc.claims_inventory_available", "operator": "eq", "value": true, "source": "document", "max_age_seconds": 2592000}, "remediation": "Link published AI capability and accuracy claims to the advertised product version."},
+    {"id": "FTC-EVIDENCE", "title": "Pre-publication substantiation record available", "citation": "FTC substantiation policy: prior substantiation; evidence support", "severity": "high", "assessment_method": "evidence", "basis": "supporting_practice", "applies_when": {"fact": "scope.us_ftc_claims_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "ftc.prior_substantiation_recorded", "operator": "eq", "value": true, "source": "assessment", "max_age_seconds": 2592000}, "remediation": "Reference evidence held before dissemination; later tests do not establish prior substantiation."},
+    {"id": "FTC-ADEQUACY", "title": "Review claims and evidentiary adequacy", "citation": "FTC substantiation policy: reasonable basis and prior substantiation", "severity": "high", "assessment_method": "manual", "basis": "legal_obligation", "applies_when": {"fact": "scope.us_ftc_claims_in_scope", "operator": "eq", "value": true, "source": "assessment"}, "requirement": {"fact": "ftc.claims_review_recorded", "operator": "eq", "value": true, "source": "document"}, "remediation": "Review express/implied claims and whether evidence supports the advertised scope; narrow unsupported promises."}
+  ]
+}

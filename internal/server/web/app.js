@@ -240,6 +240,16 @@ async function checkHealth(announce = false) {
   finally { element("health-check").disabled = false; }
 }
 element("health-check").addEventListener("click", () => checkHealth(true));
+element("toggle-sidebar").addEventListener("click", () => {
+  const collapsed = document.body.dataset.sidebarCollapsed !== "true";
+  document.body.dataset.sidebarCollapsed = String(collapsed);
+  element("toggle-sidebar").setAttribute("aria-expanded", String(!collapsed));
+});
+document.addEventListener("keydown", event => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k" && current && !document.querySelector("dialog[open]")) {
+    event.preventDefault(); element("console-search").focus();
+  }
+});
 initializeLocale();
 onLocaleChange(() => {
   // Translate labels without resetting forms, selections, keys or the current page.

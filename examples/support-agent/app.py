@@ -15,8 +15,9 @@ import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
 from govweave_agent import KnowledgeAgent, REQUEST_PROFILES
 from govweave_tools import ToolCallError, _object, _constant
+from govweave_tracing import TraceContext, run_stateful_traced_agent
 
-VERSION = "support-agent-v1"
+VERSION = "support-agent-v2"
 IDENTIFIER = re.compile(r"[a-z0-9][a-z0-9_-]{0,63}")
 
 
@@ -178,10 +179,21 @@ def answer(args):
     if not question or len(question.encode()) > 4096:
         raise ValueError("invalid question")
     agent = SupportAgent(config, key)
-    result = agent.run(question)
+    if args.parent_span_id and not args.trace_id:
+        raise ValueError("parent span requires coordinator trace")
+    generated = TraceContext.new()
+    context = TraceContext(args.trace_id or generated.trace_id, agent_id=args.agent_id or generated.agent_id,
+                           parent_span_id=args.parent_span_id or "")
+    result = run_stateful_traced_agent(agent, question, context)
     metadata = result.metadata()
     metadata.update(application_version=VERSION, configuration_sha256=hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest(),
                     model_calls_reserved=config["max_model_calls"] - agent.remaining)
+    metadata["coverage"] = {
+        "basis": "client_trace_receipts_not_durable_audit",
+        "gateway_channels": ["model_requests_and_responses", "read_tool_requests_and_responses"],
+        "unverified_channels": ["application_ingress_egress", "agent_handoffs", "retrieval_outside_gateway", "direct_provider_egress"],
+        "whole_system_coverage": "not_established",
+    }
     for event, index in zip((e for e in metadata["events"] if e["kind"] == "tool"), agent.read_indices):
         event["resource_index"] = index
     if args.trace:
@@ -207,6 +219,9 @@ def main():
     client = commands.add_parser("answer", help="Read a question from stdin; use only the configured gateway.")
     client.add_argument("--config", required=True, type=Path)
     client.add_argument("--trace", type=Path)
+    client.add_argument("--trace-id", help="Existing coordinator trace ID (32 lowercase hex characters).")
+    client.add_argument("--agent-id", help="Caller-declared agent ID (16 lowercase hex characters; not an identity credential).")
+    client.add_argument("--parent-span-id", help="Previously returned gateway span ID (16 lowercase hex characters).")
     client.add_argument("--json", action="store_true")
     args = parser.parse_args()
     try:

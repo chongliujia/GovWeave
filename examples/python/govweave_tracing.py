@@ -163,3 +163,30 @@ def run_traced_agent(agent, question, context):
         if receipt:
             event.update(receipt)
     return replace(result, trace_id=context.trace_id, events=events)
+
+
+def run_stateful_traced_agent(agent, question, context):
+    """Trace one exclusively owned agent instance, including subclass state.
+
+    Unlike run_traced_agent this does not copy the agent or reset its budgets.
+    The caller must create a separate instance for each concurrent task.
+    Subclasses must use the inherited model/tool transport and event order.
+    """
+    from govweave_agent import KnowledgeAgent
+
+    if not isinstance(agent, KnowledgeAgent) or not isinstance(context, TraceContext):
+        raise ToolCallError("invalid_trace_context")
+    original = agent.tool._opener
+    if isinstance(original, _RunTraceOpener):
+        raise ToolCallError("trace_run_in_progress")
+    calls = _RunTraceOpener(original, context)
+    agent.tool._opener = calls
+    try:
+        result = agent.run(question)
+    finally:
+        agent.tool._opener = original
+    events = [dict(event) for event in result.events]
+    for event, receipt in zip(events, calls.receipts):
+        if receipt:
+            event.update(receipt)
+    return replace(result, trace_id=context.trace_id, events=events)

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "id": "eu-us-ai-starter",
+  "version": "2026.11.13",
+  "description": "Explicit opt-in draft bundle. Copy only these files into the instance rule-packs directory after validation and backup; preserve existing immutable versions. Never copy this manifest as a rule pack.",
+  "packs": [
+    {"file": "eu-ai-act-chatbot-transparency.json", "id": "eu-ai-act-chatbot-transparency", "version": "0.1.0"},
+    {"file": "eu-ai-act-high-risk-readiness.json", "id": "eu-ai-act-high-risk-readiness", "version": "0.1.0"},
+    {"file": "eu-ai-act-gpai.json", "id": "eu-ai-act-gpai", "version": "0.1.0"},
+    {"file": "eu-gdpr-ai.json", "id": "eu-gdpr-ai", "version": "0.1.0"},
+    {"file": "nist-ai-rmf-lifecycle.json", "id": "nist-ai-rmf-lifecycle", "version": "0.1.0"},
+    {"file": "nist-genai-profile.json", "id": "nist-genai-profile", "version": "0.1.0"},
+    {"file": "us-ftc-ai-claims.json", "id": "us-ftc-ai-claims", "version": "0.1.0"},
+    {"file": "sensitive-output-governance-v1.1.json", "id": "sensitive-output-governance", "version": "1.1.0"}
+  ]
+}

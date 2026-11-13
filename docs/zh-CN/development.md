@@ -20,6 +20,10 @@ make package
 
 ## 浏览器流程测试（可选开发依赖）
 
+运行总览通过 `dashboard.js` 和 `dashboard.css` 实现浅色后台布局、请求样本趋势与待复核列表。首次默认英文，用户切换简体中文后记住选择。图表仅使用最近返回的 100 条审计记录，不代表 Token 统计或完整流量历史；时间／模型筛选不会补取历史数据，空白区间不证明实际流量为零。记录不可用时保持未知，命中不等于风险等级或法律合规结论。
+
+`node tests/dashboard-test.cjs` 无需额外依赖，验证聚合、时间边界、复核与翻译，已纳入 `make check`。具备下述 Playwright/Chrome 开发依赖后，执行 `node tests/dashboard-smoke.cjs`，可通过**本地合成 API 数据**验证真实控制台资源，包括默认英文、语言记忆、图表筛选、搜索、详情、退出清理、失败／空状态和 360–1600px 布局。截图保存到 `dist/dashboard-smoke/`。该前端测试不需要 Go，也不能替代后端、认证或持久化测试。实际服务需要重新构建 Go 二进制才能加载更新后的嵌入式资源。
+
 `tests/browser-smoke.cjs` 使用 Playwright 和独立的无头 Chrome，不访问个人浏览器资料。不属于产品依赖，不进入镜像或离线包。
 
 在开发环境提供 Playwright（本次验证使用 1.62.1）以及 Chrome，确保 Node 能解析 `require('playwright')`。例如将开发依赖安装在独立目录，并通过 `NODE_PATH` 指向该目录的 `node_modules`。默认 Chrome 路径是 `/usr/bin/google-chrome`，可通过 `GOVWEAVE_BROWSER_PATH` 覆盖。
