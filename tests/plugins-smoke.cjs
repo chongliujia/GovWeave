@@ -494,8 +494,74 @@ async function main() {
     await page.unroute(`**${coveragePath}`);
     assert.equal(await page.locator('.plugin-coverage-route').count(), 0);
     assert.equal(await page.locator('#plugin-tests-detail').innerText(), '');
+    // Independent policies are edited in the UI and exercised through the real gateway.
+    await page.locator('#plugins-reload').click();
+    await page.waitForFunction(() => !document.getElementById('plugin-output-fields').disabled);
+    await page.locator('#plugin-tab-output').click();
+    await page.locator('#console-language').selectOption('en');
+    async function saveOutput() {
+      const response = page.waitForResponse(r => r.request().method() === 'PUT' && new URL(r.url()).pathname.startsWith(policyPath));
+      await page.locator('#plugin-output-save').click();
+      const result = await response; assert.equal(result.status(), 200);
+      await page.waitForFunction(() => !document.getElementById('plugin-output-fields').disabled);
+      return result.json();
+    }
+    await page.locator('#plugin-output-target').selectOption(first.application.id);
+    assert.equal(await page.locator('#plugin-scope').isVisible(), false);
+    await choose('plugin-mode', 'block'); await choose('plugin-detector', 'sensitive-text-v2');
+    const firstIndependent = await saveOutput();
+    await page.locator('#plugin-output-target').selectOption(second.application.id);
+    assert.equal(await page.locator('#plugin-mode').inputValue(), 'disabled');
+    await page.locator('#plugin-history-panel').evaluate(element => { element.open = true; });
+    await page.locator('#plugin-history-load').click();
+    await page.waitForFunction(() => !document.getElementById('plugin-output-fields').disabled && document.querySelectorAll('#plugin-history li').length > 0);
+    assert.match(await page.locator('#plugin-history li').filter({ hasText: /^1 ·/ }).innerText(), /Disabled/);
+    await choose('plugin-mode', 'observe'); await choose('plugin-detector', 'sensitive-text-v3');
+    await saveOutput();
+    for (const [application, expectedStatus, containsEmail] of [[first, 403, false], [second, 200, true]]) {
+      const response = await fetch(origin + '/v1/chat/completions', { method: 'POST', headers: { Authorization: `Bearer ${application.api_key}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'fixture', messages: [{ role: 'user', content: 'Synthetic independent policy' }], stream: false }) });
+      assert.equal(response.status, expectedStatus); assert.equal((await response.text()).includes(email), containsEmail);
+    }
+    await page.locator('#plugin-output-target').selectOption('');
+    await choose('plugin-mode', 'disabled'); await saveOutput();
+    assert.equal((await api(`${policyPath}/applications/${first.application.id}`, undefined, 'GET')).policy.mode, 'block');
+    await page.locator('#plugin-output-target').selectOption(first.application.id);
+    await choose('plugin-mode', 'redact');
+    page.once('dialog', dialog => dialog.dismiss());
+    await page.locator('#plugin-output-target').selectOption(second.application.id);
+    assert.equal(await page.locator('#plugin-output-target').inputValue(), first.application.id);
+    await page.locator('#plugin-output-discard').click();
+    await page.locator('#plugin-output-target').selectOption(second.application.id);
+    await page.locator('#plugin-output-inherit').click();
+    await page.waitForFunction(() => !document.getElementById('plugin-output-fields').disabled);
+    assert.equal(await page.locator('#plugin-mode').inputValue(), 'disabled');
+    assert.equal((await api(`${policyPath}/applications/${second.application.id}`, undefined, 'GET')).source, 'default');
+    await page.locator('#plugin-output-target').selectOption(first.application.id);
+    await choose('plugin-mode', 'redact'); await saveOutput();
+    await page.locator('#plugin-history-panel').evaluate(element => { element.open = true; });
+    await page.locator('#plugin-history-load').click();
+    await page.waitForFunction(() => !document.getElementById('plugin-output-fields').disabled && document.querySelectorAll('#plugin-history li').length > 0);
+    const restored = page.waitForResponse(r => r.url().endsWith('/restore') && r.request().method() === 'POST');
+    await page.locator('#plugin-history li').filter({ hasText: new RegExp('^' + firstIndependent.revision + ' ·') }).getByRole('button').click();
+    assert.equal((await restored).status(), 200);
+    await page.waitForFunction(() => !document.getElementById('plugin-output-fields').disabled);
+    assert.equal(await page.locator('#plugin-mode').inputValue(), 'block');
+    const beforeRestart = await api(policyPath, undefined, 'GET');
+    await stop(); await start(); await api('/api/v1/auth/login', { password });
+    assert.deepEqual(await api(policyPath, undefined, 'GET'), beforeRestart);
+    await page.reload(); await page.locator('[data-tab="plugins"]').click();
+    await page.waitForFunction(() => !document.getElementById('plugin-output-fields').disabled);
+    await page.locator('#plugin-output-target').selectOption(first.application.id);
+    await page.locator('#console-language').selectOption('zh-CN');
+    assert.equal(await page.locator('#plugin-mode').inputValue(), 'block');
+    await page.screenshot({ path: path.join(output, 'application-policy-zh.png'), fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+    await page.screenshot({ path: path.join(output, 'application-policy-mobile-zh.png'), fullPage: true });
+    await page.locator('#console-language').selectOption('en');
+    assert.equal(await page.locator('#plugin-output-target').inputValue(), first.application.id);
     assert.deepEqual(errors, []); assert.deepEqual(external, []);
-    console.log(`Plugin smoke passed: pack provenance and late-response isolation, per-control evidence/actions, conservative counts, report filtering/version checks, pending/error/expired states; draft preview, scoped redaction, conflicts, logout, restart and responsive locales. Screenshots: ${output}`);
+    console.log(`Plugin smoke passed: pack provenance and late-response isolation, per-control evidence/actions, conservative counts, report filtering/version checks, pending/error/expired states; draft preview, scoped redaction, independent application policies, inheritance, historical restore, conflicts, logout, restart and responsive locales. Screenshots: ${output}`);
   } finally {
     if (browser) await browser.close();
     await stop(); await new Promise(resolve => upstream.close(resolve));

@@ -114,6 +114,10 @@ validate-routing:
 test:
 	go test -race ./...
 
+.PHONY: test-admin-cli
+test-admin-cli: build
+	python3 tests/admin-cli-smoke.py
+
 .PHONY: test-regional-compliance
 test-regional-compliance: build
 	python3 tests/regional-compliance-smoke.py

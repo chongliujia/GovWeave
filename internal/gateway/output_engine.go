@@ -174,7 +174,7 @@ func (g *Engine) EvaluateContent(w http.ResponseWriter, r *http.Request) {
 		reply(499, "client_cancelled", nil)
 		return
 	}
-	p := g.OutputPolicies.Snapshot()
+	p := g.OutputPolicies.Snapshot().ForApplication(app.ID)
 	record.OutputPolicy = pendingOutputPolicy(p)
 	if err := g.Audit.Begin(record); err != nil {
 		unavailableOutput(record.OutputPolicy)

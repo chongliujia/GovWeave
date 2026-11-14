@@ -80,7 +80,8 @@ Keep runtime calls separate from assessment probes, and show unverified system b
 | Multi-Agent tracing | Explicit task context across model/tool/content calls, parallel branches, joins and retries; application-isolated queries and administrator-selected aggregation; see [tracing guide](docs/agent-tracing.md) |
 | Task call map | Interactive application lanes, declared parent/link/retry references, risk filters, missing evidence and node-to-evidence navigation; [task evidence](docs/risk-evidence.md#cross-application-task-evidence) |
 | Task evidence snapshots | Freeze an unchanged task view, reopen historical metadata and export JSON or an English Markdown report; [snapshot guide](docs/risk-evidence.md#task-snapshots-and-report-export) |
-| Administration | Set an initial administrator password; use a browser session to manage the instance |
+| Application output policies | Independent mode, detector, categories and email exceptions per application; default inheritance, history and restore; [policy guide](docs/sensitive-output.md#independent-application-policies) |
+| Administration | Initial password setup and authenticated management through the console or built-in `govweave admin` CLI; [terminal guide](docs/admin-cli.md) |
 | Languages | English by default, with an offline Simplified Chinese option |
 | Distribution | Go binary, locally built container image, and offline archive |
 

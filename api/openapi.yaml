@@ -1822,7 +1822,7 @@ paths:
           $ref: '#/components/responses/Error'
   /api/v1/policies/sensitive-output:
     get:
-      summary: Read the current sensitive-output policy
+      summary: Read the default policy and independent application policies
       security:
       - adminSession: []
       responses:
@@ -1836,7 +1836,7 @@ paths:
           $ref: '#/components/responses/Error'
     put:
       summary: Save and retain an immutable sensitive-output policy revision
-      description: Applies to configured model and read-tool output for selected applications. Empty application
+      description: Updates default settings while preserving independent application policies. Applies to configured model and read-tool output for selected applications. Empty application
         scope means all applications. Categories select credential, email and/or phone findings for decision;
         matches are candidate observations, not proof of personal ownership or a legal violation. Observe releases
         matched valid output, block withholds it, and redact replaces selected contact spans or the entire text on a
@@ -1904,6 +1904,116 @@ paths:
                 $ref: '../schemas/content.schema.json#/$defs/OutputPolicySnapshot'
         '404':
           description: Revision does not exist
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/policies/sensitive-output/applications/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: string}
+    get:
+      summary: Read the effective application output policy
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Policy settings or history
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/content.schema.json#/$defs/ApplicationOutputPolicyView'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Save independent output settings for one application
+      security:
+      - adminSession: []
+      description: Uses the shared current revision for optimistic concurrency. Other application bindings and the default are preserved. Omitted detector_version retains the current effective generation. Changes affect later admitted calls.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/content.schema.json#/$defs/ApplicationOutputPolicyInput'
+      responses:
+        '200':
+          description: Policy settings or history
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/content.schema.json#/$defs/OutputPolicySnapshot'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      summary: Resume the current default policy for one application
+      security:
+      - adminSession: []
+      description: Uses the shared current revision for optimistic concurrency. Removes only this application's binding and preserves immutable history. Subsequent calls use the current default settings and scope.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/content.schema.json#/$defs/OutputPolicyRevisionInput'
+      responses:
+        '200':
+          description: Policy settings or history
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/content.schema.json#/$defs/OutputPolicySnapshot'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/policies/sensitive-output/applications/{id}/history:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: string}
+    get:
+      summary: Read effective application policy history newest first
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Policy settings or history
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/content.schema.json#/$defs/ApplicationOutputPolicyHistory'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/policies/sensitive-output/applications/{id}/restore:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: string}
+    post:
+      summary: Copy historical effective settings into a new application policy revision
+      security:
+      - adminSession: []
+      description: Uses the shared current revision for optimistic concurrency. Other application bindings are preserved. Restore copies the historical effective settings as an explicit binding; a previously out-of-scope policy becomes disabled. Changes affect later admitted calls.
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/content.schema.json#/$defs/OutputPolicyRestoreInput'
+      responses:
+        '200':
+          description: Policy settings or history
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/content.schema.json#/$defs/OutputPolicySnapshot'
         default:
           $ref: '#/components/responses/Error'
 components:

@@ -107,6 +107,28 @@ curl --fail-with-body "$GOVWEAVE_ROOT/api/v1/policies/sensitive-output" \
 
 每次获准调用固定其策略快照；后续编辑仅影响之后准入的调用。发送上游前预留审计容量，受保护文本仅在终态元数据决定成功保存后返回。终态记录保存失败时返回 `503 audit_unavailable` 并扣留文本，此时提供方可能已经被调用。
 
+## 应用独立策略
+
+原有默认策略及其应用范围继续保留。最多 64 个应用可以独立配置处理模式、检测器版本、类别和精确邮箱例外。独立绑定替换该应用的默认设置，也可明确选择 `disabled`。没有独立绑定的应用继承默认配置及其范围；新应用不会自动获得其他应用的邮箱例外。输入凭证策略及工具原有凭证控制仍然独立。
+
+通过“插件中心 → 策略配置对象”、[命令行管理](admin-cli.md)，或以下管理员接口操作：
+
+| 接口 | 行为 |
+| --- | --- |
+| `GET /api/v1/policies/sensitive-output/applications/{id}` | 生效策略及 `source: default`／`application`；需同时检查模式和范围 |
+| `PUT /api/v1/policies/sensitive-output/applications/{id}` | 提交 `revision`、`mode`、`categories`，可选 `detector_version`、`public_emails` |
+| `DELETE /api/v1/policies/sensitive-output/applications/{id}` | 请求体 `{ "revision": N }`，恢复使用当前默认配置 |
+| `GET /api/v1/policies/sensitive-output/applications/{id}/history` | 每个留存共享修订下的生效配置，按新到旧返回 |
+| `POST /api/v1/policies/sensitive-output/applications/{id}/restore` | 请求体 `{ "revision": N, "from_revision": OLD }`，复制历史生效配置为新的独立绑定 |
+
+历史配置原本不在范围内时，恢复为 `disabled`。恢复不回退其他应用或默认配置。删除绑定保留历史，实际保护随当前默认策略而改变。更新原有默认策略接口会保留所有应用独立绑定。应用密钥不能管理策略，也不能通过请求参数选择另一份策略。
+
+默认配置与绑定共用一个输出策略修订号，因此不同应用的并发修改也会冲突。已准入请求使用不可变的生效快照；模型、读取工具、独立检测与接入检查均按鉴权后的应用解析。留存的策略证据只包含该应用在所记修订下实际生效的设置。
+
+现有 schema 1 历史原样读取；首次保存独立绑定时，原子写入 schema 2 状态并保留全部旧快照。旧二进制会拒绝读取新状态，升级前应备份数据目录。所有修改合计仍受 128 个快照／2 MiB 的限制，不会自动淘汰。移除全部绑定后，文件仍保持 schema 2。
+
+产品绑定应用的模式或检测器不一致时，对应产品级单值事实保持缺失。类别事实要求每个绑定应用均配置该类别，范围覆盖另行判断。混合检测器的产品也不生成 `runtime.sample.output_current_checked_count`，避免把所有请求与某一个检测器比较；其他采样计数和请求引用继续提供。主动测试单独保留目标应用检测器为 `runtime.test_output_detector_version`，历史报告不依赖当前配置。任何策略修改都会推进共享修订号，并保守地使缓存及当前测试证据失效，也包括配置未变的应用。
+
 ## 历史、证据与限制
 
 | 接口 | 用途 |
@@ -118,7 +140,7 @@ curl --fail-with-body "$GOVWEAVE_ROOT/api/v1/policies/sensitive-output" \
 | `POST /v1/content/evaluations` | 应用认证的独立检测 |
 | `GET /api/v1/requests` | 管理员查看元数据决定 |
 
-管理写入沿用 JSON、自定义请求头和来源校验。旧版本写入返回 `409 revision_conflict`。私有 `output-policies.json` 最多保存 128 个快照，**包含版本零**，总计最多 2 MiB；采用私有权限和原子写入。容量耗尽返回 `409 output_history_full`，保留当前策略，不会静默淘汰历史。尚无删除／裁剪接口。文件缺失表示初始关闭状态，应将其纳入备份，不要通过删除文件修改保护；无效持久化状态会拒绝启动。
+管理写入沿用 JSON、自定义请求头和来源校验。旧版本写入返回 `409 revision_conflict`。私有 `output-policies.json` 最多保存 128 个快照，**包含版本零**，总计最多 2 MiB；采用私有权限和原子写入。容量耗尽返回 `409 output_history_full`，保留当前策略，不会静默淘汰历史。尚无历史删除／裁剪接口。文件缺失表示初始关闭状态，应将其纳入备份，不要通过删除文件修改保护；无效持久化状态会拒绝启动。
 
 调用记录中的 `output_policy` 仅保存固定的策略／检测器版本、模式、所选与命中类别／规则 ID、状态、原因和检测耗时，不包含输入／输出正文、匹配值、字节范围、内容哈希、原始上游错误或应用／提供方密钥。独立检测响应可向已认证的调用方返回字节范围，但不将这些范围保存在调用记录中。
 

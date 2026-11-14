@@ -222,7 +222,7 @@ export function createIntegrationConsole({ getState, getInstance, request, openR
       const validReceipt = requestID.test(id) && serverTrace === correlation && spanID.test(serverSpan);
       if (!validReceipt) { result.state = "unknown"; result.code = "receipt_unknown"; return; }
       const validContent = response2.status === 200 && completeText(body);
-      const view = await request(`/api/v1/traces/${correlation}?application_id=${encodeURIComponent(app.id)}&limit=16`);
+      const view = await request(`/api/v1/traces/${correlation}?application_id=${encodeURIComponent(app.id)}&limit=16`, { signal: localController.signal });
       if (generation !== epoch) return;
       if (localController.signal.aborted) throw new Error("verification_timeout");
       const record = Array.isArray(view.records) && view.records.find(value => value.request_id === id && value.application_id === app.id && value.model === connection.alias &&

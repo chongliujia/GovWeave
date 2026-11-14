@@ -22,6 +22,9 @@ async function request(path, options = {}) {
   const generation = sessionGeneration;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
+  const cancel = () => controller.abort();
+  options.signal?.addEventListener("abort", cancel, { once: true });
+  if (options.signal?.aborted) cancel();
   try {
     const response = await fetch(path, {
       ...options,
@@ -47,7 +50,10 @@ async function request(path, options = {}) {
     if (error.name === "AbortError") throw new Error(t("The request timed out. Check the connection and try again."));
     if (error instanceof TypeError || error instanceof SyntaxError) throw new Error(t("Cannot connect to GovWeave. Check the service URL and reverse proxy settings."));
     throw error;
-  } finally { clearTimeout(timer); }
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener("abort", cancel);
+  }
 }
 
 function isManaged(source) { return source === "file" || source === "environment"; }

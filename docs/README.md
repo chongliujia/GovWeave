@@ -32,6 +32,7 @@ These guides describe **0.2.0-dev**, the implemented single-instance gateway. St
 | Extend text detectors and validate fast/deep routing | [Detector plugins and routing](detector-routing.md) |
 | Try assessment without a real model or application | [Local demonstration](local-demonstration.md) |
 | Deploy a binary or container; configure URLs and HTTPS | [Deployment](deployment.md) |
+| Manage applications, output policies and recent requests over SSH or scripts | [Command-line administration](admin-cli.md) |
 | Back up data, recover access, or diagnose a failed request | [Operations and troubleshooting](deployment.md#troubleshooting) |
 | Govern an application/Agent read tool, integrate the Python executor and evaluate its evidence | [Read-tool governance](tool-governance.md) |
 | Connect an application or an agent's model client | [Model gateway](model-gateway.md) |

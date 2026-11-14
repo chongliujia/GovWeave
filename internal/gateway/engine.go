@@ -296,7 +296,7 @@ func (g *Engine) chat(w http.ResponseWriter, r *http.Request, applicationID stri
 	}
 	evidence = g.beginCallEvidence(record, body)
 	record.Decision, record.ConnectionID, record.Model = "allow", resolved.Connection.ID, resolved.Connection.Alias
-	outputSnapshot := g.OutputPolicies.Snapshot()
+	outputSnapshot := g.OutputPolicies.Snapshot().ForApplication(resolved.Application.ID)
 	protected := outputSnapshot.Applies(resolved.Application.ID)
 	allowTools := false
 	if protected {

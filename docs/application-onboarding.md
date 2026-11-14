@@ -68,6 +68,8 @@ The browser check uses the current console origin. It does not send the key to a
 
 Inspect the inference outcome, request ID and trace identifiers, then the matching administrator audit record for the selected application. A returned HTTP status or allocated span alone does not prove a committed terminal audit record. A browser timeout or cancellation may occur after the upstream request started; missing response evidence remains unknown and does not prove that the call never executed. Call success also does not establish answer quality, complete Agent-task coverage or legal compliance.
 
+The browser verification has an overall deadline of the configured model timeout plus 10 seconds, including the final audit lookup. If it expires while waiting for audit confirmation, the result stays unknown and any received request ID remains available for review. Changing the application or model, leaving the page, or signing out cancels the pending verification and discards its late results. Cancellation never automatically retries inference.
+
 The verifier reports connection and audit metadata rather than retaining the model's answer. **Request logs** and the [trace API](agent-tracing.md) explain observed authorization, policy and execution outcomes. The trace view is limited to gateway-observed calls in the global recent 1,000-request index.
 
 ## Use the same settings in application code

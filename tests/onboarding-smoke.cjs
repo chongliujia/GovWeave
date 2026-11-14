@@ -205,6 +205,44 @@ async function main() {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
     passed.push('bilingual_mobile_and_page_leave_clear_key');
 
+    // Hold a real audit response after inference has completed. The overall
+    // verifier deadline and selection changes must cancel this final request too.
+    await page.clock.install();
+    for (const cancel of ['timeout', 'selection']) {
+      let heldTrace, traceReady;
+      const ready = new Promise(resolve => { traceReady = resolve; });
+      await page.route('**/api/v1/traces/*', async route => {
+        heldTrace = { route, response: await route.fetch() };
+        traceReady();
+      });
+      await page.locator('#integration-key').fill(a.api_key);
+      await page.locator('#integration-send').click();
+      await ready;
+      const cancelled = page.waitForEvent('requestfailed', {
+        predicate: request => request === heldTrace.route.request(), timeout: 3000,
+      });
+      // Observe the promise immediately so a regression fails cleanly.
+      const observedCancellation = cancelled.then(() => true, () => false);
+      if (cancel === 'timeout') await page.clock.fastForward(12001);
+      else await page.locator('#example-app').selectOption(b.application.id);
+      assert.equal(await observedCancellation, true, `Pending audit request was not cancelled by ${cancel}`);
+      await state(cancel === 'timeout' ? 'unknown' : 'idle');
+      assert.equal(await page.locator('#integration-key').isEnabled(), true);
+      assert.equal(await page.locator('#integration-key').inputValue(), '');
+      assert.equal(calls, cancel === 'timeout' ? 8 : 9, 'Cancellation must not retry inference');
+      if (cancel === 'timeout') {
+        assert.match(await page.locator('#integration-fields').textContent(), /req_[A-Za-z0-9_-]{22}/);
+        assert.equal(await page.locator('#integration-records').isEnabled(), true);
+      } else {
+        await operate(b.api_key, '#integration-check', 'configured');
+      }
+      await heldTrace.route.fulfill({ response: heldTrace.response });
+      await page.unroute('**/api/v1/traces/*');
+      await state(cancel === 'timeout' ? 'unknown' : 'configured');
+      await page.locator('#example-app').selectOption(a.application.id);
+      passed.push(`pending_audit_${cancel}_cancels_without_retry_or_stale_results`);
+    }
+
     const stored = await page.evaluate(() => JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } }));
     const audit = await fs.readFile(path.join(directory, 'calls.jsonl'), 'utf8');
     const pageText = await page.locator('body').textContent();

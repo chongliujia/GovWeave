@@ -22,6 +22,8 @@ The supplied example listens on `127.0.0.1:8080` and stores data in `./data`. Bu
 
 Open http://127.0.0.1:8080 and set the initial administrator password. Passwords accept 12–128 Unicode characters, including spaces. There is no default password or administrator token to copy. The first person to complete setup claims a fresh instance, so finish setup on a controlled network before opening access.
 
+For headless setup and administration, use the built-in `./bin/govweave admin` client. See [command-line administration](admin-cli.md) for private sessions, application/model configuration, output policies and background Docker operation.
+
 To use another port, override the listener and use the same port in your browser:
 
 ```bash

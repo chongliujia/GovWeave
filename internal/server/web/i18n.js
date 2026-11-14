@@ -1,6 +1,18 @@
 // English message IDs are the default; all locale resources are embedded for offline use.
 // Only explicitly marked product text is translated. User content is never scanned.
 const chinese = {
+  "Policy target": "策略配置对象",
+  "Use default policy": "使用默认策略",
+  "Configure the default policy or select one application for independent settings.": "配置默认策略，或选择一个应用设置独立策略。",
+  "This application uses independent settings.": "此应用使用独立策略配置。",
+  "This application inherits the default policy. Saving creates independent settings.": "此应用继承默认策略；保存后将使用独立配置。",
+  "Default settings apply to applications without an independent policy. Independent policies: {count}": "默认配置适用于没有独立策略的应用。独立策略数量：{count}",
+  "Default policy": "默认策略",
+  "Restore for this application": "为此应用恢复",
+  "Historical settings restored as a new application policy revision.": "历史配置已恢复为新的应用策略修订。",
+  "Switching policy targets will discard unsaved changes. Continue?": "切换策略配置对象会丢弃未保存修改，是否继续？",
+  "Application now uses the default policy.": "此应用现在使用默认策略。",
+
   "System traffic coverage": "系统数据流覆盖情况",
   "Only gateway-observed calls are shown. Configuration, trace headers and successful probes do not prove that all application, RAG or agent traffic traverses this gateway.": "仅展示网关实际观察到的调用。配置、追踪头和测试成功均不能证明应用、RAG 或 Agent 的全部流量经过此网关。",
   "Refresh coverage snapshot": "刷新覆盖快照",

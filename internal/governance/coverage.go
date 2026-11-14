@@ -90,8 +90,9 @@ func (s sources) coverage(product Product, now time.Time) ProductCoverage {
 			}
 		}
 		if key.operation != "content.evaluate" && configuration != "unresolved" {
-			route.OutputMode = s.outputPolicy.Mode
-			if len(s.outputPolicy.ApplicationIDs) > 0 && !slices.Contains(s.outputPolicy.ApplicationIDs, key.app) {
+			policy := s.outputPolicy.ForApplication(key.app)
+			route.OutputMode = policy.Mode
+			if len(policy.ApplicationIDs) > 0 && !slices.Contains(policy.ApplicationIDs, key.app) {
 				route.OutputMode = "out_of_scope"
 			}
 		}

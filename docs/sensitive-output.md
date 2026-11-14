@@ -107,6 +107,28 @@ Read tools keep their independent `credentials-v1` check and existing `block`/`o
 
 Each admitted call pins its policy snapshot. Later edits affect subsequent calls. Before provider I/O, the gateway reserves audit capacity; protected output is released only after its terminal metadata decision is saved. Failure to save that decision returns `503 audit_unavailable` and withholds the text. A prior provider call may still have occurred.
 
+## Independent application policies
+
+The default policy and its existing application scope remain supported. Up to 64 applications can have independent mode, detector version, category and exact public-email settings. A binding replaces the default settings for that application, including an explicit `disabled` mode. Applications without a binding inherit the default policy and its scope; new applications do not automatically inherit another application's exceptions. Input credential and per-tool credential policies remain separate controls.
+
+Use **Plugin center → Policy target**, the [CLI](admin-cli.md), or these administrator endpoints:
+
+| Interface | Purpose |
+| --- | --- |
+| `GET /api/v1/policies/sensitive-output/applications/{id}` | Effective policy plus `source: default` or `application`; check its mode and scope |
+| `PUT /api/v1/policies/sensitive-output/applications/{id}` | Save `revision`, `mode`, `categories`, optional `detector_version` and `public_emails` for that application |
+| `DELETE /api/v1/policies/sensitive-output/applications/{id}` | Body `{ "revision": N }`; resume the current default |
+| `GET /api/v1/policies/sensitive-output/applications/{id}/history` | Effective views at every retained shared revision, newest first |
+| `POST /api/v1/policies/sensitive-output/applications/{id}/restore` | Body `{ "revision": N, "from_revision": OLD }`; copy historical effective settings into a new explicit binding |
+
+An old out-of-scope setting restores as `disabled`. Restore does not rewind other applications or the default. Deleting a binding preserves history and may change protection to whatever the default currently specifies. Updating the original default endpoint always preserves all independent bindings. Application keys cannot manage policies or select a different policy via request parameters.
+
+Configuration and bindings share one global output-policy revision, so concurrent edits conflict even when they concern different applications. Each admitted call uses its immutable effective snapshot; model calls, read tools, standalone evaluation and onboarding checks resolve the authenticated application. Captured policy evidence includes only that application's effective settings at the recorded revision.
+
+Existing schema-1 history is read without rewriting it. The first independent binding saves schema-2 state atomically, retaining all earlier snapshots. Older binaries refuse that state; back up the data directory before upgrading. The existing total limit of 128 snapshots / 2 MiB still applies to all updates together, with no automatic eviction. Even after removing all bindings, the file remains schema 2.
+
+Product-wide mode/detector facts are omitted when bound applications disagree. Category facts require every bound application's configuration to include the category; coverage separately checks applicability. A mixed-detector product also omits `runtime.sample.output_current_checked_count`, rather than comparing every request with one detector. Other sampled counts and request references remain available. Active tests retain their target application's detector separately as `runtime.test_output_detector_version`; historical reports remain independent of current settings. Any policy edit advances the shared revision and invalidates cached/current-test evidence conservatively, including for unchanged applications.
+
 ## History, evidence and limits
 
 | Interface | Purpose |
@@ -118,7 +140,7 @@ Each admitted call pins its policy snapshot. Later edits affect subsequent calls
 | `POST /v1/content/evaluations` | Application-authenticated standalone observations |
 | `GET /api/v1/requests` | Administrator access to metadata decisions |
 
-Management writes use the existing JSON, custom-header and origin checks. Stale writes return `409 revision_conflict`. Private `output-policies.json` stores at most 128 snapshots **including revision zero**, within 2 MiB. It is written atomically with private permissions. Capacity exhaustion returns `409 output_history_full` and preserves the current policy; history is never silently evicted. There is no delete/prune endpoint. A missing file means the disabled initial state, so include it in backups and do not delete it to change enforcement. Invalid state refuses startup.
+Management writes use the existing JSON, custom-header and origin checks. Stale writes return `409 revision_conflict`. Private `output-policies.json` stores at most 128 snapshots **including revision zero**, within 2 MiB. It is written atomically with private permissions. Capacity exhaustion returns `409 output_history_full` and preserves the current policy; history is never silently evicted. There is no history delete/prune endpoint. A missing file means the disabled initial state, so include it in backups and do not delete it to change enforcement. Invalid state refuses startup.
 
 Call records contain `output_policy`: fixed policy/detector versions, mode, selected and matched category/rule IDs, state, reason and check duration. They contain no input/output text, matched values, byte spans, content hashes, raw upstream errors or application/upstream credentials. The independent evaluation response can return byte spans to its authenticated caller, but those spans are not persisted in call records.
 

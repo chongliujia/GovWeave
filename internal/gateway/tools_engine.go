@@ -207,7 +207,7 @@ func (g *Engine) toolInvoke(w http.ResponseWriter, r *http.Request, applicationI
 	evidence = g.beginCallEvidence(record, body)
 	evidence.toolPolicy(resolved)
 	assessment.Authorization, assessment.Decision = "allowed", "pending"
-	outputSnapshot := g.OutputPolicies.Snapshot()
+	outputSnapshot := g.OutputPolicies.Snapshot().ForApplication(app.ID)
 	protected := outputSnapshot.Applies(app.ID)
 	if protected {
 		record.OutputPolicy = pendingOutputPolicy(outputSnapshot)

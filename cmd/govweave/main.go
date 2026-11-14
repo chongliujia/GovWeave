@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"govweave/internal/admincli"
 	"govweave/internal/auth"
 	"govweave/internal/compliance"
 	"govweave/internal/config"
@@ -23,6 +24,13 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "admin" {
+		if err := admincli.Run(os.Args[2:], os.Stdin, os.Stdout, os.Stderr); err != nil {
+			fmt.Fprintln(os.Stderr, "govweave admin:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	path := flag.String("config", "", "deployment JSON file (optional)")
 	check := flag.Bool("check-config", false, "validate deployment configuration and exit without creating files")
 	version := flag.Bool("version", false, "print version")

@@ -186,6 +186,9 @@ func validateOutputCase(item TestCase, result TestCaseResult, run TestRun) error
 		revision, present, valid := retainedRevision(run, "runtime.output_policy_revision")
 		var detector string
 		fact := run.Input.Facts["runtime.output_detector_version"]
+		if target, ok := run.Input.Facts["runtime.test_output_detector_version"]; ok {
+			fact = target
+		}
 		if !present || !valid || fact.Source != "runtime" || json.Unmarshal(fact.Value, &detector) != nil || !sensitive.Supports(p.DetectorVersion) || p.ID != "sensitive-output" || p.CheckDurationUS < 0 {
 			return ErrTestUnavailable
 		}

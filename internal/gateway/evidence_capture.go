@@ -126,7 +126,7 @@ func (g *Engine) finishCallEvidence(c *callEvidence, requestID string, committed
 	}
 	if record.OutputPolicy != nil {
 		if snapshot, err := g.OutputPolicies.Revision(record.OutputPolicy.Revision); err == nil {
-			c.policy("output", snapshot.ID, snapshot.Revision, snapshot)
+			c.policy("output", snapshot.ID, snapshot.Revision, snapshot.ForApplication(record.ApplicationID))
 		}
 	}
 	c.finished = true

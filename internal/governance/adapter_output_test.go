@@ -175,3 +175,41 @@ func TestOutputRedactedFactsDistinguishPerformedWorkAndUnselectedCredentialRelea
 		t.Fatal("unavailable audit manufactured redaction evidence")
 	}
 }
+
+func TestApplicationOutputFactsPreserveMixedAndHistoricalEvidence(t *testing.T) {
+	source, product := outputAdapterFixture()
+	source.resources.Applications = append(source.resources.Applications, gateway.Application{ID: "app-b"})
+	source.outputPolicy.ApplicationPolicies = []gateway.ApplicationOutputPolicy{{ApplicationID: "app-a", Mode: "block", DetectorVersion: "sensitive-text-v3", Categories: []string{"email", "credential", "phone"}}, {ApplicationID: "app-b", Mode: "redact", DetectorVersion: "sensitive-text-v1", Categories: []string{"email"}}}
+	source.audit.Records = []gateway.CallRecord{{RequestID: "req_override", ApplicationID: "app-a", ConnectionID: "conn-a", Operation: "chat.completions", Phase: "finished", Outcome: "blocked", UpstreamAttempted: true, ErrorCode: "content_output_blocked", OutputPolicy: &gateway.OutputAssessment{ID: "sensitive-output", Revision: 7, DetectorVersion: "sensitive-text-v3", Mode: "block", Result: "block", State: "observed", Categories: []string{"email"}}}}
+	input := source.input(product, time.Now())
+	if string(input.Facts["runtime.output_detector_version"].Value) != `"sensitive-text-v3"` || string(input.Facts["runtime.sample.output_current_checked_count"].Value) != "1" {
+		t.Fatal("application detector not used for current evidence")
+	}
+	evidence := runtimeEvidence(product, input, source)
+	stamp := source.stamp(product)
+	report := ReportSnapshot{Product: product, Input: input, Report: Report{Snapshot: &stamp}}
+	if err := validateRuntimeEvidence(evidence, report); err != nil {
+		t.Fatal("application-specific history failed validation", err)
+	}
+	product.ApplicationIDs = append(product.ApplicationIDs, "app-b")
+	input = source.input(product, time.Now())
+	for _, fact := range []string{"runtime.output_policy_mode", "runtime.output_detector_version", "runtime.sample.output_current_checked_count"} {
+		if _, exists := input.Facts[fact]; exists {
+			t.Fatal("mixed application settings fabricated a scalar fact", fact)
+		}
+	}
+	if string(input.Facts["runtime.output_policy_covers_product"].Value) != "true" || string(input.Facts["runtime.output_credential_enabled"].Value) != "false" {
+		t.Fatal("mixed coverage/categories incorrectly aggregated")
+	}
+	evidence = runtimeEvidence(product, input, source)
+	report = ReportSnapshot{Product: product, Input: input, Report: Report{Snapshot: &stamp}}
+	if err := validateRuntimeEvidence(evidence, report); err != nil {
+		t.Fatal("mixed historical metadata failed validation", err)
+	}
+	coverage := source.coverage(product, time.Now())
+	for _, route := range coverage.Routes {
+		if route.ApplicationID == "app-a" && route.Operation == "chat.completions" && route.OutputMode != "block" {
+			t.Fatal("coverage reports shared mode")
+		}
+	}
+}

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"govweave/internal/compliance"
+	"govweave/internal/gateway"
 )
 
 func sensitiveActiveFixture(t *testing.T, mode *atomic.Int32, beforeServe ...func()) (fixture, Product, TestPlan) {
@@ -299,5 +300,39 @@ func TestOutputSuiteCoverageAndStoredEvidenceValidation(t *testing.T) {
 	partial.Suite.Cases[2].Category = "email"
 	if _, valid := outputSuiteVerdict(partial); valid {
 		t.Fatal("duplicate category accepted as coverage")
+	}
+}
+
+func TestActiveOutputUsesTargetDetectorWithMixedApplicationPolicies(t *testing.T) {
+	var mode atomic.Int32
+	f, product, _ := sensitiveActiveFixture(t, &mode)
+	second, _, err := f.gateway.Store.SaveApplication("", gateway.ApplicationInput{Name: "Second synthetic app", AllowedConnections: []string{f.connection.ID}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := product.ProductInput
+	input.ApplicationIDs = append(input.ApplicationIDs, second.ID)
+	product, err = f.service.Save(product.ID, input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, app := range []gateway.Application{f.app, second} {
+		p := gateway.ApplicationOutputPolicy{ApplicationID: app.ID, Mode: "block", DetectorVersion: []string{"sensitive-text-v3", "sensitive-text-v1"}[i], Categories: []string{"credential", "email", "phone"}}
+		if _, err = f.gateway.OutputPolicies.SaveApplication(app.ID, uint64(i), &p, f.gateway.Store.Snapshot()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run := startSensitiveRun(t, f, product, "pre_deployment")
+	if run.State != "completed" || run.Status != "passed" {
+		t.Fatal("targeted output assessment failed", run.State, run.Status, run.ErrorCode)
+	}
+	if _, ok := run.Input.Facts["runtime.output_detector_version"]; ok {
+		t.Fatal("mixed product got a single detector fact")
+	}
+	if string(run.Input.Facts["runtime.test_output_detector_version"].Value) != `"sensitive-text-v3"` {
+		t.Fatal("target detector not retained")
+	}
+	if _, err := f.service.Tests.Get(run.ID); err != nil {
+		t.Fatal("retained test validation failed", err)
 	}
 }

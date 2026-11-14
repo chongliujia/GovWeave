@@ -23,6 +23,7 @@
 | 扩展文本检测器，验证快慢路径分流 | [检测器插件与分流回放](detector-routing.md) |
 | 没有真实模型或应用，体验完整测评 | [本机演示](local-demonstration.md) |
 | 部署二进制或容器，配置地址、HTTPS、备份和恢复 | [部署与运维](deployment.md) |
+| 通过 SSH 或脚本管理应用、输出策略和近期调用 | [命令行管理](admin-cli.md) |
 | 检测敏感文本，保护非流式模型回答与工具输出 | [敏感输出保护](sensitive-output.md) |
 | 用实际调用证据评估输出保护并保留报告 | [敏感输出技术控制包](sensitive-output-governance.md) |
 | 主动验证模型输出保护并关联两阶段测试证据 | [主动输出控制测评](output-control-assessments.md) |

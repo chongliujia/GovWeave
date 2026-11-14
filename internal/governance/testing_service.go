@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -430,6 +431,10 @@ func (a *ActiveTests) StartPlan(productID, planID, phase, trigger string) (TestR
 	}
 	now := time.Now().UTC()
 	run := TestRun{SchemaVersion: 1, RunnerVersion: runnerFor(plan), ID: id, Phase: phase, Trigger: trigger, State: "running", Status: "pending", StartedAt: now.Format(time.RFC3339Nano), Product: product, Plan: plan, Suite: suite, SuiteSHA256: digestJSON(suite), GatewayRevision: source.resources.Revision, PolicyRevision: source.policy.Revision, ConnectionID: target.connection.ID, ConnectionRevision: target.connection.Revision, ToolID: target.tool.ID, ToolRevision: target.tool.Revision, Cases: []TestCaseResult{}, Input: source.input(product, now), RulePack: pack}
+	if len(source.outputPolicy.ApplicationPolicies) > 0 {
+		value, _ := json.Marshal(source.outputPolicy.ForApplication(plan.ApplicationID).DetectorVersion)
+		run.Input.Facts["runtime.test_output_detector_version"] = compliance.Fact{Value: value, Source: "runtime", EvidenceID: fmt.Sprintf("output-%d", source.outputPolicy.Revision), ObservedAt: now.Format(time.RFC3339Nano)}
+	}
 	// Reserve room for worst-case escaped assistant text and a rule evaluation
 	// before making any billable request. Large snapshots fail without inference.
 	probe, err := compliance.EvaluateSnapshot(pack, run.Input, now)

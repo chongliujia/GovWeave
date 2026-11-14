@@ -59,9 +59,10 @@ func runtimeEvidence(product Product, input compliance.Input, source sources) *R
 		if json.Unmarshal(fact.Value, &value) != nil {
 			continue
 		}
+		_, detector, _, _ := source.outputSettings(product)
 		ref := RuntimeFactEvidence{Fact: name, EvidenceID: fact.EvidenceID, Value: value, SourceRequestIDs: []string{}, MatchedRequestIDs: []string{}}
 		for _, record := range e.Records {
-			included, matched := runtimeFactMatch(name, record, source.outputPolicy.Revision, source.outputPolicy.DetectorVersion)
+			included, matched := runtimeFactMatch(name, record, source.outputPolicy.Revision, detector)
 			if included {
 				ref.SourceRequestIDs = append(ref.SourceRequestIDs, record.RequestID)
 			}

@@ -141,14 +141,21 @@ func (s sources) input(product Product, now time.Time) compliance.Input {
 func (s sources) addOutputFacts(product Product, add func(string, any, string)) {
 	evidence := fmt.Sprintf("gw-%d-output-%d", s.resources.Revision, s.outputPolicy.Revision)
 	add("output_policy_revision", s.outputPolicy.Revision, evidence)
-	mode := s.outputPolicy.Mode
-	if mode == "" {
-		mode = "disabled"
+	// Scalar product facts are emitted only when every bound application agrees.
+	// Mixed modes/detectors remain unknown to rules expecting a single value.
+	mode, detector, uniformMode, uniformDetector := s.outputSettings(product)
+	if uniformMode {
+		add("output_policy_mode", mode, evidence)
 	}
-	add("output_policy_mode", mode, evidence)
-	add("output_detector_version", s.outputPolicy.DetectorVersion, evidence)
+	if uniformDetector {
+		add("output_detector_version", detector, evidence)
+	}
 	for _, category := range []string{"credential", "email", "phone"} {
-		add("output_"+category+"_enabled", slices.Contains(s.outputPolicy.Categories, category), evidence)
+		enabled := len(product.ApplicationIDs) > 0
+		for _, id := range product.ApplicationIDs {
+			enabled = enabled && slices.Contains(s.outputPolicy.ForApplication(id).Categories, category)
+		}
+		add("output_"+category+"_enabled", enabled, evidence)
 	}
 	known, covered := true, len(product.ApplicationIDs) > 0
 	for _, id := range product.ApplicationIDs {
@@ -190,7 +197,7 @@ func (s sources) addOutputFacts(product Product, add func(string, any, string)) 
 		if record.OutputPolicy == nil {
 			continue
 		}
-		if checked && record.OutputPolicy.Revision == s.outputPolicy.Revision && record.OutputPolicy.DetectorVersion == s.outputPolicy.DetectorVersion {
+		if checked && record.OutputPolicy.Revision == s.outputPolicy.Revision && record.OutputPolicy.DetectorVersion == detector {
 			currentChecked++
 		}
 		if record.ErrorCode == "content_output_blocked" {
@@ -212,9 +219,28 @@ func (s sources) addOutputFacts(product Product, add func(string, any, string)) 
 	add("sample.output_unknown_count", unknown, auditEvidence)
 	add("sample.output_redacted_count", redacted, auditEvidence)
 	// Current-version evidence must not be borrowed from an older policy.
-	add("sample.output_current_checked_count", currentChecked, fmt.Sprintf("%s-output-%d", auditEvidence, s.outputPolicy.Revision))
+	if uniformDetector {
+		add("sample.output_current_checked_count", currentChecked, fmt.Sprintf("%s-output-%d", auditEvidence, s.outputPolicy.Revision))
+	}
 	add("sample.output_unchecked_release_count", uncheckedReleases, auditEvidence)
 	add("sample.output_incomplete_count", incomplete, auditEvidence)
+}
+
+func (s sources) outputSettings(product Product) (mode, detector string, uniformMode, uniformDetector bool) {
+	uniformMode, uniformDetector = true, true
+	mode, detector = s.outputPolicy.Mode, s.outputPolicy.DetectorVersion
+	for i, id := range product.ApplicationIDs {
+		p := s.outputPolicy.ForApplication(id)
+		if i == 0 {
+			mode, detector = p.Mode, p.DetectorVersion
+		}
+		uniformMode = uniformMode && p.Mode == mode
+		uniformDetector = uniformDetector && p.DetectorVersion == detector
+	}
+	if mode == "" {
+		mode = "disabled"
+	}
+	return
 }
 
 func allOutputCategories(categories []string) bool {

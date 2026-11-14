@@ -30,6 +30,7 @@ export function createPluginConsole({ request, notice }) {
   const root = el("page-plugins");
   let data = null, product = null, busy = false, epoch = 0;
   let productBaseline = "", outputBaseline = "", activeTab = "output";
+  let outputTarget = "";
   let preview = null, previewSignature = "", previewMessage = "";
   const header = node("div", undefined, "section-title");
   const reload = label("button", "Reload plugin configuration", "secondary");
@@ -92,6 +93,9 @@ export function createPluginConsole({ request, notice }) {
   const result = node("p", undefined, "plugin-detail"); result.id = "plugin-evaluation"; result.setAttribute("role", "status"); compliance.card.append(result);
 
   const output = section("Sensitive-output detector / redaction", "plugin-output");
+  const target = field(output.fields, "Policy target", "plugin-output-target", "select");
+  const inherit = button(output.fields, "Use default policy", "plugin-output-inherit", "button");
+  const targetHint = node("p", undefined, "field-hint"); targetHint.id = "plugin-output-target-hint";
   const detectors = field(output.fields, "Detector version", "plugin-detector", "select");
   const detectorDetail = node("p", undefined, "plugin-detail"); detectorDetail.id = "plugin-detector-detail"; output.fields.append(detectorDetail);
   const mode = field(output.fields, "Processing mode", "plugin-mode", "select");
@@ -220,7 +224,7 @@ export function createPluginConsole({ request, notice }) {
 
   const detectorSetup = step("Detector selection", "Compare version coverage. Selection alone does not change the live policy.");
   detectorSetup.append(detectors.parentElement, detectorChoices.container, detectorDetail);
-  const outputSetup = step("Runtime configuration", "One shared policy with an explicit application scope.");
+  const outputSetup = step("Runtime configuration", "Configure the default policy or select one application for independent settings.");
   outputSetup.append(mode.parentElement, modeChoices.container, el("plugin-categories"), scope.parentElement, outputApps.container);
   const scopeHint = label("p", "All applications includes applications created later.", "plugin-scope-warning"); outputSetup.append(scopeHint);
   const advanced = disclosure("Advanced: public email exceptions", "plugin-output-advanced");
@@ -229,7 +233,7 @@ export function createPluginConsole({ request, notice }) {
   const historyPanel = disclosure("Policy revision history", "plugin-history-panel"); historyPanel.append(historyButton, history);
   const outputColumns = node("div", undefined, "plugin-workspace"); outputColumns.append(detectorSetup, outputSetup);
   const outputSave = el("plugin-output-save");
-  outputSaved.classList.add("plugin-current-policy"); output.fields.append(outputSaved, outputColumns, outputNotes, historyPanel);
+  outputSaved.classList.add("plugin-current-policy"); output.fields.append(target.parentElement, targetHint, inherit, outputSaved, outputColumns, outputNotes, historyPanel);
   el("plugin-categories").classList.add("plugin-category-chips");
 
   const previewPanel = disclosure("Try before saving", "plugin-preview-panel");
@@ -342,7 +346,7 @@ export function createPluginConsole({ request, notice }) {
     }
     const pack = data.catalog.rule_packs.find(item => packKey(item) === packs.value);
     productBar.summary.textContent = pack ? `${pack.name} · ${pack.version} · ${t("Applications selected: {count}", { count: selected("plugin-product-apps").length })}` : t("Select a rule pack and product applications to continue.");
-    outputBar.summary.textContent = `${detectors.value} · ${t(modes[mode.value])} · ${scope.value === "all" ? t("All applications, including future ones") : t("Applications selected: {count}", { count: selected("plugin-output-apps").length })}`;
+    outputBar.summary.textContent = `${detectors.value} · ${t(modes[mode.value])} · ${target.value ? target.selectedOptions[0].textContent : scope.value === "all" ? t("All applications, including future ones") : t("Applications selected: {count}", { count: selected("plugin-output-apps").length })}`;
     productSave.disabled = !productDirty() || !pack || !name.value.trim() || !version.value.trim() || !selected("plugin-product-apps").length;
     outputSave.disabled = !outputDirty() || !detectors.value || !selected("plugin-categories").length || scope.value === "selected" && !selected("plugin-output-apps").length;
     if (productDirty() && (!name.value.trim() || !version.value.trim() || !selected("plugin-product-apps").length)) productBar.summary.textContent = t("Complete the product name, version, rule pack and application scope.");
@@ -360,19 +364,25 @@ export function createPluginConsole({ request, notice }) {
     if (!pack && data.catalog.rule_packs.length) packDetail.textContent = packs.value ? t("Saved rule pack is not installed") : t("Select an installed rule pack to inspect its version and review status.");
     const detector = data.catalog.detectors.find(item => item.version === detectors.value);
     detectorDetail.textContent = detector ? t("Local compiled plugin · Up to {bytes} bytes / {count} findings. No remote content transfer.", { bytes: detector.max_bytes, count: detector.max_findings }) : t("Unavailable");
-    el("plugin-output-apps").hidden = scope.value !== "selected";
+    scope.parentElement.hidden = !!target.value;
+    inherit.hidden = !target.value;
+    inherit.disabled = outputDirty() || !(data.policy.application_policies || []).some(p => p.application_id === target.value);
+    targetHint.textContent = target.value ? (savedOutput().source === "application" ? t("This application uses independent settings.") : t("This application inherits the default policy. Saving creates independent settings.")) : t("Default settings apply to applications without an independent policy. Independent policies: {count}", { count: (data.policy.application_policies || []).length });
+    el("plugin-output-apps").hidden = !!target.value || scope.value !== "selected";
     el("plugin-output-apps").disabled = scope.value !== "selected";
-    outputApps.container.hidden = scope.value !== "selected"; scopeHint.hidden = scope.value !== "all";
+    outputApps.container.hidden = !!target.value || scope.value !== "selected"; scopeHint.hidden = !!target.value || scope.value !== "all";
     packChoices.sync(product ? packKey({ id: product.pack_id, version: product.pack_version }) : "");
-    detectorChoices.sync(data.policy.detector_version); modeChoices.sync(data.policy.mode);
+    const effective = savedOutput();
+    detectorChoices.sync(effective.detector_version); modeChoices.sync(effective.mode);
     productApps.refresh(); outputApps.refresh(); renderDraft(); renderPreview();
     assessmentView.sync({ pack, product, dirty: productDirty() });
     testsView.sync({ product, resources: data.resources, dirty: productDirty() });
     coverageView.sync({ product, resources: data.resources, dirty: productDirty(), policyRevision: data.policy.revision });
-    outputSaved.textContent = t("Saved detector: {version} · Revision {revision} · {mode}", { version: data.policy.detector_version, revision: data.policy.revision, mode: t(modes[data.policy.mode]) });
+    outputSaved.textContent = t("Saved detector: {version} · Revision {revision} · {mode}", { version: effective.detector_version, revision: data.policy.revision, mode: t(modes[effective.mode]) });
   }
   function renderOptions() {
     if (!data) return;
+    selectOptions(target, [["", t("Default policy")], ...applications()], target.value);
     const productValue = productSelect.value, packValue = packs.value, detectorValue = detectors.value, modeValue = mode.value, scopeValue = scope.value;
     selectOptions(productSelect, [["", t("New product")], ...data.products.map(item => [item.id, `${item.name} · ${item.version}`])], productValue);
     const packEntries = [["", t("Select an installed rule pack")], ...data.catalog.rule_packs.map(item => [packKey(item), `${item.name} · ${item.version} · ${t(reviews[item.review_status] || item.review_status)}`])];
@@ -401,8 +411,16 @@ export function createPluginConsole({ request, notice }) {
     renderChecks("plugin-product-apps", applications(), product?.application_ids || []);
     productBaseline = productSignature(); result.textContent = ""; renderDetails();
   }
-  function restoreOutput() {
+  function savedOutput() {
     const policy = data.policy;
+    if (!target.value) return policy;
+    const override = (policy.application_policies || []).find(item => item.application_id === target.value);
+    const applies = !policy.application_ids.length || policy.application_ids.includes(target.value);
+    return { ...(override || policy), source: override ? "application" : "default", application_ids: [target.value], mode: override?.mode || (applies ? policy.mode : "disabled") };
+  }
+  function restoreOutput() {
+    outputTarget = target.value;
+    const policy = savedOutput();
     detectors.value = policy.detector_version; mode.value = policy.mode; scope.value = policy.application_ids.length ? "selected" : "all";
     renderChecks("plugin-output-apps", applications(), policy.application_ids);
     renderChecks("plugin-categories", Object.entries(categories).map(([value, text]) => [value, t(text)]), policy.categories);
@@ -474,9 +492,9 @@ export function createPluginConsole({ request, notice }) {
     run(async token => {
       const apps = scope.value === "all" ? [] : selected("plugin-output-apps"), chosen = selected("plugin-categories");
       if (!chosen.length || scope.value === "selected" && !apps.length) throw new Error(t("Choose at least one category and at least one application for a selected scope."));
-      const policy = await send("/api/v1/policies/sensitive-output", {
+      const policy = await send(`/api/v1/policies/sensitive-output${target.value ? `/applications/${encodeURIComponent(target.value)}` : ""}`, {
         revision: data.policy.revision, detector_version: detectors.value, mode: mode.value, categories: chosen,
-        application_ids: apps, public_emails: emails.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean),
+        ...(target.value ? {} : { application_ids: apps }), public_emails: emails.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean),
       }, "PUT");
       if (token !== epoch) return;
       data.policy = policy; history.replaceChildren(); restoreOutput();
@@ -502,9 +520,26 @@ export function createPluginConsole({ request, notice }) {
   evaluate.addEventListener("click", () => loadAssessment(true));
   latestAssessment.addEventListener("click", () => loadAssessment(false));
   historyButton.addEventListener("click", () => run(async token => {
-    const snapshots = await request("/api/v1/policies/sensitive-output/history");
+    const snapshots = await request(`/api/v1/policies/sensitive-output${target.value ? `/applications/${encodeURIComponent(target.value)}` : ""}/history`);
     if (token !== epoch) return;
-    history.replaceChildren(...snapshots.snapshots.map(item => node("li", `${item.revision} · ${item.detector_version} · ${t(modes[item.mode])} · ${item.updated_at ? formatDateTime(item.updated_at) : t("Initial default")}`)));
+    history.replaceChildren(...snapshots.snapshots.map(entry => {
+      const item = entry.policy || entry;
+      const effectiveMode = target.value && item.application_ids.length && !item.application_ids.includes(target.value) ? "disabled" : item.mode;
+      const row = node("li", `${item.revision} · ${item.detector_version} · ${t(modes[effectiveMode])} · ${item.updated_at ? formatDateTime(item.updated_at) : t("Initial default")}`);
+      if (target.value) {
+        const restore = label("button", "Restore for this application", "text-button"); restore.type = "button";
+        restore.disabled = outputDirty();
+        restore.addEventListener("click", () => run(async token => {
+          if (outputDirty()) return;
+          const policy = await send(`/api/v1/policies/sensitive-output/applications/${encodeURIComponent(target.value)}/restore`, { revision: data.policy.revision, from_revision: item.revision }, "POST");
+          if (token !== epoch) return;
+          data.policy = policy; history.replaceChildren(); restoreOutput(); assessmentView.invalidate();
+          notice(t("Historical settings restored as a new application policy revision."));
+        }));
+        row.append(restore);
+      }
+      return row;
+    }));
   }));
   reload.addEventListener("click", () => {
     if ((productDirty() || outputDirty()) && !window.confirm(t("Reloading will discard unsaved plugin changes. Continue?"))) return;
@@ -514,6 +549,16 @@ export function createPluginConsole({ request, notice }) {
     if (productDirty() && !window.confirm(t("Switching products will discard this product's unsaved changes. Continue?"))) { productSelect.value = product?.id || ""; return; }
     restoreProduct(productSelect.value);
   });
+  target.addEventListener("change", () => {
+    if (outputDirty() && !window.confirm(t("Switching policy targets will discard unsaved changes. Continue?"))) { target.value = outputTarget; return; }
+    outputTarget = target.value; history.replaceChildren(); clearPreview(); restoreOutput();
+  });
+  inherit.addEventListener("click", () => run(async token => {
+    const policy = await send(`/api/v1/policies/sensitive-output/applications/${encodeURIComponent(target.value)}`, { revision: data.policy.revision }, "DELETE");
+    if (token !== epoch) return;
+    data.policy = policy; history.replaceChildren(); restoreOutput(); assessmentView.invalidate();
+    notice(t("Application now uses the default policy."));
+  }));
   productBar.discard.addEventListener("click", () => restoreProduct(product?.id));
   outputBar.discard.addEventListener("click", restoreOutput);
   for (const form of [compliance.form, output.form]) for (const event of ["input", "change"]) form.addEventListener(event, renderDetails);
@@ -529,15 +574,15 @@ export function createPluginConsole({ request, notice }) {
       renderOptions(); assessmentView.relocalize(); testsView.relocalize(); coverageView.relocalize(); status.textContent = ""; result.textContent = ""; history.replaceChildren();
     },
     reset() {
-      epoch++; data = null; product = null; productBaseline = outputBaseline = ""; setBusy(false); showTab("output");
+      epoch++; outputTarget = ""; data = null; product = null; productBaseline = outputBaseline = ""; setBusy(false); showTab("output");
       compliance.form.reset(); output.form.reset();
       sample.value = ""; clearPreview(); previewPanel.open = false;
       assessmentView.reset();
       testsView.reset();
       coverageView.reset();
-      for (const control of [productSelect, packs, detectors, mode, scope]) control.replaceChildren();
+      for (const control of [productSelect, packs, detectors, mode, scope, target]) control.replaceChildren();
       for (const id of ["plugin-product-apps", "plugin-output-apps", "plugin-categories"]) renderChecks(id, [], []);
-      for (const control of [status, result, packDetail, detectorDetail, outputSaved, history]) control.replaceChildren();
+      for (const control of [status, result, packDetail, detectorDetail, outputSaved, history, targetHint]) control.replaceChildren();
       for (const choices of [packChoices, detectorChoices, modeChoices]) choices.reset();
       productApps.reset(); outputApps.reset();
       for (const bar of [productBar, outputBar]) { bar.state.textContent = ""; bar.summary.textContent = ""; }

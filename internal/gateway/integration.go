@@ -89,7 +89,7 @@ func (g *Engine) IntegrationCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	input := g.Policies.Snapshot()
-	output := g.OutputPolicies.Snapshot()
+	output := g.OutputPolicies.Snapshot().ForApplication(app.ID)
 	inputApplies := input.Mode != "disabled" &&
 		(len(input.ApplicationIDs) == 0 || slices.Contains(input.ApplicationIDs, app.ID)) &&
 		(len(input.ConnectionIDs) == 0 || slices.Contains(input.ConnectionIDs, resolved.Connection.ID))
