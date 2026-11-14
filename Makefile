@@ -9,6 +9,11 @@ build:
 demo: build
 	python3 scripts/demo-assessment.py
 
+.PHONY: demo-quickstart
+DEMO_LANG ?= en
+demo-quickstart: build
+	python3 scripts/demo-quickstart.py --lang $(DEMO_LANG)
+
 demo-tools: build
 	python3 scripts/demo-tools.py
 

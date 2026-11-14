@@ -8,6 +8,8 @@ These guides describe **0.2.0-dev**, the implemented single-instance gateway. St
 
 | Task | Guide |
 | --- | --- |
+| Try three local gateway controls without a model account | [Start here: local trial](try-it.md) |
+| Watch a 60-second walkthrough or use its static frames and narration | [Short demo](demo/README.md) |
 | View English/Chinese console screenshots and refresh public images | [Console screenshots](screenshots/README.md) |
 | Review the dated formal-gateway smoke results and their limits | [Verified formal-gateway smoke test](../README.md#verified-formal-gateway-smoke-test) |
 | Inspect system coverage gaps and run a traced knowledge-retrieval pilot | [System gateway pilot](system-gateway-pilot.md) |

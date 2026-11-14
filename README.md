@@ -2,19 +2,38 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-An open-source, self-hosted AI governance gateway for application and Agent platform developers. Route model calls, apply scoped runtime controls, and retain evidence for technical safety and compliance assessments.
+**Sensitive-output protection, application permissions and traceable audits for AI applications.**
 
-Deploy GovWeave on your own infrastructure, connect an OpenAI-compatible model endpoint, and give each application its own key and model grants. Applications use your gateway URL and an administrator-defined model alias. No GovWeave cloud account is required.
+GovWeave is an open-source, self-hosted AI governance gateway for developers building AI support, knowledge assistants and Agent platforms. Connect an OpenAI-compatible model endpoint and keep gateway configuration on your own infrastructure.
 
-**Status: 0.2.0-dev preview.** The current implementation is a single-process, single-organization gateway. It is not a complete GRC platform or a legal compliance certification service.
+**[Try locally — no model account](docs/try-it.md)** · [Watch the 60-second walkthrough](docs/demo/README.md) · [Connect your application](docs/application-onboarding.md) · [Documentation](docs/README.md)
 
-**Language:** The console and primary documentation default to English. Use the console language selector to switch to Simplified Chinese; the browser remembers your choice. For Chinese documentation, follow the link at the top of this page.
+- **Control what reaches the application.** Detect supported credential, email and phone patterns; block or redact non-streaming model/tool output within the configured scope.
+- **Give each application its own access.** Issue application keys, grant models and authorize integrated read tools.
+- **Inspect what happened.** Follow requests to policy revisions and findings; explicitly enable encrypted content capture when you need to compare original and prepared output.
 
-To connect your own application, follow the [application onboarding guide](docs/application-onboarding.md): start the gateway, configure a model, create an application key, then copy its base URL and model alias. Deployment & access now offers model selection, non-streaming Python/cURL examples, a local configuration check and an explicit single-request verification with audit correlation.
+**0.2.0-dev preview · Apache-2.0 · English / 简体中文.** Single-process, single-organization deployment. Technical controls and evidence, not legal compliance certification.
 
-[Risk evidence](docs/risk-evidence.md) connects calls, captured content, policy snapshots and recorded findings. Opt-in encrypted capture supports JSON responses and bounded SSE frame evidence, with content-access auditing and application-scoped relationship graphs. Ordinary call logs remain metadata-only; archived product reports retain the exact sampled records behind their runtime counts.
+[![Six-step walkthrough: configured output protection, three requests, redaction evidence and input blocking](docs/demo/quickstart-en.gif)](docs/demo/README.md)
+
+Actual console, isolated gateway, scripted local model and synthetic data. Six annotated captures, 10 seconds each; [static frames and transcript](docs/demo/README.md). Ordinary audit logs contain metadata only; this demo explicitly enables separate content capture.
+
+## Try without a model account
+
+From a source checkout, with **Go 1.24+, Python 3.10+ and Make** installed:
+
+```bash
+make demo-quickstart
+```
+
+The trial builds an isolated gateway, verifies **normal answer → email redaction → credential input blocked**, checks all three audit records and linked evidence, then removes its temporary services and content. No provider key, model download or paid inference is needed. See [clone instructions, expected output and troubleshooting](docs/try-it.md).
+
+To use your own model, follow [application onboarding](docs/application-onboarding.md). The console defaults to English and remembers an explicit Simplified Chinese selection.
 
 ## Screenshots
+
+<details>
+<summary>Browse the overview, redaction preview and traffic coverage</summary>
 
 Actual console screenshots from isolated local tests using **synthetic fixtures**, not production traffic or compliance results. [Screenshot sources and refresh instructions](docs/screenshots/README.md).
 
@@ -35,6 +54,8 @@ Try a detector draft against synthetic text before saving a policy. Previewing d
 Keep runtime calls separate from assessment probes, and show unverified system boundaries rather than claiming complete coverage.
 
 ![English product coverage panel showing routes, separate probes and unverified channels](docs/screenshots/system-coverage-en.png)
+
+</details>
 
 ## What works today
 

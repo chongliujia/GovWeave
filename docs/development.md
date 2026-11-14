@@ -30,6 +30,7 @@ make package
 | `make test` | Runs `go test -race ./...` |
 | `make check` | Runs `go vet`, gofmt checks, JS syntax checks, and `tests/i18n-check.cjs` |
 | `make build` | Produces `bin/govweave` with embedded console assets |
+| `make demo-quickstart` | Builds and verifies three isolated synthetic requests, audit links and cleanup; requires Python 3.10+ |
 | `make package` | Produces an OS/CPU-specific binary archive and checksum in `dist/` |
 
 Use a separate data directory and unused port when running a development instance alongside another instance. Do not point tests at real credentials or shared instance data. Integration fixtures create temporary data and local model servers; they do not call cloud models.

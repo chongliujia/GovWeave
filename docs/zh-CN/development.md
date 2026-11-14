@@ -11,6 +11,8 @@ make build
 make package
 ```
 
+`make demo-quickstart DEMO_LANG=zh-CN` 编译网关并验证三次隔离的合成请求、审计关联和清理行为，需要 Python 3.10+；完整入口见[本机试用](try-it.md)。
+
 - Go 测试覆盖 URL/名称校验、文件和环境变量优先级、部署字段锁定、重启恢复、文件权限、并发保存冲突、文件损坏拒绝启动、进程锁、密码哈希与权限、重复初始化拒绝、登录限速、会话过期与退出撤销、旧实例迁移、管理员认证、Origin/CSRF 校验、请求体限制和真实能力状态。
 - `go test -race ./...` 需要可用的 C 编译器。所有 Go 测试无外部服务依赖；网关集成测试会监听本机临时端口。
 - `go vet`、gofmt 和 JavaScript 语法检查由 `make check` 执行。
