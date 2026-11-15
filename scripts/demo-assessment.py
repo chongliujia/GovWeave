@@ -142,10 +142,11 @@ class SupportHandler(BaseHTTPRequestHandler):
 
 
 class DemoSession:
-    def __init__(self, binary, suite_name="synthetic-support.json", provider_factory=SupportServer):
+    def __init__(self, binary, suite_name="synthetic-support.json", provider_factory=SupportServer, pack_files=None):
         self.binary = binary
         self.suite_name = suite_name
         self.provider_factory = provider_factory
+        self.pack_files = pack_files or ["nist-ai-rmf-lifecycle.json"]
         self.temporary = None
         self.provider = None
         self.thread = None
@@ -183,9 +184,9 @@ class DemoSession:
             raise DemoError("binary not found; run make build first")
         self.temporary = tempfile.TemporaryDirectory(prefix="govweave-support-demo-")
         directory = Path(self.temporary.name)
-        for category, filename in [("rule-packs", "nist-ai-rmf-lifecycle.json"), ("test-suites", self.suite_name)]:
+        for category, filename in [("rule-packs", name) for name in self.pack_files] + [("test-suites", self.suite_name)]:
             destination = directory / category
-            destination.mkdir()
+            destination.mkdir(exist_ok=True)
             shutil.copyfile(ROOT / "examples" / category / filename, destination / filename)
         self.provider = self.provider_factory()
         self.thread = threading.Thread(target=self.provider.serve_forever, daemon=True)

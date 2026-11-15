@@ -153,7 +153,7 @@ func validateSnapshot(snapshot ReportSnapshot) error {
 		return ErrArchiveUnavailable
 	}
 	for key, fact := range in.Facts {
-		if slices.Contains([]string{"testing.output.pre_deployment.passed", "testing.output.operation.passed", "testing.tools.output.pre_deployment.passed", "testing.tools.output.operation.passed"}, key) {
+		if slices.Contains([]string{"testing.test_set_documented", "testing.pre_deployment.passed", "testing.operation.passed", "testing.output.pre_deployment.passed", "testing.output.operation.passed", "testing.tools.output.pre_deployment.passed", "testing.tools.output.operation.passed"}, key) {
 			var passed bool
 			if fact.Source != "assessment" || !testRunID.MatchString(fact.EvidenceID) || fact.ExpiresAt == "" || (string(fact.Value) != "true" && string(fact.Value) != "false") || json.Unmarshal(fact.Value, &passed) != nil {
 				return ErrArchiveUnavailable

@@ -23,6 +23,7 @@ import (
 	"govweave/internal/auth"
 	"govweave/internal/config"
 	"govweave/internal/gateway"
+	"govweave/internal/governance"
 )
 
 const usage = `Usage: govweave admin [--url URL] [--session-file FILE] [--password-stdin | --password-file FILE] COMMAND
@@ -48,6 +49,15 @@ Commands:
              [--scope all|APP_ID,...]   (scope is for the default policy only)
   policy inherit --application ID --revision N
   policy restore --application ID --revision N --from-revision OLD
+  products list | products show --id ID
+  reports list --product ID | reports create --product ID | reports show --id ID
+  remediations list --product ID | remediations show --product ID --id ID
+  remediations create --product ID --file FILE
+  remediations update --product ID --id ID --file FILE
+  remediations recheck --product ID --id ID --revision N [--test-run ID]
+  tests list --product ID | tests show --id ID | tests plans --product ID
+  tests run --product ID --plan ID --phase pre_deployment|operation
+                                     Explicitly starts configured model/tool calls
 
 Global flags precede the command; command flags follow its name.
 All successful commands emit JSON. Writes require the revision you inspected.
@@ -364,6 +374,10 @@ func parseCommand(args []string) (operation, error) {
 	scope := fs.String("scope", "", "all or application IDs")
 	id := fs.String("id", "", "resource ID")
 	file := fs.String("file", "", "private configuration JSON file")
+	product := fs.String("product", "", "product ID")
+	testRun := fs.String("test-run", "", "completed retest ID")
+	plan := fs.String("plan", "", "configured test plan ID")
+	phase := fs.String("phase", "", "test phase")
 	if fs.Parse(args[2:]) != nil || fs.NArg() != 0 {
 		return nil, errors.New("invalid command flags; use govweave admin --help")
 	}
@@ -376,6 +390,21 @@ func parseCommand(args []string) (operation, error) {
 		}
 	}
 	switch group + " " + action {
+	case "products list":
+	case "products show", "reports show", "tests show":
+		allow("id")
+	case "reports list", "reports create", "remediations list", "tests list", "tests plans":
+		allow("product")
+	case "remediations show":
+		allow("product", "id")
+	case "remediations create":
+		allow("product", "file")
+	case "remediations update":
+		allow("product", "id", "file")
+	case "remediations recheck":
+		allow("product", "id", "revision", "test-run")
+	case "tests run":
+		allow("product", "plan", "phase")
 	case "applications list", "connections list":
 	case "applications create", "connections create":
 		allow("file")
@@ -403,6 +432,80 @@ func parseCommand(args []string) (operation, error) {
 	}
 	if supplied["application"] && !identifier.MatchString(*app) {
 		return nil, errors.New("invalid application ID")
+	}
+	if group == "products" || group == "reports" || group == "remediations" || group == "tests" {
+		validID := func(value string) bool {
+			return regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$`).MatchString(value)
+		}
+		for _, name := range []string{"product", "id", "plan"} {
+			if allowed[name] && !validID(fs.Lookup(name).Value.String()) {
+				return nil, errors.New("provide a valid --" + name)
+			}
+		}
+		path, method := "/api/v1/compliance/products", "GET"
+		var payload any
+		switch group {
+		case "products":
+			if action == "show" {
+				path += "/" + *id
+			}
+		case "reports":
+			if action == "show" {
+				path = "/api/v1/compliance/reports/" + *id
+			} else {
+				path += "/" + *product + "/reports"
+			}
+			if action == "create" {
+				method, payload = "POST", struct{}{}
+			}
+		case "tests":
+			if action == "show" {
+				path = "/api/v1/compliance/test-runs/" + *id
+			} else {
+				path += "/" + *product + "/test-runs"
+			}
+			if action == "plans" {
+				path = "/api/v1/compliance/products/" + *product + "/test-plans"
+			}
+			if action == "run" {
+				if *phase != "operation" && *phase != "pre_deployment" {
+					return nil, errors.New("choose --phase pre_deployment or operation")
+				}
+				method, payload = "POST", map[string]string{"phase": *phase, "plan_id": *plan}
+			}
+		case "remediations":
+			path += "/" + *product + "/remediations"
+			if action == "show" || action == "update" || action == "recheck" {
+				path += "/" + *id
+			}
+			if action == "recheck" {
+				rev, err := strconv.ParseUint(*revision, 10, 64)
+				if err != nil || supplied["test-run"] && !validID(*testRun) {
+					return nil, errors.New("provide the current --revision and a valid optional --test-run")
+				}
+				path += "/recheck"
+				method, payload = "POST", governance.RemediationCheck{Revision: rev, TestRunID: *testRun}
+			}
+			if action == "create" || action == "update" {
+				method, payload = "POST", &governance.RemediationCreate{}
+				if action == "update" {
+					method, payload = "PUT", &governance.RemediationInput{}
+				}
+				info, err := os.Lstat(*file)
+				if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 || info.Size() > 16*1024 {
+					return nil, errors.New("remediation input must be a private regular JSON file of at most 16 KiB")
+				}
+				f, err := os.Open(*file)
+				if err != nil {
+					return nil, errors.New("cannot read remediation input")
+				}
+				defer f.Close()
+				if config.DecodeStrict(io.LimitReader(f, 16*1024+1), payload) != nil {
+					return nil, errors.New("invalid remediation JSON")
+				}
+			}
+		}
+		return func(c *client) (json.RawMessage, error) { return c.request(method, path, payload) }, nil
 	}
 	if group == "applications" || group == "connections" {
 		if action != "list" {

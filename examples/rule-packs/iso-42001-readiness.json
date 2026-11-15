@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "id": "iso-42001-readiness",
+  "version": "0.1.0",
+  "name": "ISO/IEC 42001: management-system readiness (draft)",
+  "description": "Project-scoped preparation records for an AI management system: scope, responsibilities, risk treatment and improvement. Based only on the public ISO overview; no clause or Annex A mapping.",
+  "framework_kind": "standard",
+  "review": {
+    "status": "draft"
+  },
+  "sources": [
+    {
+      "title": "ISO/IEC 42001:2023 public overview",
+      "url": "https://www.iso.org/standard/42001",
+      "version": "2023, edition 1; public overview only",
+      "checked_on": "2026-11-15"
+    }
+  ],
+  "limitations": [
+    "This is a GovWeave preparation checklist informed by the public overview, not the licensed standard, a clause-level assessment, an Annex A mapping or certification.",
+    "The current evaluation scope is a product and its linked applications; it does not assess an entire organization or certify its AI management system.",
+    "Availability facts are operator-supplied references. The evaluator does not read documents, authenticate their authors or establish adequacy; human review remains unknown.",
+    "The 30-day evidence freshness interval is a local assurance choice, not an ISO requirement. Obtain licensed materials and qualified review for detailed conformity assessment."
+  ],
+  "controls": [
+    {
+      "id": "AIMS-SCOPE",
+      "title": "Review the proposed management-system scope",
+      "citation": "GovWeave preparation practice informed by ISO public overview; no clause mapping",
+      "severity": "medium",
+      "assessment_method": "manual",
+      "basis": "supporting_practice",
+      "requirement": {
+        "fact": "aims.scope_reviewed",
+        "operator": "eq",
+        "value": true,
+        "source": "document"
+      },
+      "remediation": "Record the organization boundary and product relationship; obtain qualified review of scope using licensed materials."
+    },
+    {
+      "id": "AIMS-INVENTORY",
+      "title": "Scope and AI inventory reference available",
+      "citation": "GovWeave preparation practice informed by ISO public overview; no clause mapping",
+      "severity": "medium",
+      "assessment_method": "evidence",
+      "basis": "supporting_practice",
+      "requirement": {
+        "fact": "aims.inventory_recorded",
+        "operator": "eq",
+        "value": true,
+        "source": "document",
+        "max_age_seconds": 2592000
+      },
+      "remediation": "Reference the AI inventory and the proposed management-system boundary for this product.",
+      "applies_when": {
+        "fact": "scope.aims_in_scope",
+        "operator": "eq",
+        "value": true,
+        "source": "assessment"
+      }
+    },
+    {
+      "id": "AIMS-RESPONSIBILITY",
+      "title": "Policy and responsibility reference available",
+      "citation": "GovWeave preparation practice informed by ISO public overview; no clause mapping",
+      "severity": "medium",
+      "assessment_method": "evidence",
+      "basis": "supporting_practice",
+      "requirement": {
+        "fact": "aims.responsibilities_recorded",
+        "operator": "eq",
+        "value": true,
+        "source": "document",
+        "max_age_seconds": 2592000
+      },
+      "remediation": "Reference the AI policy and assigned responsibilities; validate authority and actual implementation separately.",
+      "applies_when": {
+        "fact": "scope.aims_in_scope",
+        "operator": "eq",
+        "value": true,
+        "source": "assessment"
+      }
+    },
+    {
+      "id": "AIMS-RISK",
+      "title": "Risk treatment record available",
+      "citation": "GovWeave preparation practice informed by ISO public overview; no clause mapping",
+      "severity": "medium",
+      "assessment_method": "evidence",
+      "basis": "supporting_practice",
+      "requirement": {
+        "fact": "aims.risk_treatment_recorded",
+        "operator": "eq",
+        "value": true,
+        "source": "document",
+        "max_age_seconds": 2592000
+      },
+      "remediation": "Reference identified risks, treatment decisions and supporting evidence for this product.",
+      "applies_when": {
+        "fact": "scope.aims_in_scope",
+        "operator": "eq",
+        "value": true,
+        "source": "assessment"
+      }
+    },
+    {
+      "id": "AIMS-IMPROVEMENT",
+      "title": "Monitoring and improvement record available",
+      "citation": "GovWeave preparation practice informed by ISO public overview; no clause mapping",
+      "severity": "medium",
+      "assessment_method": "evidence",
+      "basis": "supporting_practice",
+      "requirement": {
+        "fact": "aims.improvement_recorded",
+        "operator": "eq",
+        "value": true,
+        "source": "document",
+        "max_age_seconds": 2592000
+      },
+      "remediation": "Reference review findings, corrective work and follow-up evidence; a reference alone does not verify effectiveness.",
+      "applies_when": {
+        "fact": "scope.aims_in_scope",
+        "operator": "eq",
+        "value": true,
+        "source": "assessment"
+      }
+    },
+    {
+      "id": "AIMS-ADEQUACY",
+      "title": "Review management-system implementation and effectiveness",
+      "citation": "GovWeave preparation practice informed by ISO public overview; no clause mapping",
+      "severity": "medium",
+      "assessment_method": "manual",
+      "basis": "supporting_practice",
+      "requirement": {
+        "fact": "aims.adequacy_reviewed",
+        "operator": "eq",
+        "value": true,
+        "source": "document"
+      },
+      "remediation": "Use licensed standard materials and qualified review to assess implementation and effectiveness; this checklist cannot establish conformity.",
+      "applies_when": {
+        "fact": "scope.aims_in_scope",
+        "operator": "eq",
+        "value": true,
+        "source": "assessment"
+      }
+    }
+  ]
+}

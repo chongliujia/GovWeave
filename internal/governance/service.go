@@ -29,17 +29,18 @@ type Report struct {
 }
 
 type Service struct {
-	Products  *Products
-	Archives  *Archives
-	Tests     *ActiveTests
-	gateway   *gateway.Engine
-	evaluator *compliance.Engine
-	trigger   chan struct{}
-	stop      chan struct{}
-	done      chan struct{}
-	closeOnce sync.Once
-	mu        sync.Mutex
-	reports   map[string]Report
+	Products     *Products
+	Archives     *Archives
+	Tests        *ActiveTests
+	Remediations *Remediations
+	gateway      *gateway.Engine
+	evaluator    *compliance.Engine
+	trigger      chan struct{}
+	stop         chan struct{}
+	done         chan struct{}
+	closeOnce    sync.Once
+	mu           sync.Mutex
+	reports      map[string]Report
 }
 
 func Open(dir string, g *gateway.Engine, evaluator *compliance.Engine) (*Service, error) {
@@ -54,6 +55,11 @@ func Open(dir string, g *gateway.Engine, evaluator *compliance.Engine) (*Service
 	s := &Service{Products: products, Archives: archives, gateway: g, evaluator: evaluator, trigger: make(chan struct{}, 1), stop: make(chan struct{}), done: make(chan struct{}), reports: map[string]Report{}}
 	s.Tests, err = openActiveTests(dir, s)
 	if err != nil {
+		return nil, err
+	}
+	s.Remediations, err = openRemediations(dir, s)
+	if err != nil {
+		s.Tests.close()
 		return nil, err
 	}
 	g.SetChangeChannel(s.trigger)

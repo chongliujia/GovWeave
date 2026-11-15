@@ -2,7 +2,7 @@
 
 **English** | [简体中文](zh-CN/admin-cli.md)
 
-`govweave admin` manages a running instance through the same administrator HTTP API as the console. It is included in the standard Go binary, container and offline archive; no Python, Node or separate CLI package is needed. Commands return JSON on stdout, errors on stderr, and a nonzero exit status on failure. They do not edit the live data directory or call a model.
+`govweave admin` manages a running instance through the same administrator HTTP API as the console. It is included in the standard Go binary, container and offline archive; no Python, Node or separate CLI package is needed. Commands return JSON on stdout, errors on stderr, and a nonzero exit status on failure. They do not edit the live data directory. Only the explicit `tests run` command starts configured model/tool calls.
 
 ## Run the service in the background
 
@@ -56,6 +56,8 @@ Global flags, including `--url`, `--session-file` and password options, go **bef
 Without `--session-file`, authenticated commands accept `--password-stdin` or `--password-file /private/path` and automatically revoke their temporary session afterward. Password files must be private regular files. The existing global limit of ten sign-in/setup attempts per minute applies to successful logins too; reuse a session for repeated commands. No command accepts a password as an argument.
 
 ## Configure applications and policies
+
+For product control gaps, the CLI also supports `products`, `reports`, `remediations` and `tests`. See [risk remediation](remediation.md) for JSON inputs and the progress/retest/verification flow. `tests run` explicitly starts configured model/tool calls; the other remediation commands perform local management and evidence checks.
 
 | Command | Behavior |
 | --- | --- |

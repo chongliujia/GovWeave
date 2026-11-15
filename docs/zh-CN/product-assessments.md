@@ -2,7 +2,7 @@
 
 [English](../product-assessments.md) | **简体中文**
 
-登记后的产品会将管理资料与网关自行采集的运行证据合并。保存产品、通过管理 API 修改连接／应用／密钥／凭证策略／读取工具配置、网关操作结束时，后台工作器触发重评。本功能复用[声明式引擎](compliance-engine.md)，不新增管理页面；可另行安装[有出处的欧盟透明度草案](eu-transparency-reports.md)。
+登记后的产品会将管理资料与网关自行采集的运行证据合并。保存产品、通过管理 API 修改连接／应用／密钥／凭证策略／读取工具配置、网关操作结束时，后台工作器触发重评。本功能复用[声明式引擎](compliance-engine.md)，通过[插件中心](plugin-center.md)提供产品选择和证据引用录入；可另行安装[有出处的欧盟透明度草案](eu-transparency-reports.md)。
 
 ## 登记与评估
 
@@ -97,3 +97,5 @@
 目前只保存最新产品资料。**自动产生的最新状态有界保存在内存**，重启后依据资料和当前网关状态重新计算。独立的[显式报告保存](eu-transparency-reports.md)可将历史快照写盘，周期性评估不会归档每次结果。资料历史、独立文档验证、外部证据适配器、多包聚合、告警和法规包执行仍待建设。原有凭证策略继续独立执行其模式和范围。部署前及周期性主动测试现见[主动测评](active-assessments.md)，其合并测试证据的评估保存在独立测试记录中。当前有效输出控制测试的两项 `testing.output.*.passed` 事实也会进入产品评估与报告快照，见[主动输出测评](output-control-assessments.md)。
 
 `go test -race ./...` 覆盖登记、适配器、事件更新和时效；构建后运行 `python3 tests/compliance-smoke.py`，可验收真实临时实例、虚构阻断请求、策略变化、资料持久化和重启重评，不访问上游模型。
+
+恰有一个测试计划时，当前且来源匹配的测试还会将 `testing.test_set_documented`、`testing.pre_deployment.passed` 和 `testing.operation.passed` 接入产品评估与归档。多个计划时，这些通用生命周期事实保持未知。整改及回放见[NIST 实操流程](framework-workflows.md)。

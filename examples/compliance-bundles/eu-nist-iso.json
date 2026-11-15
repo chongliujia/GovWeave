@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "eu-nist-iso-starter",
+  "version": "2026.11.15",
+  "description": "Explicit opt-in partial draft mappings and ISO preparation checklist. Install only listed pack files; keep old immutable versions. No certification or complete framework coverage.",
+  "packs": [
+    {
+      "file": "eu-ai-act-chatbot-transparency.json",
+      "id": "eu-ai-act-chatbot-transparency",
+      "version": "0.1.0"
+    },
+    {
+      "file": "eu-ai-act-high-risk-readiness.json",
+      "id": "eu-ai-act-high-risk-readiness",
+      "version": "0.1.0"
+    },
+    {
+      "file": "eu-ai-act-gpai.json",
+      "id": "eu-ai-act-gpai",
+      "version": "0.1.0"
+    },
+    {
+      "file": "nist-ai-rmf-lifecycle.json",
+      "id": "nist-ai-rmf-lifecycle",
+      "version": "0.1.0"
+    },
+    {
+      "file": "nist-genai-profile.json",
+      "id": "nist-genai-profile",
+      "version": "0.1.0"
+    },
+    {
+      "file": "iso-42001-readiness.json",
+      "id": "iso-42001-readiness",
+      "version": "0.1.0"
+    }
+  ]
+}

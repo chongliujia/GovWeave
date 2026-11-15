@@ -136,6 +136,8 @@ check:
 	node --check internal/server/web/policies.js
 	node --check internal/server/web/plugins.js
 	node --check internal/server/web/plugin-assessment.js
+	node --check internal/server/web/plugin-remediation.js
+	node --check internal/server/web/plugin-evidence.js
 	node --check tests/plugins-smoke.cjs
 	node --check internal/server/web/i18n.js
 	node tests/i18n-check.cjs
@@ -143,6 +145,11 @@ check:
 	node tests/task-map-test.cjs
 	node tests/dashboard-test.cjs
 	node tests/plugin-assessment-test.cjs
+	node tests/plugin-evidence-test.cjs
 
 package:
 	sh scripts/package-offline.sh
+
+.PHONY: demo-frameworks
+demo-frameworks: build
+	python3 scripts/demo-frameworks.py --lang $(DEMO_LANG)

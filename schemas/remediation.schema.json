@@ -1,0 +1,364 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GovWeave remediation history and technical verification",
+  "$ref": "#/$defs/View",
+  "$defs": {
+    "Create": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_id",
+        "control_id"
+      ],
+      "properties": {
+        "report_id": {
+          "type": "string",
+          "pattern": "^rpt_[A-Za-z0-9_-]{22}$"
+        },
+        "control_id": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Operator-supplied label, not authenticated assignment; at most 100 UTF-8 bytes."
+        },
+        "due_date": {
+          "type": "string",
+          "pattern": "^(|[0-9]{4}-[0-9]{2}-[0-9]{2})$"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "At most 2000 UTF-8 bytes; no secrets or response bodies."
+        }
+      }
+    },
+    "Update": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "status",
+        "owner",
+        "due_date",
+        "note"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "enum": [
+            "open",
+            "in_progress",
+            "ready_for_recheck"
+          ]
+        },
+        "owner": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Operator-supplied label, not authenticated assignment; at most 100 UTF-8 bytes."
+        },
+        "due_date": {
+          "type": "string",
+          "pattern": "^(|[0-9]{4}-[0-9]{2}-[0-9]{2})$"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "At most 2000 UTF-8 bytes; no secrets or response bodies."
+        }
+      }
+    },
+    "Check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "test_run_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^test_[A-Za-z0-9_-]{22}$"
+            },
+            {
+              "const": ""
+            }
+          ]
+        }
+      }
+    },
+    "Verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "report_id",
+        "report_sha256",
+        "control_status",
+        "result"
+      ],
+      "properties": {
+        "report_id": {
+          "type": "string",
+          "pattern": "^rpt_[A-Za-z0-9_-]{22}$"
+        },
+        "report_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "control_status": {
+          "enum": [
+            "pass",
+            "fail",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "result": {
+          "enum": [
+            "pass",
+            "fail",
+            "unknown",
+            "not_applicable"
+          ]
+        },
+        "test_run_id": {
+          "type": "string",
+          "pattern": "^test_[A-Za-z0-9_-]{22}$"
+        },
+        "test_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "Event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "revision",
+        "status",
+        "owner",
+        "due_date",
+        "note",
+        "at"
+      ],
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "open",
+            "in_progress",
+            "ready_for_recheck",
+            "verified"
+          ]
+        },
+        "owner": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Operator-supplied label, not authenticated assignment; at most 100 UTF-8 bytes."
+        },
+        "due_date": {
+          "type": "string",
+          "pattern": "^(|[0-9]{4}-[0-9]{2}-[0-9]{2})$"
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "At most 2000 UTF-8 bytes; no secrets or response bodies."
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "verification": {
+          "$ref": "#/$defs/Verification"
+        }
+      }
+    },
+    "Item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "product_id",
+        "control_id",
+        "title",
+        "source_report_id",
+        "source_sha256",
+        "pack_sha256",
+        "application_ids",
+        "events"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^rem_[A-Za-z0-9_-]{22}$"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "control_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "source_report_id": {
+          "type": "string",
+          "pattern": "^rpt_[A-Za-z0-9_-]{22}$"
+        },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "pack_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "application_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "minItems": 1,
+          "maxItems": 64
+        }
+      }
+    },
+    "View": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "product_id",
+        "control_id",
+        "title",
+        "source_report_id",
+        "source_sha256",
+        "pack_sha256",
+        "application_ids",
+        "events",
+        "current",
+        "verification_state"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^rem_[A-Za-z0-9_-]{22}$"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "control_id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "source_report_id": {
+          "type": "string",
+          "pattern": "^rpt_[A-Za-z0-9_-]{22}$"
+        },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "pack_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "application_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Event"
+          },
+          "minItems": 1,
+          "maxItems": 64
+        },
+        "current": {
+          "$ref": "#/$defs/Event"
+        },
+        "verification_state": {
+          "enum": [
+            "not_verified",
+            "current",
+            "stale",
+            "unavailable"
+          ]
+        }
+      }
+    },
+    "List": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "remediations",
+        "total"
+      ],
+      "properties": {
+        "remediations": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/View"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        }
+      }
+    },
+    "State": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "items"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/Item"
+          }
+        }
+      }
+    }
+  }
+}

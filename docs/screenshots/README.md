@@ -17,7 +17,7 @@ node tests/plugins-smoke.cjs
 
 The plugin test uses `bin/govweave` by default; `GOVWEAVE_TEST_BINARY` can select another current build. Tests start only local synthetic services and require local listening ports and headless Chrome. They need no live provider key and make no paid model calls.
 
-Review the generated images before copying these six files into this directory:
+Review the generated images before copying these files into this directory:
 
 | Source | Published image |
 | --- | --- |
@@ -29,3 +29,5 @@ Review the generated images before copying these six files into this directory:
 | Latest successful `dist/plugins-smoke/<run>/system-coverage-zh.png` | `system-coverage-zh.png` |
 
 Only reviewed public screenshots belong here. Keep raw test reports, live instance data, credentials and private captures out of Git. Do not substitute screenshots of a real signed-in instance without reviewing their content and authorization to publish.
+
+The framework walkthrough images were captured by `tests/plugins-smoke.cjs` on 2026-11-15 from the six-pack starter bundle plus two internal synthetic pack versions. They show a synthetic ISO preparation profile, not an audited organization. Copy `framework-selection-en.png` and `framework-selection-zh.png` from the latest successful plugin test after visual review.

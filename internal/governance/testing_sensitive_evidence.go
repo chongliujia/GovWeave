@@ -13,15 +13,21 @@ import (
 func (a *ActiveTests) addOutputEvidence(product Product, source sources, input *compliance.Input) uint64 {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	plans := 0
 	for _, plan := range a.plans {
 		if plan.ProductID == product.ID {
-			a.addPlanOutputEvidenceLocked(product, plan, source, input)
+			plans++
+		}
+	}
+	for _, plan := range a.plans {
+		if plan.ProductID == product.ID {
+			a.addPlanOutputEvidenceLocked(product, plan, source, input, plans == 1)
 		}
 	}
 	return a.evidenceRevision
 }
 
-func (a *ActiveTests) addPlanOutputEvidenceLocked(product Product, plan TestPlan, source sources, input *compliance.Input) {
+func (a *ActiveTests) addPlanOutputEvidenceLocked(product Product, plan TestPlan, source sources, input *compliance.Input, singlePlan bool) {
 	if plan.LastError != "" {
 		return
 	}
@@ -67,10 +73,6 @@ func (a *ActiveTests) addPlanOutputEvidenceLocked(product Product, plan TestPlan
 		if err != nil || !comparableTestRuns(current, run) {
 			continue
 		}
-		passed, valid := outputSuiteVerdict(run)
-		if !valid {
-			continue
-		}
 		finished, err := time.Parse(time.RFC3339Nano, run.FinishedAt)
 		if err != nil {
 			continue
@@ -78,6 +80,20 @@ func (a *ActiveTests) addPlanOutputEvidenceLocked(product Product, plan TestPlan
 		lifetime := 30 * 24 * time.Hour
 		if phase == "operation" {
 			lifetime = 2 * time.Duration(plan.IntervalSeconds) * time.Second
+		}
+		// Unqualified lifecycle facts describe one selected plan. With multiple
+		// plans there is no unambiguous single-suite verdict; keep them unknown.
+		if singlePlan && run.State == "completed" && len(run.Cases) == len(run.Suite.Cases) {
+			fact := compliance.Fact{Value: json.RawMessage("true"), EvidenceID: run.ID, Source: "assessment", ObservedAt: run.FinishedAt, ExpiresAt: finished.Add(lifetime).UTC().Format(time.RFC3339Nano)}
+			input.Facts["testing.test_set_documented"] = fact
+			if run.Status == "passed" || run.Status == "failed" {
+				fact.Value, _ = json.Marshal(run.Status == "passed")
+				input.Facts["testing."+phase+".passed"] = fact
+			}
+		}
+		passed, valid := outputSuiteVerdict(run)
+		if !valid {
+			continue
 		}
 		value, _ := json.Marshal(passed)
 		input.Facts["testing."+outputFactPrefix(plan)+phase+".passed"] = compliance.Fact{Value: value, EvidenceID: run.ID, Source: "assessment", ObservedAt: run.FinishedAt, ExpiresAt: finished.Add(lifetime).UTC().Format(time.RFC3339Nano)}

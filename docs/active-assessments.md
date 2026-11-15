@@ -84,3 +84,5 @@ python3 tests/active-smoke.py
 ```
 
 Tests use local mock providers and synthetic data. They exercise actual inference, both phases, periodic dispatch, regression/unknown outcomes, authorization, version isolation, private evidence, restart, replay and failure paths. Live-provider compatibility, real-product risk effectiveness and production scale need separate validation.
+
+Product evaluations and archived reports also receive the generic lifecycle facts from the latest comparable run in each phase when the product has exactly one test plan. Multiple plans leave these unqualified facts unknown; target-specific output evidence remains separate. New failures or inconclusive runs cannot preserve an old passing verdict. The [three-framework demo](framework-workflows.md) verifies the NIST report/remediation path.

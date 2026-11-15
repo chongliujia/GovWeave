@@ -21,7 +21,7 @@
 
 新包的主范围事实依次为 `scope.euhr_in_scope`、`scope.eu_gpai_in_scope`、`scope.eu_gdpr_in_scope`、`scope.genai_in_scope`、`scope.us_ftc_claims_in_scope`，来源要求为 `assessment`。每个包都有无条件人工范围审核：缺少范围时未知，范围为假只会路由其他控制项，不会自动批准“无需合规”。GPAI 单独使用 `scope.gpai_documentation_required`；GDPR 使用 `scope.gdpr_dpia_required`、`scope.gdpr_article22_relevant`。文档豁免不会关闭版权和训练摘要控制。
 
-具体事实键、类型和来源可在规则包详情查看。通过产品 API 的 `facts` 提交真实证据引用，保留当前修订及其他事实；每项包含 `value`、`source`、`evidence_id`、`observed_at`，可加 `expires_at`。现有界面只读证据，不提供文档上传或人工审批。不要把测试里的“全真”合成事实复制进真实产品。
+具体事实键、类型和来源可在规则包详情查看。通过产品 API 的 `facts` 提交真实证据引用，保留当前修订及其他事实；每项包含 `value`、`source`、`evidence_id`、`observed_at`，可加 `expires_at`。控制台现可在产品草稿中编辑证据引用，仍不提供文档上传或人工审批。见[三类框架流程](framework-workflows.md)。不要把测试里的“全真”合成事实复制进真实产品。
 
 自动检查只验证**提交的证据可用性声明**，不读取文档、不证明测试成功或法律充分性；`document`／`assessment` 来源也不代表系统独立核验。30 天时效是本地保障策略，不是法规期限。人工控制即使收到值为真的材料仍返回未知。检测／脱敏结果不会自动满足文档或法律要求。
 

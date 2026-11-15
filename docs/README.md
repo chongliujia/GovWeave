@@ -8,12 +8,14 @@ These guides describe **0.2.0-dev**, the implemented single-instance gateway. St
 
 | Task | Guide |
 | --- | --- |
+| Run EU AI Act, NIST and ISO 42001 preparation through evidence, remediation and report replay | [Three-framework walkthrough](framework-workflows.md) |
 | Try three local gateway controls without a model account | [Start here: local trial](try-it.md) |
 | Watch a 60-second walkthrough or use its static frames and narration | [Short demo](demo/README.md) |
 | View English/Chinese console screenshots and refresh public images | [Console screenshots](screenshots/README.md) |
 | Review the dated formal-gateway smoke results and their limits | [Verified formal-gateway smoke test](../README.md#verified-formal-gateway-smoke-test) |
 | Inspect system coverage gaps and run a traced knowledge-retrieval pilot | [System gateway pilot](system-gateway-pilot.md) |
 | Select installed framework packs and configure runtime detectors in the console | [Plugin center](plugin-center.md) |
+| Track control gaps, record fixes and verify fresh evidence or explicit retests | [Risk remediation](remediation.md) |
 | Install and test the bounded EU / US AI draft bundle | [EU / US compliance bundle](eu-us-compliance-bundle.md) |
 | Connect your own application with a base URL, application key and model alias | [Application onboarding](application-onboarding.md) |
 | Retain encrypted risk evidence, review original/processed output and inspect evidence relationships | [Risk evidence](risk-evidence.md) |

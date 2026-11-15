@@ -246,3 +246,7 @@ Changing language preserves drafts, model grants, and any currently displayed on
 See [error codes and streaming failures](model-gateway.md#streaming-timeouts-and-errors) for model-side handling.
 
 Active testing adds private `test-plans.json` and `test-runs/` plus installed `test-suites/`. Include them in stopped-instance backups. Scheduling may resume model calls after restart when explicitly enabled; inspect the plan before restoring into an environment with reachable providers. See [Active assessment](active-assessments.md) for capacity and response-retention limits.
+
+Risk remediation adds private `remediations.json` (128 records, 64 events each, 2 MiB total). Back it up with its referenced assessment reports, tests and configuration; partial restoration is unsupported. No records or history are automatically evicted. See [remediation](remediation.md) for verification freshness and capacity behavior.
+
+Newly archived reports can contain generic lifecycle test facts. Binaries predating this support may reject those archives; a rollback must restore the matching binary and data backup together.

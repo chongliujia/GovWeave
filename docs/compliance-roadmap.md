@@ -2,11 +2,11 @@
 
 **English** | [简体中文](zh-CN/compliance-roadmap.md)
 
-Status: proposed implementation sequence, not shipped framework coverage. Source review date: 2026-11-13. GovWeave should connect requirements to scoped evidence, review and remediation, rather than present a list of framework logos or a universal compliance score.
+Status: roadmap with implemented slices identified below; not a claim of complete framework coverage. Source review date: 2026-11-13. GovWeave should connect requirements to scoped evidence, review and remediation, rather than present a list of framework logos or a universal compliance score.
 
 ## Baseline and gaps
 
-The [compliance engine](compliance-engine.md) loads versioned JSON packs, evaluates evidence and preserves unknown/manual-review outcomes. The [EU / US starter bundle](eu-us-compliance-bundle.md) adds selected high-risk readiness, GPAI, GDPR, NIST GenAI and FTC claims drafts alongside existing NIST lifecycle and EU transparency packs. These are optional unreviewed packs, not automatic container defaults or full legal coverage. ISO/IEC 42001 is not implemented.
+The [compliance engine](compliance-engine.md) loads versioned JSON packs, evaluates evidence and preserves unknown/manual-review outcomes. The [EU / US starter bundle](eu-us-compliance-bundle.md) adds selected high-risk readiness, GPAI, GDPR, NIST GenAI and FTC claims drafts alongside existing NIST lifecycle and EU transparency packs. These are optional unreviewed packs, not automatic container defaults or full legal coverage. The [ISO preparation checklist and three-framework workflow](framework-workflows.md) are now runnable; licensed ISO clause mapping and organization-wide conformity assessment remain unimplemented.
 
 Products currently bind to one pack/version and require application IDs. The plugin center displays installed definitions and per-control results. Organization-level assessments, multiple framework bindings and authenticated human-review workflows are still planned. A pack's `reviewed` metadata is an operator assertion, not verified approval. Manual controls currently remain `unknown/manual_review_required`.
 
@@ -17,12 +17,12 @@ Priorities below are product choices, not claims that every framework applies to
 | Priority | Framework | Type | Proposed first useful slice | Current status |
 | --- | --- | --- | --- | --- |
 | P1 | NIST AI RMF 1.0 and NIST AI 600-1 GenAI Profile | Voluntary framework and companion profile [1][2] | Risk inventory, versioned evaluation evidence, monitoring and response ownership | Partial lifecycle and GenAI evidence drafts available |
-| P1 | ISO/IEC 42001:2023 | AI management-system standard [3] | Organization scope, responsibilities, risk treatment, evidence of review and improvement | Planned; requires authorized standard access and qualified mapping review |
+| P1 | ISO/IEC 42001:2023 | AI management-system standard [3] | Organization scope, responsibilities, risk treatment, evidence of review and improvement | Public-overview preparation draft available; detailed mapping requires licensed materials and qualified review |
 | P1 | EU AI Act | Regulation [4] | Applicability review and evidence requests | Selected transparency, high-risk readiness and GPAI drafts; no whole-Act coverage |
 | P2 | China generative-AI service measures and generated-content labeling measures | Regulatory measures [5][6] | Public-service applicability, disclosure/labeling evidence and operational responsibilities | Planned; do not treat every internal AI tool as an in-scope public service |
 | P2 | GDPR and China's PIPL | Data-protection legislation [7][8] | Processing inventory, retention, access and impact-assessment evidence | Selected EU GDPR draft available; PIPL planned; detectors do not prove legality |
 
-Use the ISO public overview only for scope and catalog metadata. Do not redistribute paid standard text or invent clause-level requirements from a summary. A licensed source and qualified review are prerequisites for publishing a detailed ISO mapping.
+Use the ISO public overview only for general scope and explicitly non-normative preparation practices. Do not redistribute paid standard text or invent clause-level requirements from a summary. A licensed source and qualified review are prerequisites for publishing a detailed ISO mapping.
 
 EU applicability dates must be versioned by obligation and role, not stored as one timeless “AI Act effective” switch. The Commission's current timeline describes phased application and amended high-risk milestones [4]. Recheck the official text when publishing each pack; this roadmap does not determine customer obligations.
 

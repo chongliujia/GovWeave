@@ -20,3 +20,5 @@ node tests/plugins-smoke.cjs
 检查生成图片后，按[英文说明中的源文件映射](../screenshots/README.md#refresh)，将六张图片复制到 `docs/screenshots/`。主 README 展示英文截图，中文 README 展示中文截图。
 
 这里只提交经过检查、适合公开的界面截图。原始测试报告、正式实例数据、凭证和私有采集内容不得进入 Git；不要未经内容检查和发布授权就替换为真实已登录实例截图。
+
+框架实操截图于 2026-11-15 由 `tests/plugins-smoke.cjs` 在六包入门目录及两个内部合成版本上拍摄，展示合成 ISO 准备档案，不是已审核组织。视觉检查后，可将最新成功测试的 `framework-selection-en.png` 和 `framework-selection-zh.png` 复制到 `docs/screenshots/`。

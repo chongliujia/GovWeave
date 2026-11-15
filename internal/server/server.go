@@ -45,6 +45,7 @@ func New(store *instance.Store, admin *auth.Manager, engine *gateway.Engine, eva
 	s.registerCompliance(mux)
 	s.registerPlugins(mux)
 	s.registerTesting(mux)
+	s.registerRemediations(mux)
 	s.registerEvidence(mux)
 	reserved := func(w http.ResponseWriter, r *http.Request) {
 		apiError(w, 501, "not_implemented", "This endpoint is not implemented. Supported gateway endpoints are Chat Completions, model listing and configured read-tool invocation.")
@@ -61,7 +62,7 @@ func New(store *instance.Store, admin *auth.Manager, engine *gateway.Engine, eva
 			return
 		}
 		switch r.URL.Path {
-		case "/", "/app.js", "/gateway.js", "/dashboard.js", "/dashboard.css", "/plugins.js", "/plugins.css", "/plugin-assessment.js", "/plugin-tests.js", "/plugin-coverage.js", "/integration.js", "/evidence.js", "/policies.js", "/request-review.js", "/task-map.js", "/task-map-view.js", "/i18n.js", "/style.css", "/logo.svg":
+		case "/", "/app.js", "/gateway.js", "/dashboard.js", "/dashboard.css", "/plugins.js", "/plugins.css", "/plugin-assessment.js", "/plugin-tests.js", "/plugin-coverage.js", "/plugin-remediation.js", "/plugin-evidence.js", "/integration.js", "/evidence.js", "/policies.js", "/request-review.js", "/task-map.js", "/task-map-view.js", "/i18n.js", "/style.css", "/logo.svg":
 			files.ServeHTTP(w, r)
 		default:
 			apiError(w, 404, "not_found", "Endpoint or page not found.")

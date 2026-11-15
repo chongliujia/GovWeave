@@ -1190,6 +1190,9 @@ paths:
         plan and source versions. Each product supports one plan per target kind, including any legacy default;
         current reports combine both namespaces. Latest runs are selected independently per plan and phase.
         The latest inconclusive or running result does not reuse older success.
+        Exactly one configured plan also supplies testing.test_set_documented, testing.pre_deployment.passed
+        and testing.operation.passed from comparable completed runs. Multiple plans leave these unqualified
+        lifecycle facts absent. These facts also enter archived reports; incomplete runs do not reuse old verdicts.
         snapshot.test_evidence_revision is a process-local cache generation and is not comparable across restarts.
   /api/v1/compliance/products/{id}/evaluate:
     post:
@@ -2014,6 +2017,122 @@ paths:
             application/json:
               schema:
                 $ref: '../schemas/content.schema.json#/$defs/OutputPolicySnapshot'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/products/{id}/remediations:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: string}
+    get:
+      summary: List product remediations and verification freshness
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Retained remediation data with evidence freshness at read time
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/remediation.schema.json#/$defs/List'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      summary: Track a failed or unknown control from an immutable report
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/remediation.schema.json#/$defs/Create'
+      responses:
+        '200':
+          description: Retained remediation data with evidence freshness at read time
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/remediation.schema.json#/$defs/View'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/products/{id}/remediations/{remediation}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: string}
+    - name: remediation
+      in: path
+      required: true
+      schema: {type: string}
+    get:
+      summary: Read remediation history and current evidence state
+      security:
+      - adminSession: []
+      responses:
+        '200':
+          description: Retained remediation data with evidence freshness at read time
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/remediation.schema.json#/$defs/View'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      summary: Append remediation progress or reopen a verified record
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/remediation.schema.json#/$defs/Update'
+      responses:
+        '200':
+          description: Retained remediation data with evidence freshness at read time
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/remediation.schema.json#/$defs/View'
+        default:
+          $ref: '#/components/responses/Error'
+  /api/v1/compliance/products/{id}/remediations/{remediation}/recheck:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema: {type: string}
+    - name: remediation
+      in: path
+      required: true
+      schema: {type: string}
+    post:
+      summary: Reassess current evidence and record technical verification
+      security:
+      - adminSession: []
+      parameters:
+      - $ref: '#/components/parameters/ConsoleRequest'
+      description: Requires ready_for_recheck and the current remediation revision. Saves a fresh local assessment without model or tool calls. Only pass verifies; fail, unknown and not_applicable remain in progress. The original pack fingerprint and application scope must match. An optional completed test must match current versions and start after the record was marked ready. Historical verification becomes stale when configuration or evidence changes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../schemas/remediation.schema.json#/$defs/Check'
+      responses:
+        '200':
+          description: Retained remediation data with evidence freshness at read time
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/remediation.schema.json#/$defs/View'
         default:
           $ref: '#/components/responses/Error'
 components:

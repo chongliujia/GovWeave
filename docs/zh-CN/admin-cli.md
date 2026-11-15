@@ -2,7 +2,7 @@
 
 [English](../admin-cli.md) | **简体中文**
 
-`govweave admin` 通过与 Web 控制台相同的管理员 HTTP API 管理运行中的实例，包含在标准 Go 二进制、容器和离线包内，无需 Python、Node 或单独安装 CLI。成功结果以 JSON 输出到 stdout，错误写入 stderr 并返回非零退出码。命令不直接改写服务数据目录，也不调用模型。
+`govweave admin` 通过与 Web 控制台相同的管理员 HTTP API 管理运行中的实例，包含在标准 Go 二进制、容器和离线包内，无需 Python、Node 或单独安装 CLI。成功结果以 JSON 输出到 stdout，错误写入 stderr 并返回非零退出码。命令不直接改写服务数据目录；仅显式执行 `tests run` 时启动已配置的模型／工具调用。
 
 ## 在后台运行服务
 
@@ -56,6 +56,8 @@ gw policy show
 不指定 `--session-file` 时，管理命令接受 `--password-stdin` 或 `--password-file /private/path`，执行后自动注销临时会话。密码文件必须是私有普通文件。原有每分钟十次登录／初始设置尝试的全局限制也统计成功登录，连续操作应复用会话。没有直接传入密码的命令行参数。
 
 ## 配置应用和策略
+
+产品控制缺口还可通过 `products`、`reports`、`remediations`、`tests` 命令管理。JSON 输入及整改／复测／验证流程见[风险整改与验证](remediation.md)。`tests run` 会显式启动已配置的模型／工具调用，其他整改命令只进行本地管理与证据检查。
 
 | 命令 | 行为 |
 | --- | --- |

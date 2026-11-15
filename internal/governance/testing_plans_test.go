@@ -116,6 +116,11 @@ func TestDualPlansKeepIndependentEvidenceAndLegacyHistory(t *testing.T) {
 	pre := runNamed(t, f, product, "model", "pre_deployment")
 	op := runNamed(t, f, product, "model", "operation")
 	facts := currentDualFacts(t, f, product)
+	for _, key := range []string{"testing.test_set_documented", "testing.pre_deployment.passed", "testing.operation.passed"} {
+		if _, exists := facts[key]; exists {
+			t.Fatal("multiple plans produced ambiguous lifecycle evidence", key)
+		}
+	}
 	if facts["testing.output.operation.passed"].EvidenceID != op.ID || facts["testing.tools.output.operation.passed"].EvidenceID != "" {
 		t.Fatal("model result satisfied tool requirement")
 	}

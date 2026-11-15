@@ -6,7 +6,7 @@
 
 GovWeave 是开源、自部署的 AI 治理网关，面向开发 AI 客服、知识库助手和 Agent 平台的开发者。接入 OpenAI 兼容模型接口，将网关配置保留在自己的基础设施上。
 
-**[立即本机试用 · 无需模型账号](docs/zh-CN/try-it.md)** · [观看 60 秒分步演示](docs/zh-CN/short-demo.md) · [接入自己的应用](docs/zh-CN/application-onboarding.md) · [完整文档](docs/zh-CN/README.md)
+**[立即本机试用 · 无需模型账号](docs/zh-CN/try-it.md)** · [观看 60 秒分步演示](docs/zh-CN/short-demo.md) · [接入自己的应用](docs/zh-CN/application-onboarding.md) · [EU AI Act／NIST／ISO 42001](docs/zh-CN/framework-workflows.md) · [完整文档](docs/zh-CN/README.md)
 
 - **控制返回给应用的内容。** 检测支持的凭证、邮箱和手机号样式，按配置范围阻断或脱敏非流式模型／工具输出。
 - **为每个应用分配访问权限。** 独立应用密钥、模型授权，以及已接入读取工具的资源授权。
@@ -17,6 +17,22 @@ GovWeave 是开源、自部署的 AI 治理网关，面向开发 AI 客服、知
 [![六步演示：输出保护配置、三次请求、脱敏证据和输入阻断](docs/demo/quickstart-zh-CN.gif)](docs/zh-CN/short-demo.md)
 
 实际控制台、隔离网关、本机脚本模型和合成数据。六幅带说明的截图，每幅停留 10 秒；可查看[静态分镜与文字稿](docs/zh-CN/short-demo.md)。普通审计日志仅存元数据，本演示显式开启独立正文采集。
+
+## EU AI Act · NIST · ISO/IEC 42001
+
+**无需模型账号，本机跑通框架证据与整改流程。** 选择固定版本规则包、绑定应用，在控制台补充证据引用、检查缺口，并通过留存报告验证整改。
+
+| 框架 | 可运行流程 |
+| --- | --- |
+| **EU AI Act** | 部分交互透明度、高风险准备度和 GPAI 证据草案 |
+| **NIST AI RMF／GenAI** | 生命周期测评与部分生成式 AI 证据，关联产品报告及整改 |
+| **ISO/IEC 42001** | 基于公开概述的管理体系准备清单，不是条款级符合性审核或认证 |
+
+```bash
+make demo-frameworks DEMO_LANG=zh-CN
+```
+
+六包合成演示验证 **缺失证据 → 缺口 → 整改 → 验证 → 报告回放 → 证据失效**。人工审核项保留未知。[框架实操指南、预期结果和控制台步骤](docs/zh-CN/framework-workflows.md)。规则包须显式安装；当前提供有边界的技术／准备流程，不代表完整法规覆盖。
 
 ## 无需模型账号，立即试用
 
@@ -77,6 +93,7 @@ make demo-quickstart DEMO_LANG=zh-CN
 - 提供[欧盟 AI 客服透明度草案](docs/zh-CN/eu-transparency-reports.md)，区分控制缺口、证据缺口和人工复核；可显式保存独立报告快照及历史重放，数值运行事实引用实际参与计数的样本请求。
 - 提供[已知合成标记检测与效果测量](docs/zh-CN/canary-validation.md)，支持有限编码识别，并保留冻结样本中的误报、漏报和未知结果；可用[效果与成本回测](docs/zh-CN/canary-benchmark.md)比较检测阶段的增益与本机耗时，或用[检测器插件与分流回放](docs/zh-CN/detector-routing.md)验证快慢路径；真实模型效果尚未验证。
 - 提供[主动测评](docs/zh-CN/active-assessments.md)：版本化测试包、部署前测试、显式开启的运行期复测和部分 NIST 生命周期证据；可明确开启独立私有测试回答留存。
+- 提供[风险整改与验证](docs/zh-CN/remediation.md)：从产品控制缺口建立记录，保留进展，关联显式复测，并用新评估验证；证据变化或过期后显示需要重新复核。
 - 调用记录保存应用、模型别名、请求 ID、授权决定、执行结果、耗时和配置版本，不保存提示词、回答或凭证。
 - 提供[风险证据留存](docs/zh-CN/risk-evidence.md)：按应用显式启用，独立加密保存原始与准备交付的内容，关联策略快照、检测器版本与发现；管理员查看正文会留下访问审计。
 - 提供 [SSE 流式证据](docs/zh-CN/risk-evidence.md#流式响应证据)：区分已验证上游帧与客户端写入尝试，记录帧时间线、带密钥指纹、结束／中断状态及留存缺口。

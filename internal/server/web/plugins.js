@@ -2,6 +2,8 @@ import { t, formatDateTime } from "/i18n.js";
 import { createPluginAssessment } from "/plugin-assessment.js";
 import { createPluginTests } from "/plugin-tests.js";
 import { createPluginCoverage } from "/plugin-coverage.js";
+import { createPluginRemediation } from "/plugin-remediation.js";
+import { createPluginEvidence } from "/plugin-evidence.js";
 
 const el = id => document.getElementById(id);
 const node = (tag, text, className) => {
@@ -128,13 +130,16 @@ export function createPluginConsole({ request, notice }) {
     const search = searchable ? field(toolbar, "Search rule packs", "plugin-pack-search") : null;
     if (search) search.type = "search";
     const filter = searchable ? field(toolbar, "Framework type", "plugin-pack-filter", "select") : null;
+    let family = "";
+    const families = searchable ? node("div", undefined, "plugin-framework-families") : null;
+    if (families) container.append(families);
     if (searchable) container.append(toolbar);
     const list = node("div", undefined, "plugin-choice-list"); container.append(list);
     const empty = label("p", "No matching plugins. Change the search or filter.", "plugin-empty"); empty.hidden = true; container.append(empty);
     function filterItems() {
       let visible = 0;
       for (const item of list.children) {
-        item.hidden = !!search && (!item.dataset.search.includes(search.value.trim().toLowerCase()) || filter.value && item.dataset.framework !== filter.value);
+        item.hidden = !!search && (!item.dataset.search.includes(search.value.trim().toLowerCase()) || filter.value && item.dataset.framework !== filter.value || family && !item.dataset.packId.startsWith(family));
         if (!item.hidden) visible++;
       }
       empty.hidden = visible > 0;
@@ -144,6 +149,20 @@ export function createPluginConsole({ request, notice }) {
     return {
       container,
       render(items) {
+        if (families) {
+          families.replaceChildren(...[["", "All installed"], ["eu-ai-act-", "EU AI Act"], ["nist-", "NIST"], ["iso-42001-", "ISO/IEC 42001"]].map(([value, title]) => {
+            const choice = node("button", undefined, "plugin-family"); choice.type = "button"; choice.dataset.family = value;
+            const count = items.filter(item => !value || item.packId.startsWith(value)).length;
+            choice.append(node("strong", t(title)), node("span", t("Installed versions: {count}", { count })));
+            choice.setAttribute("aria-pressed", String(family === value));
+            choice.addEventListener("click", () => {
+              family = value; search.value = ""; filter.value = "";
+              for (const item of families.children) item.setAttribute("aria-pressed", String(item.dataset.family === family));
+              filterItems();
+            });
+            return choice;
+          }));
+        }
         if (filter) selectOptions(filter, [["", t("All framework types")], ...Object.entries(frameworks).map(([value, text]) => [value, t(text)])], filter.value);
         if (search) search.disabled = !items.length;
         if (filter) filter.disabled = !items.length;
@@ -159,6 +178,7 @@ export function createPluginConsole({ request, notice }) {
           if (item.meta) content.append(node("span", item.meta, "plugin-choice-meta"));
           card.dataset.search = [item.title, item.version, item.description, item.meta, item.value].join(" ").toLowerCase();
           card.dataset.framework = item.framework || "";
+          card.dataset.packId = item.packId || "";
           radio.addEventListener("change", () => {
             if (!radio.checked) return;
             control.value = radio.value; control.dispatchEvent(new Event("change", { bubbles: true }));
@@ -175,7 +195,7 @@ export function createPluginConsole({ request, notice }) {
           card.querySelector("[data-saved-badge]").hidden = radio.value !== savedValue;
         }
       },
-      reset() { if (search) search.value = ""; if (filter) filter.value = ""; list.replaceChildren(); empty.hidden = true; },
+      reset() { family = ""; families?.replaceChildren(); if (search) search.value = ""; if (filter) filter.value = ""; list.replaceChildren(); empty.hidden = true; },
     };
   }
   function applicationPicker(id) {
@@ -277,7 +297,16 @@ export function createPluginConsole({ request, notice }) {
   assessmentPanel.append(assessmentActions, result);
   compliance.fields.insertBefore(assessmentPanel, productBar.state.closest(".plugin-savebar"));
   const packInspection = node("div"); compliance.fields.insertBefore(packInspection, productNotes);
-  const assessmentView = createPluginAssessment({ request, packContainer: packInspection, reportContainer: assessmentPanel });
+  const evidenceContainer = node("div"); compliance.fields.insertBefore(evidenceContainer, assessmentPanel);
+  const evidenceView = createPluginEvidence({ request, container: evidenceContainer, onChange: renderDetails });
+  const workflow = node("nav", undefined, "plugin-workflow"); workflow.setAttribute("aria-label", t("Framework assessment steps"));
+  for (const [index, title, target] of [[1, "Choose framework", packSetup], [2, "Bind applications", productSetup], [3, "Add evidence", el("plugin-evidence-panel")], [4, "Assess and remediate", assessmentPanel]]) {
+    const jump = button(workflow, title, `plugin-workflow-${index}`, "button");
+    jump.addEventListener("click", () => { if (target.tagName === "DETAILS") target.open = true; target.scrollIntoView({ block: "start" }); target.querySelector("summary, input, select, button")?.focus({ preventScroll: true }); });
+  }
+  compliance.fields.prepend(workflow);
+  const remediationView = createPluginRemediation({ request, container: compliance.card });
+  const assessmentView = createPluginAssessment({ request, packContainer: packInspection, reportContainer: assessmentPanel, onRemediate: id => remediationView.create(id) });
   const testsView = createPluginTests({ request, container: compliance.card });
   const coverageView = createPluginCoverage({ request, container: compliance.card });
   const tabEntries = [["output", output, "Detectors & redaction"], ["product", compliance, "Frameworks & rule packs"]];
@@ -302,7 +331,7 @@ export function createPluginConsole({ request, notice }) {
   }
   showTab(activeTab);
 
-  function productSignature() { return JSON.stringify([name.value, version.value, packs.value, selected("plugin-product-apps").sort()]); }
+  function productSignature() { return JSON.stringify([name.value, version.value, packs.value, selected("plugin-product-apps").sort(), evidenceView.signature()]); }
   function outputSignature() { return JSON.stringify([detectors.value, mode.value, scope.value, scope.value === "all" ? [] : selected("plugin-output-apps").sort(), selected("plugin-categories").sort(), emails.value]); }
   function productDirty() { return !!data && productSignature() !== productBaseline; }
   function outputDirty() { return !!data && outputSignature() !== outputBaseline; }
@@ -376,8 +405,10 @@ export function createPluginConsole({ request, notice }) {
     detectorChoices.sync(effective.detector_version); modeChoices.sync(effective.mode);
     productApps.refresh(); outputApps.refresh(); renderDraft(); renderPreview();
     assessmentView.sync({ pack, product, dirty: productDirty() });
+    evidenceView.sync(pack);
     testsView.sync({ product, resources: data.resources, dirty: productDirty() });
     coverageView.sync({ product, resources: data.resources, dirty: productDirty(), policyRevision: data.policy.revision });
+    remediationView.sync({ product, dirty: productDirty(), policyRevision: data.policy.revision });
     outputSaved.textContent = t("Saved detector: {version} · Revision {revision} · {mode}", { version: effective.detector_version, revision: data.policy.revision, mode: t(modes[effective.mode]) });
   }
   function renderOptions() {
@@ -394,7 +425,7 @@ export function createPluginConsole({ request, notice }) {
     renderChecks("plugin-product-apps", applications(), selected("plugin-product-apps"));
     renderChecks("plugin-output-apps", applications(), selected("plugin-output-apps"));
     renderChecks("plugin-categories", Object.entries(categories).map(([value, text]) => [value, t(text)]), selected("plugin-categories"));
-    packChoices.render(data.catalog.rule_packs.map(item => ({ value: packKey(item), title: item.name, version: item.version, framework: item.framework_kind, description: item.id, meta: `${t(frameworks[item.framework_kind] || item.framework_kind)} · ${t(reviews[item.review_status] || item.review_status)} · ${t("Controls: {count}", { count: item.control_count })}` })));
+    packChoices.render(data.catalog.rule_packs.map(item => ({ value: packKey(item), packId: item.id, title: item.name, version: item.version, framework: item.framework_kind, description: item.id, meta: `${t(frameworks[item.framework_kind] || item.framework_kind)} · ${t(reviews[item.review_status] || item.review_status)} · ${t("Controls: {count}", { count: item.control_count })}` })));
     detectorChoices.render(data.catalog.detectors.map(item => ({ value: item.version, title: t(detectorNames[item.version] || item.name), version: item.version, description: t(item.description) })));
     modeChoices.render(Object.entries(modes).map(([value, title]) => ({ value, title: t(title), description: t(modeHints[value]) })));
     renderDetails();
@@ -408,6 +439,7 @@ export function createPluginConsole({ request, notice }) {
       const option = node("option", t("Saved rule pack is not installed")); option.value = value; packs.append(option);
     }
     packs.value = value;
+    evidenceView.restore(product?.facts);
     renderChecks("plugin-product-apps", applications(), product?.application_ids || []);
     productBaseline = productSignature(); result.textContent = ""; renderDetails();
   }
@@ -479,7 +511,7 @@ export function createPluginConsole({ request, notice }) {
       if (!pack || !apps.length) throw new Error(t("Select an installed rule pack and at least one product application."));
       const saved = await send(`/api/v1/compliance/products${product ? `/${encodeURIComponent(product.id)}` : ""}`, {
         revision: product?.revision || 0, name: name.value, version: version.value,
-        application_ids: apps, pack_id: pack.id, pack_version: pack.version, facts: product?.facts || {},
+        application_ids: apps, pack_id: pack.id, pack_version: pack.version, facts: evidenceView.facts(),
       }, product ? "PUT" : "POST");
       if (token !== epoch) return;
       data.products = [...data.products.filter(item => item.id !== saved.id), saved];
@@ -542,11 +574,11 @@ export function createPluginConsole({ request, notice }) {
     }));
   }));
   reload.addEventListener("click", () => {
-    if ((productDirty() || outputDirty()) && !window.confirm(t("Reloading will discard unsaved plugin changes. Continue?"))) return;
+    if ((productDirty() || outputDirty() || remediationView.isDirty()) && !window.confirm(t("Reloading will discard unsaved plugin changes. Continue?"))) return;
     load();
   });
   productSelect.addEventListener("change", () => {
-    if (productDirty() && !window.confirm(t("Switching products will discard this product's unsaved changes. Continue?"))) { productSelect.value = product?.id || ""; return; }
+    if ((productDirty() || remediationView.isDirty()) && !window.confirm(t("Switching products will discard this product's unsaved changes. Continue?"))) { productSelect.value = product?.id || ""; return; }
     restoreProduct(productSelect.value);
   });
   target.addEventListener("change", () => {
@@ -568,18 +600,21 @@ export function createPluginConsole({ request, notice }) {
     tabs.setAttribute("aria-label", t("Plugin categories"));
   }
   return {
-    enter() { localizeLabels(); assessmentView.relocalize(); testsView.relocalize(); coverageView.relocalize(); if (!data) load(); },
+    enter() { localizeLabels(); assessmentView.relocalize(); evidenceView.relocalize(); testsView.relocalize(); coverageView.relocalize(); remediationView.relocalize(); if (!data) load(); },
     relocalize() {
       localizeLabels();
-      renderOptions(); assessmentView.relocalize(); testsView.relocalize(); coverageView.relocalize(); status.textContent = ""; result.textContent = ""; history.replaceChildren();
+      workflow.setAttribute("aria-label", t("Framework assessment steps"));
+      renderOptions(); assessmentView.relocalize(); evidenceView.relocalize(); testsView.relocalize(); coverageView.relocalize(); remediationView.relocalize(); status.textContent = ""; result.textContent = ""; history.replaceChildren();
     },
     reset() {
       epoch++; outputTarget = ""; data = null; product = null; productBaseline = outputBaseline = ""; setBusy(false); showTab("output");
       compliance.form.reset(); output.form.reset();
       sample.value = ""; clearPreview(); previewPanel.open = false;
       assessmentView.reset();
+      evidenceView.reset();
       testsView.reset();
       coverageView.reset();
+      remediationView.reset();
       for (const control of [productSelect, packs, detectors, mode, scope, target]) control.replaceChildren();
       for (const id of ["plugin-product-apps", "plugin-output-apps", "plugin-categories"]) renderChecks(id, [], []);
       for (const control of [status, result, packDetail, detectorDetail, outputSaved, history, targetHint]) control.replaceChildren();

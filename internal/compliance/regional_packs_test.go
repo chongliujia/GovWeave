@@ -9,6 +9,7 @@ import (
 )
 
 var regionalPackCounts = map[string][2]int{
+	"iso-42001-readiness":           {4, 2},
 	"eu-ai-act-high-risk-readiness": {3, 2},
 	"eu-ai-act-gpai":                {3, 2},
 	"eu-gdpr-ai":                    {2, 4},

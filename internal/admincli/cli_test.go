@@ -25,6 +25,10 @@ func TestInvalidCommandsAndCredentialsNeverReachServer(t *testing.T) {
 		{"applications", "list", "--mode", "block"},
 		{"requests", "list", "--limit", "101"},
 		{"unknown", "list"},
+		{"remediations", "list"},
+		{"remediations", "recheck", "--product", "prod-a", "--id", "rem-a"},
+		{"tests", "run", "--product", "prod-a", "--plan", "model", "--phase", "invalid"},
+		{"tests", "list", "--product", "../another"},
 	} {
 		err := Run(append([]string{"--url", server.URL, "--password-stdin"}, args...), strings.NewReader("synthetic-password"), &bytes.Buffer{}, &bytes.Buffer{})
 		if err == nil {

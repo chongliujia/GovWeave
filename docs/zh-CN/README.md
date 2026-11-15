@@ -8,12 +8,14 @@
 
 | 任务 | 文档 |
 | --- | --- |
+| 跑通 EU AI Act、NIST 和 ISO 42001 准备度的证据、整改与报告回放 | [三类框架实操指南](framework-workflows.md) |
 | 无需模型账号，验证放行、脱敏和输入阻断 | [从这里开始：本机试用](try-it.md) |
 | 观看 60 秒分步演示，获取静态分镜与解说词 | [短演示](short-demo.md) |
 | 查看英／中文控制台截图并更新公开图片 | [控制台截图](screenshots.md) |
 | 查看带日期的正式网关联调结果及验证边界 | [正式网关联调实测](../../README.zh-CN.md#正式网关联调实测) |
 | 查看系统数据流覆盖缺口并接入可追踪知识库试点 | [系统级网关试点](system-gateway-pilot.md) |
 | 在后台选择已安装合规规则包并配置检测／脱敏插件 | [插件中心](plugin-center.md) |
+| 跟进控制缺口、记录整改、关联复测并验证当前证据 | [风险整改与验证](remediation.md) |
 | 安装并测试有明确覆盖边界的欧美 AI 草案包 | [欧美合规首批包](eu-us-compliance-bundle.md) |
 | 用 BASE URL、应用密钥和模型别名接入自己的应用 | [应用接入指南](application-onboarding.md) |
 | 留存加密风险证据、复核处理前后输出与查询证据关系 | [风险证据](risk-evidence.md) |

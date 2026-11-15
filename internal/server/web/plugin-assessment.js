@@ -43,7 +43,7 @@ export function safeSourceURL(value) {
   } catch { return null; }
 }
 
-export function createPluginAssessment({ request, packContainer, reportContainer }) {
+export function createPluginAssessment({ request, packContainer, reportContainer, onRemediate }) {
   let descriptor = null, product = null, dirty = false, definition = null, report = null;
   let packIdentity = "", productIdentity = "", packToken = 0, loading = false, packError = false, reportMessage = "", expiryTimer;
   const packPanel = node("details", undefined, "plugin-disclosure"); packPanel.id = "plugin-pack-inspect";
@@ -146,6 +146,10 @@ export function createPluginAssessment({ request, packContainer, reportContainer
       info(item, "Assessment method", t(methods[control.assessment_method] || control.assessment_method)); info(item, "Basis", control.basis ? t(bases[control.basis] || control.basis) : "");
       list(item, "Evidence problems to resolve", control.issues.map(issue => `${issue.fact} · ${t(issueLabels[issue.code] || issue.code)}`), "No evidence issues were recorded for this control.");
       const findings = report.evaluation.findings.filter(finding => finding.control_id === control.id);
+      if (onRemediate && ["fail", "unknown"].includes(control.status)) {
+        const track = message("button", "Track remediation", "secondary"); track.type = "button"; track.dataset.remediateControl = control.id;
+        track.addEventListener("click", () => onRemediate(control.id)); item.append(track);
+      }
       list(item, "Next actions", findings.map(finding => Object.hasOwn(defaultActions, finding.action) ? t(defaultActions[finding.action]) : finding.action), "No next action was recorded; this is not a legal compliance conclusion.");
       item.append(message("h5", "Evidence references"));
       if (!control.evidence.length) item.append(message("p", "No evidence references were recorded.", "field-hint"));

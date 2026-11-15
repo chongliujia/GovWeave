@@ -64,6 +64,8 @@ The historical product draft is [archived](zh-CN/archive/initial-design.md). Do 
 
 ## Go test coverage
 
+Remediation regressions in `internal/governance/remediation_test.go` and `internal/server/remediation_test.go` verify retained control identity, progress-only edits, fresh explicit test binding, failed/unknown/out-of-scope evidence, optimistic conflicts, expiry, persistence and CLI authorization. The plugin browser suite also exercises the actual remediation editor, retained evidence views, language changes and stale-response isolation. See [remediation](remediation.md).
+
 Unit and local integration tests cover configuration precedence and validation, deployment-managed fields, revision conflicts, private persistence, invalid state, instance locking, password setup and migration, rate limits, session behavior, management authentication, and origin checks.
 
 Gateway tests cover credential encryption and key hashing, model grants and revocation, normal and SSE forwarding, cancellation, timeouts, protocol errors, input/output limits, concurrency admission, audit reservations, interrupted-call recovery, privacy, and fail-closed behavior when durable logging is unavailable.
@@ -232,3 +234,5 @@ Compliance tests cover three-valued logic, applicability, exact decimal comparis
 `make demo-multi-agent-trace` runs a synthetic Python/Node process example through an isolated local gateway: five tool calls, three upstream reads, two denials, a join, a retry and application-isolated queries. `python3 tests/trace-client-test.py` checks immutable propagation, per-call and per-Agent-run isolation, server receipts and model → tool → model chaining. Go tests cover all three correlated endpoints, authorization changes, audit failures, retained history, restart and record-size limits. These checks do not establish framework compatibility or full-task correctness. See [heterogeneous Agent tracing](agent-tracing.md).
 
 The optional [real-framework trial](framework-tracing-trial.md) pins LangGraph and Pydantic AI in an isolated environment. After installing its requirements, run `make trial-framework-trace FRAMEWORK_PYTHON=/path/to/venv/bin/python`. Use that interpreter for `tests/async-trace-client-test.py`, `tests/framework-adapters-test.py` and `tests/framework-trial-test.py`. The latter checks failure cleanup, full-queue shutdown and private failure reports. This suite does not add framework dependencies to the Go runtime or ordinary Python examples.
+
+`make demo-frameworks` runs the six-pack EU AI Act / NIST / ISO preparation workflow locally, including evidence gaps, remediation, report replay and evidence invalidation. `node tests/plugin-evidence-test.cjs` checks evidence form semantics; the plugin browser smoke also covers family filters and editable references. See [framework workflows](framework-workflows.md).

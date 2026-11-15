@@ -24,6 +24,8 @@ make package
 
 ## 浏览器流程测试（可选开发依赖）
 
+整改回归位于 `internal/governance/remediation_test.go` 和 `internal/server/remediation_test.go`，覆盖留存控制身份、进展编辑、显式新测试关联、失败／未知／范围变化、版本冲突、过期、持久化及 CLI 管理权限。插件浏览器测试另覆盖真实整改编辑器、历史证据、语言切换和迟到响应隔离，见[风险整改与验证](remediation.md)。
+
 运行总览通过 `dashboard.js` 和 `dashboard.css` 实现浅色后台布局、请求样本趋势与待复核列表。首次默认英文，用户切换简体中文后记住选择。图表仅使用最近返回的 100 条审计记录，不代表 Token 统计或完整流量历史；时间／模型筛选不会补取历史数据，空白区间不证明实际流量为零。记录不可用时保持未知，命中不等于风险等级或法律合规结论。
 
 `node tests/dashboard-test.cjs` 无需额外依赖，验证聚合、时间边界、复核与翻译，已纳入 `make check`。具备下述 Playwright/Chrome 开发依赖后，执行 `node tests/dashboard-smoke.cjs`，可通过**本地合成 API 数据**验证真实控制台资源，包括默认英文、语言记忆、图表筛选、搜索、详情、退出清理、失败／空状态和 360–1600px 布局。截图保存到 `dist/dashboard-smoke/`。该前端测试不需要 Go，也不能替代后端、认证或持久化测试。实际服务需要重新构建 Go 二进制才能加载更新后的嵌入式资源。
@@ -173,3 +175,5 @@ go test ./internal/gateway -run '^$' -bench BenchmarkCredentialPolicy -benchmem
 `make demo-multi-agent-trace` 通过隔离的本机网关运行合成 Python/Node 进程示例：五次工具调用、三次上游读取、两次拒绝、汇合、重试和应用查询隔离。`python3 tests/trace-client-test.py` 检查不可变上下文、逐调用及逐 Agent 运行隔离、服务端回执和模型 → 工具 → 模型串联。Go 测试覆盖三个追踪入口、鉴权变更、审计故障、历史窗口、重启及记录大小限制。这些检查不证明框架兼容或完整任务正确性，见[异构 Agent 追踪](agent-tracing.md)。
 
 可选的[真实框架联调](framework-tracing-trial.md)在独立环境固定 LangGraph 与 Pydantic AI 版本。安装对应依赖后执行 `make trial-framework-trace FRAMEWORK_PYTHON=/path/to/venv/bin/python`，并用该解释器运行 `tests/async-trace-client-test.py`、`tests/framework-adapters-test.py` 和 `tests/framework-trial-test.py`；最后一组检查失败后的任务清理、满队列关闭及私有失败报告。此套件不为 Go 运行时或普通 Python 示例新增框架依赖。
+
+`make demo-frameworks DEMO_LANG=zh-CN` 在本机运行六包 EU AI Act／NIST／ISO 准备流程，包含证据缺口、整改、报告回放和证据失效。`node tests/plugin-evidence-test.cjs` 检查证据表单语义；插件浏览器冒烟也覆盖框架筛选和引用录入。见[框架实操指南](framework-workflows.md)。

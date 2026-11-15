@@ -109,3 +109,20 @@
   .plugin-save-actions { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
   .plugin-save-actions button { padding: 8px; min-height: 42px; }
 }
+
+.plugin-workflow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; counter-reset: workflow; }
+.plugin-workflow button { min-height: 48px; text-align: left; font-size: 12px; padding: 10px; }
+.plugin-workflow button::before { counter-increment: workflow; content: counter(workflow) ". "; color: var(--text-secondary); }
+.plugin-framework-families { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
+.plugin-family { text-align: left; padding: 12px; display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.plugin-family[aria-pressed="true"] { border-color: var(--ink); background: var(--surface-subtle); box-shadow: inset 0 0 0 1px var(--ink); }
+.plugin-family strong { font-size: 12px; font-weight: 600; }
+.plugin-family span { font-size: 11px; color: var(--text-secondary); }
+.plugin-evidence-fields { display: grid; gap: 8px; }
+.plugin-evidence-editor { border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; overflow-wrap: anywhere; }
+.plugin-evidence-editor .check-line { display: flex; align-items: center; gap: 8px; font-size: 12px; margin: 12px 0; }
+.plugin-evidence-editor input[type="checkbox"] { width: 16px; height: 16px; }
+.plugin-evidence-inputs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; min-width: 0; border: 0; margin: 0; padding: 0; }
+.plugin-evidence-inputs:disabled { opacity: .55; }
+.plugin-step, #plugin-evidence-panel, #plugin-assessment-panel { scroll-margin-top: 90px; }
+@media (max-width: 700px) { .plugin-workflow { grid-template-columns: repeat(2, minmax(0, 1fr)); } .plugin-evidence-inputs { grid-template-columns: minmax(0, 1fr); } }

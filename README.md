@@ -6,7 +6,7 @@
 
 GovWeave is an open-source, self-hosted AI governance gateway for developers building AI support, knowledge assistants and Agent platforms. Connect an OpenAI-compatible model endpoint and keep gateway configuration on your own infrastructure.
 
-**[Try locally — no model account](docs/try-it.md)** · [Watch the 60-second walkthrough](docs/demo/README.md) · [Connect your application](docs/application-onboarding.md) · [Documentation](docs/README.md)
+**[Try locally — no model account](docs/try-it.md)** · [Watch the 60-second walkthrough](docs/demo/README.md) · [Connect your application](docs/application-onboarding.md) · [EU AI Act / NIST / ISO 42001](docs/framework-workflows.md) · [Documentation](docs/README.md)
 
 - **Control what reaches the application.** Detect supported credential, email and phone patterns; block or redact non-streaming model/tool output within the configured scope.
 - **Give each application its own access.** Issue application keys, grant models and authorize integrated read tools.
@@ -17,6 +17,22 @@ GovWeave is an open-source, self-hosted AI governance gateway for developers bui
 [![Six-step walkthrough: configured output protection, three requests, redaction evidence and input blocking](docs/demo/quickstart-en.gif)](docs/demo/README.md)
 
 Actual console, isolated gateway, scripted local model and synthetic data. Six annotated captures, 10 seconds each; [static frames and transcript](docs/demo/README.md). Ordinary audit logs contain metadata only; this demo explicitly enables separate content capture.
+
+## EU AI Act · NIST · ISO/IEC 42001
+
+**Run framework evidence and remediation workflows locally, without a model account.** Select a pinned pack, bind applications, add evidence references in the console, inspect gaps and verify fixes against retained reports.
+
+| Framework | Available workflow |
+| --- | --- |
+| **EU AI Act** | Selected interaction transparency, high-risk readiness and GPAI evidence drafts |
+| **NIST AI RMF / GenAI** | Lifecycle testing and selected GenAI evidence, linked to product reports and remediation |
+| **ISO/IEC 42001** | Management-system preparation checklist based on the public overview; no clause-level conformity or certification |
+
+```bash
+make demo-frameworks
+```
+
+The six-pack synthetic demo verifies **missing evidence → gap → remediation → verification → report replay → stale evidence**. Manual-review items remain unknown. [Framework walkthrough, expected results and console steps](docs/framework-workflows.md). Packs require explicit installation; these are bounded technical/preparation workflows, not complete regulatory coverage.
 
 ## Try without a model account
 
@@ -72,6 +88,7 @@ Keep runtime calls separate from assessment probes, and show unverified system b
 | EU/US starter bundle | Eight pinned, partial draft packs covering EU AI Act preparation, GDPR evidence, NIST profiles, FTC claims evidence and technical output controls; [scope, installation and isolated results](docs/eu-us-compliance-bundle.md) |
 | System traffic coverage | Read-only product view of granted routes and bounded observed calls, with assessment probes separate and bypass/application boundaries explicitly unverified; [pilot guide](docs/system-gateway-pilot.md) |
 | Report snapshots | Explicit immutable capture, retained rule/evidence inputs, findings and fixed-time replay; numeric runtime facts reference the exact contributing sampled requests |
+| Risk remediation | Track failed/unknown product controls, record progress, bind explicit retests and verify against fresh retained assessments; stale evidence remains visible; [workflow](docs/remediation.md) |
 | Canary exposure check | Fresh synthetic markers, bounded encoding detection and a frozen-corpus measurement report; see [scope and measured misses](docs/canary-validation.md) and [quality/cost replay](docs/canary-benchmark.md); [detector plugins and routing replay](docs/detector-routing.md) compare fast/deep paths |
 | Active assessment | Versioned test suites, pre-deployment runs, opt-in operation retesting and partial NIST AI RMF lifecycle evidence; see [guide](docs/active-assessments.md) |
 | Request records | Request ID, authorization, policy revision and matches, execution outcome, and timing; no prompt or response bodies |

@@ -6,7 +6,7 @@ async function main() {
   const catalog = JSON.parse(source.split('const chinese = ')[1].split(';\nconst preferenceKey')[0]);
   const keys = [...source.split(';\nconst preferenceKey')[0].matchAll(/^  ("(?:\\.|[^"\\])*"):/gm)].map(match => JSON.parse(match[1]));
   assert.equal(new Set(keys).size, keys.length, 'Translation keys must not silently override each other');
-  for (const file of ['app.js', 'gateway.js', 'dashboard.js', 'request-review.js', 'task-map.js', 'task-map-view.js', 'integration.js', 'evidence.js', 'policies.js', 'plugins.js', 'plugin-assessment.js', 'plugin-tests.js', 'plugin-coverage.js']) {
+  for (const file of ['app.js', 'gateway.js', 'dashboard.js', 'request-review.js', 'task-map.js', 'task-map-view.js', 'integration.js', 'evidence.js', 'policies.js', 'plugins.js', 'plugin-assessment.js', 'plugin-tests.js', 'plugin-coverage.js', 'plugin-remediation.js', 'plugin-evidence.js']) {
     const js = await fs.readFile(`internal/server/web/${file}`, 'utf8');
     assert.ok(!/[\p{Script=Han}]/u.test(js), `${file} contains untranslated source text`);
     for (const match of js.matchAll(/\bt\(("(?:\\.|[^"\\])*")/g)) {
@@ -20,6 +20,11 @@ async function main() {
   for (const match of assessment.matchAll(/"(?:\\.|[^"\\\n])*"/g)) {
     const key = JSON.parse(match[0]);
     if (/^[A-Z].*\s/.test(key)) assert.ok(Object.hasOwn(catalog, key), `Missing assessment message: ${key}`);
+  }
+  const remediation = await fs.readFile('internal/server/web/plugin-remediation.js', 'utf8');
+  for (const match of remediation.matchAll(/"(?:\\.|[^"\\\n])*"/g)) {
+    const key = JSON.parse(match[0]);
+    if (/^[A-Z].*\s/.test(key)) assert.ok(Object.hasOwn(catalog, key), `Missing remediation message: ${key}`);
   }
   for (const match of plugins.matchAll(/previewMessage = ("(?:\\.|[^"\\])+")/g)) {
     assert.ok(Object.hasOwn(catalog, JSON.parse(match[1])), `Missing preview status: ${match[1]}`);

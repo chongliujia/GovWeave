@@ -157,7 +157,7 @@ func TestRequestBoundaries(t *testing.T) {
 
 func TestPublicAssetsAndHealthDoNotExposeConfig(t *testing.T) {
 	h := handler(t)
-	for _, path := range []string{"/", "/app.js", "/dashboard.js", "/dashboard.css", "/plugins.js", "/plugins.css", "/plugin-assessment.js", "/plugin-tests.js", "/plugin-coverage.js", "/i18n.js", "/style.css", "/logo.svg", "/healthz"} {
+	for _, path := range []string{"/", "/app.js", "/dashboard.js", "/dashboard.css", "/plugins.js", "/plugins.css", "/plugin-assessment.js", "/plugin-tests.js", "/plugin-coverage.js", "/plugin-evidence.js", "/i18n.js", "/style.css", "/logo.svg", "/healthz"} {
 		w := invoke(h, "GET", path, "", "", nil)
 		if w.Code != 200 {
 			t.Fatalf("asset %s: %d", path, w.Code)

@@ -2,7 +2,7 @@
 
 **English** | [简体中文](zh-CN/product-assessments.md)
 
-Registered products combine administrative profile facts with gateway-owned runtime evidence. A background worker reassesses them when a product is saved, a connection/application/key/credential policy/read-tool configuration changes through the management API, or a gateway operation finishes. This backend feature uses the existing [declarative evaluator](compliance-engine.md); it adds no management page. A separate [source-backed EU draft](eu-transparency-reports.md) can be installed for a narrow scenario.
+Registered products combine administrative profile facts with gateway-owned runtime evidence. A background worker reassesses them when a product is saved, a connection/application/key/credential policy/read-tool configuration changes through the management API, or a gateway operation finishes. This backend feature uses the existing [declarative evaluator](compliance-engine.md); the [plugin center](plugin-center.md) provides product selection and evidence-reference editing. A separate [source-backed EU draft](eu-transparency-reports.md) can be installed for a narrow scenario.
 
 ## Register and assess
 
@@ -99,3 +99,5 @@ Only the latest profiles are stored. **Automatic latest results are bounded and 
 `go test -race ./...` includes registry, adapter, event refresh and freshness cases. `make build` followed by `python3 tests/compliance-smoke.py` exercises a real temporary gateway, synthetic blocked requests, policy changes, profile persistence and restart reassessment without contacting a provider.
 
 See [Active assessment](active-assessments.md) for pre-deployment and periodic operation testing. Combined test evidence is retained in separate private test runs. The two `testing.output.*.passed` facts from current qualifying output-control runs also enter product assessments and report snapshots; see [active output assessment](output-control-assessments.md).
+
+With exactly one configured test plan, current comparable runs also supply `testing.test_set_documented`, `testing.pre_deployment.passed` and `testing.operation.passed` to product evaluations and archives. Multiple plans leave these generic lifecycle facts unknown. See the [NIST workflow](framework-workflows.md) for remediation and replay.
